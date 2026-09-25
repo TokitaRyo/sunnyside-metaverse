@@ -1,0 +1,20 @@
+{
+  "name": "@metaverse/client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@metaverse/shared": "*",
+    "phaser": "3.90.0",
+    "@colyseus/sdk": "0.18.2",
+    "@colyseus/schema": "5.0.33"
+  },
+  "devDependencies": {
+    "vite": "6.0.11"
+  }
+}

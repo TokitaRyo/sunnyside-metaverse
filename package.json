@@ -1,0 +1,29 @@
+{
+  "name": "sunnyside-metaverse",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "npm run start -w server",
+    "loadtest": "tsx scripts/load-test.ts",
+    "cheat-test": "tsx scripts/cheat-test.ts"
+  },
+  "overrides": {
+    "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/v20.52.0.tar.gz"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.0",
+    "@types/node": "22.10.7",
+    "concurrently": "9.1.2",
+    "pngjs": "7.0.0",
+    "tsx": "4.19.2",
+    "typescript": "5.7.3"
+  }
+}

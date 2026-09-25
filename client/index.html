@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f3a24" />
+    <title>Sunnyside World</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="labels"></div>
+
+    <div id="hud" hidden>
+      <div id="chat-log" aria-live="polite"></div>
+      <form id="chat-form" autocomplete="off">
+        <input id="chat-input" type="text" maxlength="140" placeholder="Enter でチャット / Esc で戻る" enterkeyhint="send" />
+      </form>
+      <div id="emote-bar"></div>
+      <div id="pad" aria-hidden="true">
+        <button data-pad="up" class="pad-up"><img src="assets/ui/arrow_up.png" alt="上" /></button>
+        <button data-pad="left" class="pad-left"><img src="assets/ui/arrow_left.png" alt="左" /></button>
+        <button data-pad="right" class="pad-right"><img src="assets/ui/arrow_right.png" alt="右" /></button>
+        <button data-pad="down" class="pad-down"><img src="assets/ui/arrow_up.png" alt="下" /></button>
+      </div>
+      <button id="run-btn" type="button">走る</button>
+    </div>
+
+    <div id="conn" hidden>
+      <div class="conn-box">
+        <p id="conn-text"></p>
+        <button id="conn-reload" type="button" hidden>再読込</button>
+      </div>
+    </div>
+
+    <div id="join">
+      <form id="join-form" class="panel" autocomplete="off">
+        <h1>Sunnyside World</h1>
+        <p class="lead">なまえと髪型を選んで入室しよう</p>
+        <label class="field">
+          <span>なまえ（12文字まで）</span>
+          <input id="join-name" type="text" maxlength="12" placeholder="ゲスト" required />
+        </label>
+        <div class="field">
+          <span>髪型</span>
+          <div id="hair-grid" role="radiogroup" aria-label="髪型"></div>
+        </div>
+        <button id="join-btn" type="submit" disabled>読み込み中…</button>
+        <div class="bar"><i id="load-bar"></i></div>
+        <p id="join-error" class="error" hidden></p>
+        <p class="hint">移動: WASD / 矢印キー ・ 走る: Shift ・ チャット: Enter ・ エモート: 1〜6</p>
+      </form>
+    </div>
+
+    <div id="fatal" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

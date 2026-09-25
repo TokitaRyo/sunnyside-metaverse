@@ -1,0 +1,19 @@
+{
+  "name": "@metaverse/server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --include ../client/src/config/map.json src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@metaverse/shared": "*",
+    "colyseus": "0.18.6",
+    "express": "5.2.1",
+    "@colyseus/schema": "5.0.33",
+    "@colyseus/tools": "0.18.3",
+    "@colyseus/playground": "0.18.4"
+  }
+}

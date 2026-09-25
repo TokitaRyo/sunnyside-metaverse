@@ -1,0 +1,892 @@
+{
+  "meta": {
+    "source": "Sunnyside World Asset Pack V2.1 (danieldiggle, itch.io)",
+    "frameWidth": 96,
+    "frameHeight": 64,
+    "facing": "LR_ONLY",
+    "facingNote": "左右のみ。右向きが素材の初期状態で、左を向くときは flipX = true。上下移動でも見た目は変えない。",
+    "origin": {
+      "x": 0.5,
+      "y": 0.625
+    },
+    "originNote": "足元を原点にした値。96x64 フレーム内で体は下記 bodyBox にしか存在しない。",
+    "bodyBox": {
+      "x": 43,
+      "y": 23,
+      "w": 13,
+      "h": 17
+    },
+    "frameCountNote": "フレーム数はファイル名の stripN ではなく画像幅から算出済み（Goblin に不一致あり）。"
+  },
+  "characters": {
+    "human": {
+      "dir": "characters/human",
+      "layered": true,
+      "layerOrder": [
+        "base",
+        "hair",
+        "tools"
+      ],
+      "hairOptions": [
+        "bowlhair",
+        "curlyhair",
+        "longhair",
+        "mophair",
+        "shorthair",
+        "spikeyhair"
+      ],
+      "fileTemplate": "characters/human/{layer}/{action}.png",
+      "actions": {
+        "attack": {
+          "frameRate": 14,
+          "repeat": 0,
+          "frames": 10
+        },
+        "axe": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 10
+        },
+        "carry": {
+          "frameRate": 10,
+          "repeat": -1,
+          "frames": 8
+        },
+        "casting": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 15
+        },
+        "caught": {
+          "frameRate": 10,
+          "repeat": 0,
+          "frames": 10
+        },
+        "death": {
+          "frameRate": 10,
+          "repeat": 0,
+          "frames": 13
+        },
+        "dig": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 13
+        },
+        "doing": {
+          "frameRate": 10,
+          "repeat": 0,
+          "frames": 8
+        },
+        "hammering": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 23
+        },
+        "hurt": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 8
+        },
+        "idle": {
+          "frameRate": 8,
+          "repeat": -1,
+          "frames": 9
+        },
+        "jump": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 9
+        },
+        "mining": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 10
+        },
+        "reeling": {
+          "frameRate": 12,
+          "repeat": -1,
+          "frames": 13
+        },
+        "roll": {
+          "frameRate": 14,
+          "repeat": 0,
+          "frames": 10
+        },
+        "run": {
+          "frameRate": 12,
+          "repeat": -1,
+          "frames": 8
+        },
+        "swimming": {
+          "frameRate": 10,
+          "repeat": -1,
+          "frames": 12
+        },
+        "waiting": {
+          "frameRate": 8,
+          "repeat": -1,
+          "frames": 9
+        },
+        "walk": {
+          "frameRate": 10,
+          "repeat": -1,
+          "frames": 8
+        },
+        "watering": {
+          "frameRate": 10,
+          "repeat": 0,
+          "frames": 5
+        }
+      }
+    },
+    "goblin": {
+      "dir": "characters/goblin",
+      "layered": false,
+      "fileTemplate": "characters/goblin/{action}.png",
+      "actions": {
+        "attack": {
+          "frameRate": 14,
+          "repeat": 0,
+          "frames": 9
+        },
+        "axe": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 10
+        },
+        "carry": {
+          "frameRate": 10,
+          "repeat": -1,
+          "frames": 8
+        },
+        "casting": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 20
+        },
+        "caught": {
+          "frameRate": 10,
+          "repeat": 0,
+          "frames": 10
+        },
+        "death": {
+          "frameRate": 10,
+          "repeat": 0,
+          "frames": 9
+        },
+        "dig": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 20
+        },
+        "doing": {
+          "frameRate": 10,
+          "repeat": 0,
+          "frames": 8
+        },
+        "hammering": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 30
+        },
+        "hurt": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 8
+        },
+        "idle": {
+          "frameRate": 8,
+          "repeat": -1,
+          "frames": 8
+        },
+        "jump": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 9
+        },
+        "mining": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 10
+        },
+        "reeling": {
+          "frameRate": 12,
+          "repeat": -1,
+          "frames": 20
+        },
+        "roll": {
+          "frameRate": 14,
+          "repeat": 0,
+          "frames": 10
+        },
+        "run": {
+          "frameRate": 12,
+          "repeat": -1,
+          "frames": 8
+        },
+        "swimming": {
+          "frameRate": 10,
+          "repeat": -1,
+          "frames": 4
+        },
+        "waiting": {
+          "frameRate": 8,
+          "repeat": -1,
+          "frames": 8
+        },
+        "walk": {
+          "frameRate": 10,
+          "repeat": -1,
+          "frames": 8
+        },
+        "watering": {
+          "frameRate": 10,
+          "repeat": 0,
+          "frames": 5
+        }
+      }
+    },
+    "skeleton": {
+      "dir": "characters/skeleton",
+      "layered": false,
+      "fileTemplate": "characters/skeleton/{action}.png",
+      "actions": {
+        "attack": {
+          "frameRate": 14,
+          "repeat": 0,
+          "frames": 7
+        },
+        "death": {
+          "frameRate": 10,
+          "repeat": 0,
+          "frames": 10
+        },
+        "hurt": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 7
+        },
+        "idle": {
+          "frameRate": 8,
+          "repeat": -1,
+          "frames": 6
+        },
+        "jump": {
+          "frameRate": 12,
+          "repeat": 0,
+          "frames": 10
+        },
+        "walk": {
+          "frameRate": 10,
+          "repeat": -1,
+          "frames": 8
+        }
+      }
+    }
+  },
+  "elements": {
+    "bird_01": {
+      "file": "elements/Animals/spr_deco_bird_01_strip4.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "blinking": {
+      "file": "elements/Animals/spr_deco_blinking_strip12.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frames": 12,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "chicken_01": {
+      "file": "elements/Animals/spr_deco_chicken_01_strip4.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "cow": {
+      "file": "elements/Animals/spr_deco_cow_strip4.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "duck_01": {
+      "file": "elements/Animals/spr_deco_duck_01_strip4.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "pig_01": {
+      "file": "elements/Animals/spr_deco_pig_01_strip4.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "sheep_01": {
+      "file": "elements/Animals/spr_deco_sheep_01_strip4.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "beetroot_00": {
+      "file": "elements/Crops/beetroot_00.png",
+      "width": 5,
+      "height": 5
+    },
+    "beetroot_01": {
+      "file": "elements/Crops/beetroot_01.png",
+      "width": 6,
+      "height": 5
+    },
+    "beetroot_02": {
+      "file": "elements/Crops/beetroot_02.png",
+      "width": 8,
+      "height": 6
+    },
+    "beetroot_03": {
+      "file": "elements/Crops/beetroot_03.png",
+      "width": 8,
+      "height": 11
+    },
+    "beetroot_04": {
+      "file": "elements/Crops/beetroot_04.png",
+      "width": 12,
+      "height": 14
+    },
+    "beetroot_05": {
+      "file": "elements/Crops/beetroot_05.png",
+      "width": 16,
+      "height": 16
+    },
+    "cabbage_00": {
+      "file": "elements/Crops/cabbage_00.png",
+      "width": 5,
+      "height": 5
+    },
+    "cabbage_01": {
+      "file": "elements/Crops/cabbage_01.png",
+      "width": 10,
+      "height": 7
+    },
+    "cabbage_02": {
+      "file": "elements/Crops/cabbage_02.png",
+      "width": 8,
+      "height": 7
+    },
+    "cabbage_03": {
+      "file": "elements/Crops/cabbage_03.png",
+      "width": 12,
+      "height": 10
+    },
+    "cabbage_04": {
+      "file": "elements/Crops/cabbage_04.png",
+      "width": 16,
+      "height": 13
+    },
+    "cabbage_05": {
+      "file": "elements/Crops/cabbage_05.png",
+      "width": 12,
+      "height": 11
+    },
+    "carrot_00": {
+      "file": "elements/Crops/carrot_00.png",
+      "width": 7,
+      "height": 7
+    },
+    "carrot_01": {
+      "file": "elements/Crops/carrot_01.png",
+      "width": 6,
+      "height": 7
+    },
+    "carrot_02": {
+      "file": "elements/Crops/carrot_02.png",
+      "width": 6,
+      "height": 7
+    },
+    "carrot_03": {
+      "file": "elements/Crops/carrot_03.png",
+      "width": 8,
+      "height": 10
+    },
+    "carrot_04": {
+      "file": "elements/Crops/carrot_04.png",
+      "width": 10,
+      "height": 13
+    },
+    "carrot_05": {
+      "file": "elements/Crops/carrot_05.png",
+      "width": 12,
+      "height": 12
+    },
+    "cauliflower_00": {
+      "file": "elements/Crops/cauliflower_00.png",
+      "width": 5,
+      "height": 5
+    },
+    "cauliflower_01": {
+      "file": "elements/Crops/cauliflower_01.png",
+      "width": 6,
+      "height": 7
+    },
+    "cauliflower_02": {
+      "file": "elements/Crops/cauliflower_02.png",
+      "width": 8,
+      "height": 8
+    },
+    "cauliflower_03": {
+      "file": "elements/Crops/cauliflower_03.png",
+      "width": 10,
+      "height": 11
+    },
+    "cauliflower_04": {
+      "file": "elements/Crops/cauliflower_04.png",
+      "width": 12,
+      "height": 12
+    },
+    "cauliflower_05": {
+      "file": "elements/Crops/cauliflower_05.png",
+      "width": 12,
+      "height": 12
+    },
+    "crate_base": {
+      "file": "elements/Crops/crate_base.png",
+      "width": 16,
+      "height": 16
+    },
+    "crate_top": {
+      "file": "elements/Crops/crate_top.png",
+      "width": 16,
+      "height": 14
+    },
+    "egg": {
+      "file": "elements/Crops/egg.png",
+      "width": 10,
+      "height": 11
+    },
+    "fish": {
+      "file": "elements/Crops/fish.png",
+      "width": 11,
+      "height": 11
+    },
+    "kale_00": {
+      "file": "elements/Crops/kale_00.png",
+      "width": 5,
+      "height": 5
+    },
+    "kale_01": {
+      "file": "elements/Crops/kale_01.png",
+      "width": 4,
+      "height": 7
+    },
+    "kale_02": {
+      "file": "elements/Crops/kale_02.png",
+      "width": 6,
+      "height": 8
+    },
+    "kale_03": {
+      "file": "elements/Crops/kale_03.png",
+      "width": 10,
+      "height": 9
+    },
+    "kale_04": {
+      "file": "elements/Crops/kale_04.png",
+      "width": 14,
+      "height": 11
+    },
+    "kale_05": {
+      "file": "elements/Crops/kale_05.png",
+      "width": 14,
+      "height": 11
+    },
+    "milk": {
+      "file": "elements/Crops/milk.png",
+      "width": 10,
+      "height": 12
+    },
+    "parsnip_00": {
+      "file": "elements/Crops/parsnip_00.png",
+      "width": 6,
+      "height": 6
+    },
+    "parsnip_01": {
+      "file": "elements/Crops/parsnip_01.png",
+      "width": 6,
+      "height": 6
+    },
+    "parsnip_02": {
+      "file": "elements/Crops/parsnip_02.png",
+      "width": 8,
+      "height": 7
+    },
+    "parsnip_03": {
+      "file": "elements/Crops/parsnip_03.png",
+      "width": 8,
+      "height": 8
+    },
+    "parsnip_04": {
+      "file": "elements/Crops/parsnip_04.png",
+      "width": 10,
+      "height": 14
+    },
+    "parsnip_05": {
+      "file": "elements/Crops/parsnip_05.png",
+      "width": 14,
+      "height": 14
+    },
+    "potato_00": {
+      "file": "elements/Crops/potato_00.png",
+      "width": 6,
+      "height": 6
+    },
+    "potato_01": {
+      "file": "elements/Crops/potato_01.png",
+      "width": 6,
+      "height": 6
+    },
+    "potato_02": {
+      "file": "elements/Crops/potato_02.png",
+      "width": 8,
+      "height": 8
+    },
+    "potato_03": {
+      "file": "elements/Crops/potato_03.png",
+      "width": 8,
+      "height": 11
+    },
+    "potato_04": {
+      "file": "elements/Crops/potato_04.png",
+      "width": 11,
+      "height": 15
+    },
+    "potato_05": {
+      "file": "elements/Crops/potato_05.png",
+      "width": 10,
+      "height": 10
+    },
+    "pumpkin_00": {
+      "file": "elements/Crops/pumpkin_00.png",
+      "width": 7,
+      "height": 7
+    },
+    "pumpkin_01": {
+      "file": "elements/Crops/pumpkin_01.png",
+      "width": 8,
+      "height": 7
+    },
+    "pumpkin_02": {
+      "file": "elements/Crops/pumpkin_02.png",
+      "width": 9,
+      "height": 9
+    },
+    "pumpkin_03": {
+      "file": "elements/Crops/pumpkin_03.png",
+      "width": 12,
+      "height": 11
+    },
+    "pumpkin_04": {
+      "file": "elements/Crops/pumpkin_04.png",
+      "width": 12,
+      "height": 14
+    },
+    "pumpkin_05": {
+      "file": "elements/Crops/pumpkin_05.png",
+      "width": 12,
+      "height": 14
+    },
+    "radish_00": {
+      "file": "elements/Crops/radish_00.png",
+      "width": 6,
+      "height": 6
+    },
+    "radish_01": {
+      "file": "elements/Crops/radish_01.png",
+      "width": 6,
+      "height": 6
+    },
+    "radish_02": {
+      "file": "elements/Crops/radish_02.png",
+      "width": 8,
+      "height": 7
+    },
+    "radish_03": {
+      "file": "elements/Crops/radish_03.png",
+      "width": 8,
+      "height": 10
+    },
+    "radish_04": {
+      "file": "elements/Crops/radish_04.png",
+      "width": 12,
+      "height": 15
+    },
+    "radish_05": {
+      "file": "elements/Crops/radish_05.png",
+      "width": 12,
+      "height": 15
+    },
+    "rock": {
+      "file": "elements/Crops/rock.png",
+      "width": 10,
+      "height": 10
+    },
+    "seeds_generic": {
+      "file": "elements/Crops/seeds_generic.png",
+      "width": 11,
+      "height": 10
+    },
+    "soil_00": {
+      "file": "elements/Crops/soil_00.png",
+      "width": 16,
+      "height": 12
+    },
+    "soil_01": {
+      "file": "elements/Crops/soil_01.png",
+      "width": 16,
+      "height": 12
+    },
+    "soil_03": {
+      "file": "elements/Crops/soil_03.png",
+      "width": 16,
+      "height": 12
+    },
+    "soil_04": {
+      "file": "elements/Crops/soil_04.png",
+      "width": 16,
+      "height": 12
+    },
+    "sunflower_00": {
+      "file": "elements/Crops/sunflower_00.png",
+      "width": 7,
+      "height": 7
+    },
+    "sunflower_01": {
+      "file": "elements/Crops/sunflower_01.png",
+      "width": 10,
+      "height": 7
+    },
+    "sunflower_02": {
+      "file": "elements/Crops/sunflower_02.png",
+      "width": 11,
+      "height": 9
+    },
+    "sunflower_03": {
+      "file": "elements/Crops/sunflower_03.png",
+      "width": 11,
+      "height": 13
+    },
+    "sunflower_04": {
+      "file": "elements/Crops/sunflower_04.png",
+      "width": 13,
+      "height": 19
+    },
+    "sunflower_05": {
+      "file": "elements/Crops/sunflower_05.png",
+      "width": 13,
+      "height": 16
+    },
+    "wheat_00": {
+      "file": "elements/Crops/wheat_00.png",
+      "width": 6,
+      "height": 6
+    },
+    "wheat_01": {
+      "file": "elements/Crops/wheat_01.png",
+      "width": 11,
+      "height": 7
+    },
+    "wheat_02": {
+      "file": "elements/Crops/wheat_02.png",
+      "width": 11,
+      "height": 10
+    },
+    "wheat_03": {
+      "file": "elements/Crops/wheat_03.png",
+      "width": 13,
+      "height": 14
+    },
+    "wheat_04": {
+      "file": "elements/Crops/wheat_04.png",
+      "width": 13,
+      "height": 16
+    },
+    "wheat_05": {
+      "file": "elements/Crops/wheat_05.png",
+      "width": 13,
+      "height": 13
+    },
+    "wood": {
+      "file": "elements/Crops/wood.png",
+      "width": 11,
+      "height": 11
+    },
+    "coracle_land": {
+      "file": "elements/Other/spr_deco_coracle_land.png",
+      "width": 32,
+      "height": 30
+    },
+    "coracle": {
+      "file": "elements/Other/spr_deco_coracle_strip4.png",
+      "frameWidth": 48,
+      "frameHeight": 37,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "windmill": {
+      "file": "elements/Other/spr_deco_windmill_strip9.png",
+      "frameWidth": 112,
+      "frameHeight": 112,
+      "frames": 9,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "windmill_withshadow": {
+      "file": "elements/Other/spr_deco_windmill_withshadow_strip9.png",
+      "frameWidth": 112,
+      "frameHeight": 112,
+      "frames": 9,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "windmillshadow": {
+      "file": "elements/Other/spr_deco_windmillshadow_strip9.png",
+      "frameWidth": 112,
+      "frameHeight": 112,
+      "frames": 9,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "mushroom_blue_01": {
+      "file": "elements/Plants/spr_deco_mushroom_blue_01_strip4.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "mushroom_blue_02": {
+      "file": "elements/Plants/spr_deco_mushroom_blue_02_strip4.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "mushroom_blue_03": {
+      "file": "elements/Plants/spr_deco_mushroom_blue_03_strip4.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "mushroom_red_01": {
+      "file": "elements/Plants/spr_deco_mushroom_red_01_strip4.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "tree_01": {
+      "file": "elements/Plants/spr_deco_tree_01_strip4.png",
+      "frameWidth": 32,
+      "frameHeight": 34,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "tree_02": {
+      "file": "elements/Plants/spr_deco_tree_02_strip4.png",
+      "frameWidth": 28,
+      "frameHeight": 43,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "chimneysmoke_01": {
+      "file": "elements/VFX/Chimney Smoke/chimneysmoke_01_strip30.png",
+      "frameWidth": 15,
+      "frameHeight": 37,
+      "frames": 30,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "chimneysmoke_02": {
+      "file": "elements/VFX/Chimney Smoke/chimneysmoke_02_strip30.png",
+      "frameWidth": 10,
+      "frameHeight": 30,
+      "frames": 30,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "chimneysmoke_03": {
+      "file": "elements/VFX/Chimney Smoke/chimneysmoke_03_strip30.png",
+      "frameWidth": 18,
+      "frameHeight": 21,
+      "frames": 30,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "chimneysmoke_04": {
+      "file": "elements/VFX/Chimney Smoke/chimneysmoke_04_strip30.png",
+      "frameWidth": 20,
+      "frameHeight": 32,
+      "frames": 30,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "chimneysmoke_05": {
+      "file": "elements/VFX/Chimney Smoke/chimneysmoke_05_strip30.png",
+      "frameWidth": 24,
+      "frameHeight": 19,
+      "frames": 30,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "fire_01": {
+      "file": "elements/VFX/Fire/spr_deco_fire_01_strip4.png",
+      "frameWidth": 5,
+      "frameHeight": 10,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "fire_02": {
+      "file": "elements/VFX/Fire/spr_deco_fire_02_strip4.png",
+      "frameWidth": 8,
+      "frameHeight": 12,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "glint_01": {
+      "file": "elements/VFX/Glint/spr_deco_glint_01_strip6.png",
+      "frameWidth": 7,
+      "frameHeight": 7,
+      "frames": 6,
+      "frameRate": 6,
+      "repeat": -1
+    },
+    "glint_02": {
+      "file": "elements/VFX/Glint/spr_deco_glint_02_strip4.png",
+      "frameWidth": 7,
+      "frameHeight": 7,
+      "frames": 4,
+      "frameRate": 6,
+      "repeat": -1
+    }
+  }
+}

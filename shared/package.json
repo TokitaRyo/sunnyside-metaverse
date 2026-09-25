@@ -1,0 +1,12 @@
+{
+  "name": "@metaverse/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "@colyseus/schema": "5.0.33"
+  }
+}

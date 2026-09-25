@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.env
+*.log
+
+# マップエディタの保存前バックアップ
+reference/map-backups/
+
+# Sunnyside World の素材は再配布・再販売禁止のライセンス。
+# 公開リポジトリに含めない（デプロイ時は client/public/assets/ が
+# ローカルにある状態で `flyctl deploy` するので、サーバーには正しく配信される）。
+client/public/assets/
+# 元パックの配置データ（GameMaker ルーム）に由来する、素材と同様の扱い
+client/src/config/map.json
+# タイルセットの切り出し画像・配置レンダリングなど、素材から生成した参照資料も同様
+reference/*.png
+reference/*.jpg
+reference/*.json
+reference/itch/
+
+# このリポジトリに含めるべきではない、開発中の一時フォルダ
+/metaverse/
+/sunnyside-kit/
