@@ -38,6 +38,7 @@ jobs:
           test -f /tmp/assets/client/public/assets/tilesets/sunnyside_16.png
           test -f /tmp/assets/client/src/config/map.json
           rm -rf client/public/assets
+          mkdir -p client/public client/src/config
           cp -r /tmp/assets/client/public/assets client/public/assets
           cp /tmp/assets/client/src/config/map.json client/src/config/map.json
 
