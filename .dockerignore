@@ -1,0 +1,17 @@
+# .gitignore とは別物。ビルドに要らないものだけ除外する
+# （client/public/assets と client/src/config/map.json は素材そのものなので、
+#   ここでは除外しない。ローカルの実体がそのままイメージに入る）
+node_modules
+client/dist
+dist
+.git
+.gitignore
+.env
+.env.example
+*.log
+reference
+metaverse
+sunnyside-kit
+docs
+scripts
+*.md
