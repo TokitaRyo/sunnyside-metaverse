@@ -1,0 +1,50 @@
+name: Deploy to Fly.io
+
+# main への push で自動デプロイする。
+# 素材(Sunnyside World パック)は再配布禁止ライセンスのためこの公開リポジトリには含めていない。
+# 代わりに非公開の TokitaRyo/sunnyside-metaverse-assets から、読み取り専用の Deploy Key で
+# ビルド直前にだけ取得する（ASSETS_DEPLOY_KEY・FLY_API_TOKEN は Settings > Secrets で設定済み）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: コードを取得
+        uses: actions/checkout@v4
+
+      - name: 素材リポジトリ(非公開)を取得
+        env:
+          GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=accept-new"
+        run: |
+          set -eu
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.ASSETS_DEPLOY_KEY }}" > ~/.ssh/assets_deploy_key
+          chmod 600 ~/.ssh/assets_deploy_key
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/assets_deploy_key -o StrictHostKeyChecking=accept-new" \
+            git clone --depth 1 git@github.com:TokitaRyo/sunnyside-metaverse-assets.git /tmp/assets
+          rm ~/.ssh/assets_deploy_key
+
+      - name: 素材を配置
+        run: |
+          set -eu
+          test -f /tmp/assets/client/public/assets/tilesets/sunnyside_16.png
+          test -f /tmp/assets/client/src/config/map.json
+          rm -rf client/public/assets
+          cp -r /tmp/assets/client/public/assets client/public/assets
+          cp /tmp/assets/client/src/config/map.json client/src/config/map.json
+
+      - name: flyctl をセットアップ
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Fly.io へデプロイ
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

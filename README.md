@@ -84,29 +84,34 @@ powershell -File scripts/crop-tiles.ps1 -Col 38 -Row 0 -Cols 8 -Rows 6 -Out refe
 
 部品のタイルID・autotile の並びの規則は [docs/decisions.md](./docs/decisions.md) の「マップ制作」に記録しています。
 
-## 展示当日の手順
+## 本番環境（Fly.io）
 
-サーバーは 1 プロセスで、クライアントも同じポートから配信できます。**WebSocket は `https://` 配信のとき必ず `wss://` になります**（`ws://` はブラウザにブロックされる）。ビルド済みクライアントは配信元と同じオリジンへ接続するので、TLS を終端する場所が 1 か所で済みます。
+**https://sunnyside-metaverse.fly.dev/** — スマホからもそのまま参加できます。
 
-1. **起動**
-   ```bash
-   npm install
-   npm run build
-   npm start          # PORT=2567（環境変数 PORT で変更可）
-   ```
-2. **公開 URL を用意する**（どれか）
-   - Railway / Render / Fly.io にデプロイ（TLS は自動。Render/Railway は WebSocket 対応）。ビルド: `npm install && npm run build`、起動: `npm start`。
-   - 学内の常時起動 PC で `npm start` し、Cloudflare Tunnel / ngrok / Caddy(リバースプロキシ) などで `https://` に載せる。WebSocket のアップグレード（`Upgrade` ヘッダ）を通す設定が必要。
-   - 同一 LAN 内だけで使うなら `http://<PCのIP>:2567` で足りる（この場合 `ws://` のまま動く）。
-3. **QR コードを配る** — 公開 URL を QR にして掲示（例: `https://<公開URL>/`）。
-4. **落ちたとき** — プロセスを再起動するだけで復旧します（状態はメモリのみ。参加者は再読込）。
-   ```bash
-   npm start
-   ```
-   回線が一時的に切れた参加者は 15 秒以内なら自動で同じキャラに復帰します。復帰できないときは「接続が切れました／再読込」が表示されます。
-5. **満員（50 人）** — 51 人目は入室画面に「満員です」と表示されます。
+サーバーは 1 プロセスで、クライアントも同じポートから配信します。**WebSocket は `https://` 配信のとき必ず `wss://` になります**（`ws://` はブラウザにブロックされる）。ビルド済みクライアントは配信元と同じオリジンへ接続するので、TLS を終端する場所が 1 か所で済みます（Fly.io が自動で TLS 終端する）。
 
-別ホストにサーバーを置く場合は、クライアントのビルド時に `VITE_SERVER_URL=wss://<サーバー>` を指定します（`.env.example` 参照）。
+### 構成
+
+- `Dockerfile` / `.dockerignore` / `fly.toml` — Fly.io 向け。マルチステージビルドで、クライアントは `vite build`、サーバーは（`tsx` でそのまま実行するので）型チェックのみ行う。
+- 素材（`client/public/assets/`）と `map.json` は**再配布禁止ライセンス**のためこの公開リポジトリには含めていない（`.gitignore` 参照）。非公開の [TokitaRyo/sunnyside-metaverse-assets](https://github.com/TokitaRyo/sunnyside-metaverse-assets) に置き、ビルド直前にだけ取得する。
+- `.github/workflows/deploy.yml` — **`main` への push で自動デプロイ**。読み取り専用の Deploy Key（`ASSETS_DEPLOY_KEY`）で素材リポジトリを取得し、`client/public/assets` と `map.json` を配置してから `flyctl deploy` する。Fly.io 側の認証は、このアプリだけに使える deploy トークン（`FLY_API_TOKEN`、`flyctl tokens create deploy` で発行）。どちらも GitHub の Secrets に設定済み。
+
+### 手元から再デプロイする場合
+
+```bash
+flyctl deploy          # このフォルダに client/public/assets と map.json がある状態で実行する
+```
+
+### 運用メモ
+
+- **落ちたとき**: Fly.io のダッシュボード、または `flyctl apps restart sunnyside-metaverse` で再起動。状態はメモリのみなので参加者は再読込すればよい。回線が一時的に切れた場合は 15 秒以内なら自動で同じキャラに復帰する。
+- **満員（50 人）**: 51 人目は入室画面に「満員です」と表示される。
+- **支払い方法未登録の場合**: Fly.io の組織に支払い方法が無いと high availability（機体冗長化）が自動で無効になり単一マシン構成になる。展示当日に安定させたいときはダッシュボードで支払い方法を追加する。
+- **サーバーログ**: `flyctl logs`
+
+### 他のホスティング先を使う場合
+
+Railway / Render でも動く（TLS 自動・WebSocket 対応）。ビルド: `npm install && npm run build`、起動: `npm start`（`PORT` 環境変数で変更可）。別ホストにサーバーを置く場合は、クライアントのビルド時に `VITE_SERVER_URL=wss://<サーバー>` を指定する（`.env.example` 参照）。学内の常時起動 PC だけで使うなら `npm start` して `http://<PCのIP>:2567`（同一LAN限定）でも足りる。
 
 ## 構成
 

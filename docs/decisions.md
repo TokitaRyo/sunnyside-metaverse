@@ -109,6 +109,15 @@ SPEC.md の指示に従い、判断と根拠を1行ずつ残す。実測値は�
 - **URL との同期:** 切り替えのたびに `history.replaceState` で `?edit=1` を付け外しする。保存後は Vite が自動でページを再読み込みするので、これが無いと保存のたびにプレイ画面に戻ってしまっていた。
 - **確認したこと:** Play→Edit→Play→Edit を繰り返しても、チャット欄の多重送信なし・エモートボタンが6個のまま重複しない・`#ed` パネルが1枚だけ・名前ラベルの入れ物が正しく表示に戻る・エディタに置いた物と「未保存」表示がプレイ画面を挟んでも残る・選択とドラッグ移動が古い参照でエラーにならない、をブラウザで実測して確認した。本番ビルドにはトグル関連の文字列が含まれないことも確認済み。
 
+## デプロイと CI（GitHub Actions → Fly.io）
+
+- **素材の非公開分離。** `client/public/assets` と `map.json` は再配布禁止ライセンスのため、公開リポジトリ(`sunnyside-metaverse`)には含めない。CI（GitHub の共有ランナー、ローカルPCとは別環境）はこれらのファイルを一切持っていないので、**ビルド直前に非公開リポジトリ `sunnyside-metaverse-assets` から取得**する構成にした。手元からの `flyctl deploy` は今までどおりローカルのファイルをそのままアップロードするので影響なし。
+- **CI の認証はリポジトリ限定の read-only Deploy Key。** 個人の PAT（全リポジトリに読み書き可能な `gh auth token` など）を流用すると権限が広すぎるため、`ssh-keygen` で専用鍵を作り、公開鍵を `sunnyside-metaverse-assets` の Deploy Key（読み取り専用）として登録、秘密鍵を `sunnyside-metaverse` 側の Secrets(`ASSETS_DEPLOY_KEY`)に保存した。この鍵は素材リポジトリ以外には一切アクセスできない。
+- **Fly.io 側もアプリ限定トークン。** `flyctl tokens create deploy -a sunnyside-metaverse` で、このアプリの操作にしか使えないトークンを発行し `FLY_API_TOKEN` として保存（組織全体を操作できる個人トークンは使わない）。
+- **ワークフロー（`.github/workflows/deploy.yml`）:** `main` への push で起動。`actions/checkout` → SSH で素材リポジトリを `git clone --depth 1`（鍵は実行後に削除）→ `client/public/assets` と `map.json` を配置 → `superfly/flyctl-actions/setup-flyctl` → `flyctl deploy --remote-only`。
+- **やり直した失敗:** `git clone`/`git push` を素のコマンドで叩いたところ、`gh` ではログイン済みでも Git 自体には資格情報が渡っておらず `terminal prompts disabled` で失敗。**`Set-Location` が失敗した後もスクリプトの以降の行がメインリポジトリのディレクトリで実行され続け、素材リポジトリ用に書いた README.md を誤ってメインリポジトリの README.md に上書き・コミットしてしまった**（push 前だったので `git reset --soft` + `git checkout <直前のコミット> -- README.md` で復旧、実害なし）。教訓: 複数ステップのシェルスクリプトでは `Set-Location` 直後に `(Get-Location).Path` を検証して一致しなければ `throw` するなど、失敗時に後続処理へ進ませない防御を必ず入れる。原因は `gh auth setup-git` を先に実行していなかったこと（`gh repo create --push` は内部で別経路を使うため、素の `git push` が失敗することに気づきにくい）。
+- **`gh secret set` に `<` でファイルを渡すのは Windows PowerShell 非対応。** `--body-file` フラグも存在しない。`Get-Content -Raw -Path <file> | gh secret set NAME` のようにパイプで渡す。
+
 ## 画面サイズ
 
 - **Phaser の Scale は `NONE`、幅・高さは `Math.floor(innerWidth/innerHeight)` を渡し、`window.resize` で `scale.resize()`。** RESIZE モードは親要素のサイズをそのまま使うため、ブラウザズームや Windows の 125% 表示（例: 1366×768 → 1092.8×614.4 CSS px）で小数サイズになり、WebGL のフレームバッファ作成が `Incomplete Attachment` で失敗した事例があった（開発中のエミュレーション環境で `450.4` を確認）。
