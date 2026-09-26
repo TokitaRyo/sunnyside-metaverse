@@ -342,6 +342,26 @@ html, body {
 #mode-toggle:hover:not(:disabled) { background: rgba(45, 60, 38, 0.92); }
 #mode-toggle:disabled { opacity: 0.5; cursor: progress; }
 
+/* ---------- BGM ミュート切り替え ---------- */
+#bgm-toggle {
+  position: fixed;
+  left: 10px;
+  top: 10px;
+  z-index: 999;
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(30, 40, 25, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#bgm-toggle:hover { background: rgba(45, 60, 38, 0.92); }
+
 /* ---------- マップエディタ (?edit=1) ---------- */
 #ed {
   position: fixed;

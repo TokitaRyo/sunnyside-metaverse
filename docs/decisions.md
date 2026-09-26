@@ -118,6 +118,18 @@ SPEC.md の指示に従い、判断と根拠を1行ずつ残す。実測値は�
 - **やり直した失敗:** `git clone`/`git push` を素のコマンドで叩いたところ、`gh` ではログイン済みでも Git 自体には資格情報が渡っておらず `terminal prompts disabled` で失敗。**`Set-Location` が失敗した後もスクリプトの以降の行がメインリポジトリのディレクトリで実行され続け、素材リポジトリ用に書いた README.md を誤ってメインリポジトリの README.md に上書き・コミットしてしまった**（push 前だったので `git reset --soft` + `git checkout <直前のコミット> -- README.md` で復旧、実害なし）。教訓: 複数ステップのシェルスクリプトでは `Set-Location` 直後に `(Get-Location).Path` を検証して一致しなければ `throw` するなど、失敗時に後続処理へ進ませない防御を必ず入れる。原因は `gh auth setup-git` を先に実行していなかったこと（`gh repo create --push` は内部で別経路を使うため、素の `git push` が失敗することに気づきにくい）。
 - **`gh secret set` に `<` でファイルを渡すのは Windows PowerShell 非対応。** `--body-file` フラグも存在しない。`Get-Content -Raw -Path <file> | gh secret set NAME` のようにパイプで渡す。
 
+## BGM
+
+- **Phaser の audio は使わない。** `main.ts` の Game 設定で `audio: { noAudio: true }` にしているため、BGM は Phaser Sound Manager を経由せず素の `HTMLAudioElement`（`client/src/audio/Bgm.ts`）で完結させた。ページ内でシングルトン1個だけ持つので、マップエディタとの行き来（シーン切り替え）をまたいでも鳴り続ける。
+- **再生開始は「入室する」クリックのハンドラ内。** ブラウザの自動再生制限（ユーザー操作なしの `play()` は拒否される）を通すため、`join.onSubmit` の中で同期的に `bgm.start()` を呼ぶ。
+- **素材は非圧縮wav（合計400MB超）で受け取ったため、`ffmpeg`（winget `Gyan.FFmpeg`）で mp3 128kbps に変換して同梱（9曲で計約19MB）。** ロスレスのまま配布すると読み込みが重すぎる（文化祭当日のスマホ回線を想定）。フォーマットは iOS Safari を含む対応幅を優先して mp3 を選択（ogg/opus は Safari 非対応）。
+- **BGM音源も画像素材と同じ非公開リポジトリ(`sunnyside-metaverse-assets`)扱い。** 出所（ユーザーがダウンロードした既成のBGM）のライセンスをこちらで確認できないため、既存の画像素材と同じ「公開リポジトリに含めない・CIがビルド直前に非公開リポジトリから取得する」構成に統一した。
+- ミュート状態は `localStorage` に保存。音量は固定 35%（調整UIは無し、ON/OFFのみ）。
+
+## チャットのNGワードフィルタ
+
+- **`server/src/rooms/MainRoom.ts` に簡易フィルタを追加。** 展示中は共有画面にチャットが映るため、脅迫（死ね／殺す等）・強い侮辱・差別語のみを伏字にする最小限のリストを持つ（`NG_WORDS` 配列。追加は配列に足すだけ）。「ばか」等の軽い言葉は対象外（過剰検閲より実害の大きい語だけを止める方針）。完全なモデレーションではない前提。
+
 ## 画面サイズ
 
 - **Phaser の Scale は `NONE`、幅・高さは `Math.floor(innerWidth/innerHeight)` を渡し、`window.resize` で `scale.resize()`。** RESIZE モードは親要素のサイズをそのまま使うため、ブラウザズームや Windows の 125% 表示（例: 1366×768 → 1092.8×614.4 CSS px）で小数サイズになり、WebGL のフレームバッファ作成が `Incomplete Attachment` で失敗した事例があった（開発中のエミュレーション環境で `450.4` を確認）。

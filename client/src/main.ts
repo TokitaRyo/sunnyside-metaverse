@@ -1,5 +1,6 @@
 import "./style.css";
 import Phaser from "phaser";
+import { bgm } from "./audio/Bgm";
 import { mapErrors } from "./config";
 import { InputState } from "./game/InputState";
 import { EV_LOAD_ERROR, EV_PROGRESS, EV_READY, PreloadScene } from "./scenes/PreloadScene";
@@ -112,6 +113,17 @@ function boot(): void {
   const join = new JoinScreen();
   $("conn-reload").addEventListener("click", () => location.reload());
 
+  const bgmBtn = $<HTMLButtonElement>("bgm-toggle");
+  const syncBgmLabel = () => {
+    bgmBtn.textContent = bgm.muted ? "🔇" : "🔈";
+    bgmBtn.setAttribute("aria-pressed", String(!bgm.muted));
+  };
+  syncBgmLabel();
+  bgmBtn.addEventListener("click", () => {
+    bgm.toggleMute();
+    syncBgmLabel();
+  });
+
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game",
@@ -148,6 +160,7 @@ function boot(): void {
   game.events.on(EV_CONN, (kind: "ok" | "reconnecting" | "lost") => setConn(kind));
 
   join.onSubmit = ({ name, hair }) => {
+    bgm.start(); // クリック(ユーザー操作)のハンドラ内なので自動再生制限を通る
     game.scene.start("World", { name, hair, input });
   };
 
