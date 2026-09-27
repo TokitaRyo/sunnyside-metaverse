@@ -130,6 +130,14 @@ SPEC.md の指示に従い、判断と根拠を1行ずつ残す。実測値は�
 
 - **`server/src/rooms/MainRoom.ts` に簡易フィルタを追加。** 展示中は共有画面にチャットが映るため、脅迫（死ね／殺す等）・強い侮辱・差別語のみを伏字にする最小限のリストを持つ（`NG_WORDS` 配列。追加は配列に足すだけ）。「ばか」等の軽い言葉は対象外（過剰検閲より実害の大きい語だけを止める方針）。完全なモデレーションではない前提。
 
+## 学校マップ（`sunnyside_school`）
+
+- **地形は村マップと同じ `tilekit.mjs` のオートタイル(Land/Path/River)で新規に塗り、校舎そのものは公式マップ(`sunnyside_world_example`)の実在する建物を2棟、タイルの矩形ごと「移植」した。** この素材(`sunnyside_16` 系)には壁・屋根の絵は無く(`Building 01/02` は室内の床テクスチャ)、ゼロから学校建築を描き起こすのは非現実的なため。移植元の矩形は `reference/crop_candidate*.png` で目視確認して実測した(校舎A: 元マップ x39,y24,7x7 の切妻屋根の建物／校舎B: x32,y19,5x6 の赤屋根の小屋)。矩形は建物ぴったりに絞る(隣接する川・崖・切り株ごと持ってきてしまうと継ぎ接ぎに見える)。
+- **当たり判定(`layers.collision`)は tileLayers を使っていても独立した平面配列のまま。** `server/src/map.ts` と `WorldScene.blocked()` はどちらも `layers.collision` しか見ないため、公式マップのような「タイル色から歩行可否を推定する」処理は不要で、建物の外形に合わせて自分で `collision.set(x,y,1)` すればよい(下2行だけ玄関として空ける、という単純なルールにした)。`layers.ground/deco/overhead` は tileLayers があると描画に使われないため、寸法だけ合わせた全 `-1` で埋めて `validateMap` を通している。
+- **陸上トラックは楕円ではなく「角丸長方形のリング」。** `paintRegion` の角丸め処理は隣接マスの有無で角タイルを選ぶため、楕円マスクだと境界の凹凸で棘のようなアーティファクトが出た。矩形の外側マスクから内側マスクを引いたリングにしたら綺麗な角丸になった。
+- **`scripts/gen-school-map.mjs`** で生成 → `scripts/check-map.mts`(`validateMap` を Node から直接叩く簡易チェッカー、新規)で検証 → `client/src/config/map.json` に反映、の順。切り替え前に `reference/map-backups/` へ手動バックアップを残した。
+- **本番(Fly.io)へはまだ反映していない。** ユーザーがモブ配置やタイルをエディタで直接調整したいと明言しているため、ローカルで確認・調整してから非公開の `sunnyside-metaverse-assets` リポジトリへ push する運用にする。
+
 ## 画面サイズ
 
 - **Phaser の Scale は `NONE`、幅・高さは `Math.floor(innerWidth/innerHeight)` を渡し、`window.resize` で `scale.resize()`。** RESIZE モードは親要素のサイズをそのまま使うため、ブラウザズームや Windows の 125% 表示（例: 1366×768 → 1092.8×614.4 CSS px）で小数サイズになり、WebGL のフレームバッファ作成が `Incomplete Attachment` で失敗した事例があった（開発中のエミュレーション環境で `450.4` を確認）。
