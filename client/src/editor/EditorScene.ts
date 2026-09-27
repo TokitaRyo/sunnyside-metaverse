@@ -96,6 +96,11 @@ export class EditorScene extends WorldScene {
     const cam = this.cameras.main;
     cam.removeBounds();
     cam.setBackgroundColor("#101820");
+    // マップの範囲(0,0)～(width,height)を常に分かるようにする。
+    // 何も描いていない(タイルが全部-1の)マスは背景色と同じに見えて境界が分からないため、
+    // マップの内側だけ少し明るい色で塗っておく(一番奥、タイルより下)。
+    const mapW = map.width * TS, mapH = map.height * TS;
+    this.add.rectangle(mapW / 2, mapH / 2, mapW, mapH, 0x1c2b1f).setDepth(-1000000);
     this.gfx = this.add.graphics().setDepth(300000);
     this.layerVisible = (map.tileLayers ?? []).map(() => true);
     this.placeSprite = map.sprites?.["spr_idle"] ? "spr_idle" : (Object.keys(map.sprites ?? {}).sort()[0] ?? "");
@@ -824,6 +829,10 @@ export class EditorScene extends WorldScene {
     const c0 = Math.max(0, Math.floor(x0 / TS)), c1 = Math.min(map.width - 1, Math.floor(x1 / TS));
     const r0 = Math.max(0, Math.floor(y0 / TS)), r1 = Math.min(map.height - 1, Math.floor(y1 / TS));
     const line = Math.max(1, 1 / this.zoom);
+
+    // マップの外周（常に表示。境界がどこか一目で分かるように）
+    g.lineStyle(Math.max(2, 3 / this.zoom), 0xffe066, 0.9);
+    g.strokeRect(0, 0, map.width * TS, map.height * TS);
 
     if (this.show.collision || this.tool === "collision") {
       g.fillStyle(0xff3030, 0.38);
