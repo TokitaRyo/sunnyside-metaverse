@@ -204,6 +204,9 @@ export class EditorScene extends WorldScene {
           // 影と連動する設定なら、影も一緒に動かす（ドラッグ開始時に対応を確定する）
           const group = this.groupOf(hit);
           this.drag = { kind: "obj", main: hit, group, dx: hit.o.x - w.x, dy: hit.o.y - w.y, befores: group.map((e) => ({ e, before: structuredClone(e.o) })) };
+        } else {
+          // 何もない所をドラッグしたら画面を動かす（ズームのホイール以外でも移動できるように）
+          this.drag = { kind: "pan", sx: p.x, sy: p.y, cx: this.center.x, cy: this.center.y };
         }
         break;
       }
