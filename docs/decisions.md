@@ -138,6 +138,12 @@ SPEC.md の指示に従い、判断と根拠を1行ずつ残す。実測値は�
 - **`scripts/gen-school-map.mjs`** で生成 → `scripts/check-map.mts`(`validateMap` を Node から直接叩く簡易チェッカー、新規)で検証 → `client/src/config/map.json` に反映、の順。切り替え前に `reference/map-backups/` へ手動バックアップを残した。
 - **本番(Fly.io)へはまだ反映していない。** ユーザーがモブ配置やタイルをエディタで直接調整したいと明言しているため、ローカルで確認・調整してから非公開の `sunnyside-metaverse-assets` リポジトリへ push する運用にする。
 
+## 白紙キャンバス（ユーザーが0からエディタで作る）
+
+- 学校マップの自動生成(`gen-school-map.mjs`)は「素材に建物の絵が無く農村風のままになる」という理由でユーザーが不採用と判断。**代わりにユーザー自身がエディタで0から作ることになった。**
+- `scripts/gen-blank-canvas.mjs` で、公式マップと同じ `tilesets`(main/forest)・`sprites` カタログ・`tileLayers` の構成（レイヤー名・モードも同じ: sea/land/paths/shadows/decoration_01→building→walls→decoration_02/03→forest→clouds…）だけを引き継ぎ、中身(タイル・配置物・当たり判定)は全部空にした `map.json` を生成する。エディタのパレットは `map.tilesets`/`map.sprites` の「定義」を見るだけで、置いてある中身とは独立なので、空でもパレットには元の絵がそのまま出る（`?edit=1` で実機確認済み）。
+- サイズは公式マップと同じ 86×48 を既定にした（`--w`/`--h` で変更可）。
+
 ## 画面サイズ
 
 - **Phaser の Scale は `NONE`、幅・高さは `Math.floor(innerWidth/innerHeight)` を渡し、`window.resize` で `scale.resize()`。** RESIZE モードは親要素のサイズをそのまま使うため、ブラウザズームや Windows の 125% 表示（例: 1366×768 → 1092.8×614.4 CSS px）で小数サイズになり、WebGL のフレームバッファ作成が `Incomplete Attachment` で失敗した事例があった（開発中のエミュレーション環境で `450.4` を確認）。
