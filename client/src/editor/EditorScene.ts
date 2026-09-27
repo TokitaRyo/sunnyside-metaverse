@@ -6,8 +6,9 @@ import { WorldScene, type ObjectEntry } from "../scenes/WorldScene";
 import { EditorPanel } from "./EditorPanel";
 import { makeObject } from "./objectDefaults";
 import { SHADOW_OFFSET, SHADOW_SPRITE, categoryOf } from "./mobCatalog";
+import { PREFABS } from "./prefabs";
 
-export type Tool = "select" | "object" | "collision" | "tile" | "spawn";
+export type Tool = "select" | "object" | "collision" | "tile" | "spawn" | "prefab";
 /** タイルパレットで選んだ矩形（タイルセット上の座標） */
 export interface Stamp {
   tileset: string;
@@ -45,6 +46,8 @@ export class EditorScene extends WorldScene {
   placeSprite = "";
   /** 置くとき、ゴブリン等には足元の影も一緒に置く */
   placeShadow = true;
+  /** 「パーツ」ツールで選択中のプレハブ */
+  prefabId: string = PREFABS[0]?.id ?? "";
   /** 選択したモブを動かす・複製・削除するとき、足元の影も一緒に扱う */
   linkShadow = true;
   show = { collision: true, hitboxes: true, grid: false, objects: true };
@@ -161,7 +164,7 @@ export class EditorScene extends WorldScene {
       e.preventDefault();
       void this.save();
     } else if (!ctrl) {
-      const tools: Record<string, Tool> = { KeyV: "select", KeyO: "object", KeyC: "collision", KeyT: "tile", KeyP: "spawn" };
+      const tools: Record<string, Tool> = { KeyV: "select", KeyO: "object", KeyC: "collision", KeyT: "tile", KeyP: "spawn", KeyG: "prefab" };
       if (tools[e.code]) this.setTool(tools[e.code]);
       else if (e.code === "Delete" || e.code === "Backspace") this.deleteSelected();
       else if (e.code === "KeyF") this.flipSelected();
@@ -214,6 +217,9 @@ export class EditorScene extends WorldScene {
         break;
       case "spawn":
         this.setSpawn(Math.floor(w.x / TS), Math.floor(w.y / TS));
+        break;
+      case "prefab":
+        this.placePrefab(w.x, w.y);
         break;
     }
   }
@@ -495,6 +501,76 @@ export class EditorScene extends WorldScene {
     this.panel.status(`置きました: ${this.placeSprite} (${x}, ${y})${shadow ? "（影つき）" : ""}`);
   }
 
+  /**
+   * 「パーツ」ツール: 複数タイル(複数レイヤー)・当たり判定・配置物をまとめて置く。
+   * クリック位置のマスがパーツの左上になる（タイルツールのスタンプと同じ流儀）。
+   * 変更は種類が違っても1回の「元に戻す」にまとめる。
+   */
+  private placePrefab(wx: number, wy: number): void {
+    const pf = PREFABS.find((p) => p.id === this.prefabId);
+    if (!pf) return;
+    const ox = Math.floor(wx / TS), oy = Math.floor(wy / TS);
+    const originPx = { x: ox * TS, y: oy * TS };
+
+    const tileChanges: { li: number; x: number; y: number; prev: number; next: number }[] = [];
+    for (const t of pf.tiles) {
+      const li = map.tileLayers!.findIndex((l) => l.name === t.layer);
+      if (li < 0) continue;
+      const x = ox + t.dx, y = oy + t.dy;
+      const row = map.tileLayers![li].data[y];
+      if (!row || x < 0 || x >= row.length) continue;
+      const prev = row[x];
+      if (prev === t.id) continue;
+      tileChanges.push({ li, x, y, prev, next: t.id });
+    }
+
+    const collChanges: { x: number; y: number; prev: number; next: number }[] = [];
+    for (const c of pf.collision ?? []) {
+      const x = ox + c.dx, y = oy + c.dy;
+      const row = map.layers.collision[y];
+      if (!row || x < 0 || x >= row.length || row[x] === 1) continue;
+      collChanges.push({ x, y, prev: row[x], next: 1 });
+    }
+
+    const objectDatas: ObjectDef[] = (pf.objects ?? []).map((o) => {
+      const data: ObjectDef = { sprite: o.sprite, x: originPx.x + o.dx, y: originPx.y + o.dy, sort: o.sort, by: originPx.y + o.byOff };
+      if (o.sx !== undefined) data.sx = o.sx;
+      if (o.sy !== undefined) data.sy = o.sy;
+      if (o.angle !== undefined) data.angle = o.angle;
+      if (o.frame !== undefined) data.frame = o.frame;
+      if (o.speed !== undefined) data.speed = o.speed;
+      if (o.hit !== undefined) data.hit = o.hit;
+      if (o.hxOff !== undefined) data.hx = originPx.x + o.hxOff;
+      return data;
+    });
+
+    if (!tileChanges.length && !collChanges.length && !objectDatas.length) {
+      this.panel.status("ここには置けません（変化がありません）。", true);
+      return;
+    }
+
+    const entries: ObjectEntry[] = objectDatas.map((o) => ({ o, s: undefined as unknown as Phaser.GameObjects.Sprite }));
+    const start = this.objectEntries.length;
+    tileChanges.forEach((c) => this.applyTile(c.li, c.x, c.y, c.next));
+    collChanges.forEach((c) => (map.layers.collision[c.y][c.x] = c.next));
+    entries.forEach((e, i) => this.attach(e, start + i));
+
+    this.push({
+      label: `パーツ「${pf.label}」を置く`,
+      undo: () => {
+        tileChanges.forEach((c) => this.applyTile(c.li, c.x, c.y, c.prev));
+        collChanges.forEach((c) => (map.layers.collision[c.y][c.x] = c.prev));
+        [...entries].reverse().forEach((e) => this.detach(e));
+      },
+      redo: () => {
+        tileChanges.forEach((c) => this.applyTile(c.li, c.x, c.y, c.next));
+        collChanges.forEach((c) => (map.layers.collision[c.y][c.x] = c.next));
+        entries.forEach((e, i) => this.attach(e, start + i));
+      },
+    });
+    this.panel.status(`置きました: ${pf.label}（タイル${tileChanges.length}・物${entries.length}）`);
+  }
+
   deleteSelected(): void {
     const e = this.selected;
     if (!e) return;
@@ -760,6 +836,15 @@ export class EditorScene extends WorldScene {
       for (const { o } of this.objectEntries) {
         if (!o.hit) continue;
         g.strokeRect((o.hx ?? o.x) - o.hit[0] / 2, o.by - o.hit[1], o.hit[0], o.hit[1]);
+      }
+    }
+    if (this.tool === "prefab") {
+      const pf = PREFABS.find((p) => p.id === this.prefabId);
+      if (pf) {
+        const w = this.world(this.input.activePointer);
+        const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
+        g.lineStyle(line * 1.5, 0xffa030, 0.9);
+        g.strokeRect(cx * TS, cy * TS, pf.w * TS, pf.h * TS);
       }
     }
     if (this.selected) {

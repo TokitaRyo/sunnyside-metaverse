@@ -2,6 +2,8 @@ import { map } from "../config";
 import { objectKey, tilesetKey } from "../game/assets";
 import { defaultHit } from "./objectDefaults";
 import { CATEGORY_LABEL, CATEGORY_ORDER, categoryOf, hasShadow, isMobCategory, labelOf, sortNames, SHADOW_SPRITE, type Category } from "./mobCatalog";
+import { PREFABS, PREFAB_CATEGORY_LABEL, PREFAB_CATEGORY_ORDER } from "./prefabs";
+import type { Prefab } from "./prefabTypes";
 import type { EditorScene, Tool } from "./EditorScene";
 
 type Attrs = Record<string, string | number | boolean | ((e: Event) => void)>;
@@ -22,6 +24,7 @@ function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ...
 const TOOLS: [Tool, string, string][] = [
   ["select", "選択・移動", "V"],
   ["object", "物を置く", "O"],
+  ["prefab", "パーツ", "G"],
   ["collision", "衝突", "C"],
   ["tile", "タイル", "T"],
   ["spawn", "スポーン", "P"],
@@ -53,6 +56,11 @@ export class EditorPanel {
   private catTabs = new Map<Category, HTMLButtonElement>();
   private thumbBtns = new Map<string, HTMLButtonElement>();
   private activeCat: Category = "goblin";
+  private prefabTabRow!: HTMLDivElement;
+  private prefabGrid!: HTMLDivElement;
+  private prefabCatTabs = new Map<Prefab["category"], HTMLButtonElement>();
+  private prefabThumbBtns = new Map<string, HTMLButtonElement>();
+  private activePrefabCat: Prefab["category"] = "building";
 
   private onBeforeUnload = (e: BeforeUnloadEvent): void => {
     if (this.ed.dirty) e.preventDefault();
@@ -137,6 +145,20 @@ export class EditorPanel {
       ),
     );
     this.buildCategoryTabs();
+
+    this.prefabTabRow = h("div", { class: "ed-cats" });
+    this.prefabGrid = h("div", { class: "ed-mobgrid" });
+    this.sections.set(
+      "prefab",
+      h(
+        "div",
+        {},
+        this.prefabTabRow,
+        this.prefabGrid,
+        h("div", { class: "ed-hint" }, "クリックした位置がパーツの左上になります（タイル・当たり判定・付属の物をまとめて1回で配置）。\n置いた後は動かせないので、位置を間違えたら元に戻す(Ctrl+Z)でやり直してください。"),
+      ),
+    );
+    this.buildPrefabTabs();
 
     this.sections.set(
       "collision",
@@ -397,6 +419,80 @@ export class EditorPanel {
         ? this.check("足元の影も一緒に置く", this.ed.placeShadow, (v) => (this.ed.placeShadow = v))
         : h("div", { class: "ed-hint" }, isMobCategory(c) ? "この種類は絵に影が含まれているので、影の追加は不要です。" : ""),
     );
+  }
+
+  // ---------------------------------------------------------------- パーツ（プレハブ）
+  private buildPrefabTabs(): void {
+    this.prefabTabRow.replaceChildren();
+    this.prefabCatTabs.clear();
+    for (const c of PREFAB_CATEGORY_ORDER) {
+      const count = PREFABS.filter((p) => p.category === c).length;
+      if (!count) continue;
+      const b = h("button", { onclick: () => this.setPrefabCategory(c) }, `${PREFAB_CATEGORY_LABEL[c]} `, h("small", {}, String(count)));
+      this.prefabCatTabs.set(c, b);
+      this.prefabTabRow.append(b);
+    }
+    const cur = PREFABS.find((p) => p.id === this.ed.prefabId);
+    this.setPrefabCategory(cur?.category ?? "building");
+  }
+
+  private setPrefabCategory(c: Prefab["category"]): void {
+    this.activePrefabCat = c;
+    for (const [k, b] of this.prefabCatTabs) b.classList.toggle("on", k === c);
+    this.prefabGrid.replaceChildren();
+    this.prefabThumbBtns.clear();
+    for (const pf of PREFABS.filter((p) => p.category === c)) {
+      const cv = h("canvas", { width: 56, height: 56 });
+      this.drawPrefabThumb(cv, pf);
+      const b = h("button", { class: "ed-thumb", title: `${pf.label}（${pf.w}×${pf.h}マス）`, onclick: () => this.pickPrefab(pf.id) }, cv, h("span", {}, pf.label));
+      this.prefabThumbBtns.set(pf.id, b);
+      this.prefabGrid.append(b);
+    }
+    for (const [id, b] of this.prefabThumbBtns) b.classList.toggle("on", id === this.ed.prefabId);
+  }
+
+  private pickPrefab(id: string): void {
+    this.ed.prefabId = id;
+    this.ed.persist();
+    const pf = PREFABS.find((p) => p.id === id);
+    if (pf && pf.category !== this.activePrefabCat) this.setPrefabCategory(pf.category);
+    for (const [n, b] of this.prefabThumbBtns) b.classList.toggle("on", n === id);
+  }
+
+  /** パーツの中身(タイル+物)を縮小して描く。実際のタイルセット/スプライト画像から切り出すので見た目のズレがない。 */
+  private drawPrefabThumb(cv: HTMLCanvasElement, pf: Prefab): void {
+    const ctx = cv.getContext("2d")!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    const cell = Math.max(2, Math.min(10, Math.floor(Math.min(cv.width / Math.max(pf.w, 1), cv.height / Math.max(pf.h, 1)))));
+    const offX = (cv.width - pf.w * cell) / 2, offY = (cv.height - pf.h * cell) / 2;
+    const tsCache = new Map<string, { img: HTMLImageElement; cols: number; size: number }>();
+    const tsInfoFor = (layerName: string) => {
+      const layer = map.tileLayers?.find((l) => l.name === layerName);
+      if (!layer) return null;
+      const key = layer.tileset;
+      if (!tsCache.has(key)) {
+        const def = map.tilesets![key];
+        if (!this.ed.textures.exists(tilesetKey(key))) return null;
+        tsCache.set(key, { img: this.ed.textures.get(tilesetKey(key)).getSourceImage() as HTMLImageElement, cols: def.columns, size: def.tileSize });
+      }
+      return tsCache.get(key) ?? null;
+    };
+    for (const t of pf.tiles) {
+      const info = tsInfoFor(t.layer);
+      if (!info) continue;
+      const sx = (t.id % info.cols) * info.size, sy = Math.floor(t.id / info.cols) * info.size;
+      ctx.drawImage(info.img, sx, sy, info.size, info.size, offX + t.dx * cell, offY + t.dy * cell, cell, cell);
+    }
+    const scale = cell / map.tileSize;
+    for (const o of pf.objects ?? []) {
+      const def = map.sprites?.[o.sprite];
+      if (!def || !this.ed.textures.exists(objectKey(o.sprite))) continue;
+      const img = this.ed.textures.get(objectKey(o.sprite)).getSourceImage() as HTMLImageElement;
+      const frame = def.frames > 1 ? (((o.frame ?? 0) % def.frames) + def.frames) % def.frames : 0;
+      const dw = def.fw * scale, dh = def.fh * scale;
+      ctx.drawImage(img, frame * def.fw, 0, def.fw, def.fh, offX + o.dx * scale - def.ox * scale, offY + o.dy * scale - def.oy * scale, dw, dh);
+    }
   }
 
   // ---------------------------------------------------------------- タイルパレット
