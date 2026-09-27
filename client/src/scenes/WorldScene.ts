@@ -404,9 +404,27 @@ export class WorldScene extends Phaser.Scene {
 
   private onCorrect(m: CorrectMessage): void {
     if (!this.me) return;
+    if (m.warp) {
+      this.playWarp(m.x, m.y);
+      return;
+    }
     this.me.setPosition(m.x, m.y);
     this.sent.x = m.x;
     this.sent.y = m.y;
+  }
+
+  /** ワープタイル演出: 画面を黒く覆ってから瞬間移動し、フェードを戻す */
+  private playWarp(x: number, y: number): void {
+    const fade = document.getElementById("warp-fade");
+    fade?.classList.add("on");
+    window.setTimeout(() => {
+      if (!this.me) return;
+      this.me.setPosition(x, y);
+      this.sent.x = x;
+      this.sent.y = y;
+      this.cameras.main.centerOn(x, y); // startFollow のlerpだと1フレーム分ズレるので、瞬間移動に合わせて中心も合わせ直す
+      window.setTimeout(() => fade?.classList.remove("on"), 40);
+    }, 260);
   }
 
   // ---------------------------------------------------------------- エモート（自分）

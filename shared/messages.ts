@@ -25,10 +25,11 @@ export interface EmoteBroadcast {
   sessionId: string;
   id: EmoteId;
 }
-/** 速度超過などで棄却した際、本人にだけ正しい座標を返す */
+/** 速度超過などで棄却した際、本人にだけ正しい座標を返す。warp=true はワープタイルによる正規の瞬間移動。 */
 export interface CorrectMessage {
   x: number;
   y: number;
+  warp?: boolean;
 }
 
 export const MSG = {

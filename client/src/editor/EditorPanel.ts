@@ -25,6 +25,8 @@ const TOOLS: [Tool, string, string][] = [
   ["select", "選択・移動", "V"],
   ["object", "物を置く", "O"],
   ["prefab", "パーツ", "G"],
+  ["erase", "消す", "E"],
+  ["warp", "ワープ", "R"],
   ["collision", "衝突", "C"],
   ["tile", "タイル", "T"],
   ["spawn", "スポーン", "P"],
@@ -120,6 +122,7 @@ export class EditorPanel {
       this.check("判定枠", ed.show.hitboxes, (v) => (ed.show.hitboxes = v)),
       this.check("グリッド", ed.show.grid, (v) => (ed.show.grid = v)),
       this.check("物を表示", ed.show.objects, (v) => ed.setObjectsVisible(v)),
+      this.check("プレイ画面の範囲(スマホ)", ed.show.viewport, (v) => (ed.show.viewport = v)),
     );
 
     // ---- ツール別の領域
@@ -163,6 +166,36 @@ export class EditorPanel {
     this.sections.set(
       "collision",
       h("div", {}, h("div", { class: "ed-hint" }, "左ドラッグ: 通れなくする（赤）\n右ドラッグ: 通れるようにする\n1マス = 16px。物の当たり判定（黄枠）は「選択・移動」で編集します。")),
+    );
+
+    this.sections.set(
+      "erase",
+      h(
+        "div",
+        {},
+        h(
+          "div",
+          { class: "ed-hint" },
+          "左ドラッグ: そのマスの全レイヤーのタイル・当たり判定・物(影も含む)をまとめて消します。\nパーツを置いた場所を丸ごと消したいときに使ってください。\n個別に1個だけ消したいときは「選択・移動」→Delete の方が安全です。",
+        ),
+      ),
+    );
+
+    const warpToX = h("input", { type: "number", value: ed.warpTo.x, min: 0, max: map.width - 1, onchange: (e: Event) => (ed.warpTo.x = Number((e.target as HTMLInputElement).value)) });
+    const warpToY = h("input", { type: "number", value: ed.warpTo.y, min: 0, max: map.height - 1, onchange: (e: Event) => (ed.warpTo.y = Number((e.target as HTMLInputElement).value)) });
+    this.sections.set(
+      "warp",
+      h(
+        "div",
+        {},
+        h("label", {}, "移動先（マス座標）"),
+        h("div", { class: "ed-grid" }, h("label", { class: "ed-field" }, h("span", {}, "先X"), warpToX), h("label", { class: "ed-field" }, h("span", {}, "先Y"), warpToY)),
+        h(
+          "div",
+          { class: "ed-hint" },
+          "左ドラッグ: 塗ったマスに、上の「移動先」でワープを設定します（紫＝ワープ元、水色＝今の移動先）。\n右ドラッグ: そのマスのワープを消します。\nそのマスに足元が乗ると、画面が一瞬暗転して移動先へ瞬間移動します。",
+        ),
+      ),
     );
 
     this.layerSelect = h("select", { onchange: (e: Event) => this.ed.setLayer(Number((e.target as HTMLSelectElement).value)) });

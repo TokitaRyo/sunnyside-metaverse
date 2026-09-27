@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { map, sprites, tileset, type ObjectDef } from "../config";
+import { map, sprites, tileset, type ObjectDef, type WarpDef } from "../config";
 import { validateMap } from "../config/validate";
 import { objectKey, tilesetKey } from "../game/assets";
 import { WorldScene, type ObjectEntry } from "../scenes/WorldScene";
@@ -8,7 +8,7 @@ import { makeObject } from "./objectDefaults";
 import { SHADOW_OFFSET, SHADOW_SPRITE, categoryOf } from "./mobCatalog";
 import { PREFABS } from "./prefabs";
 
-export type Tool = "select" | "object" | "collision" | "tile" | "spawn" | "prefab";
+export type Tool = "select" | "object" | "collision" | "tile" | "spawn" | "prefab" | "erase" | "warp";
 /** タイルパレットで選んだ矩形（タイルセット上の座標） */
 export interface Stamp {
   tileset: string;
@@ -48,9 +48,11 @@ export class EditorScene extends WorldScene {
   placeShadow = true;
   /** 「パーツ」ツールで選択中のプレハブ */
   prefabId: string = PREFABS[0]?.id ?? "";
+  /** 「ワープ」ツールで、これから塗るマスに設定する移動先（タイル座標） */
+  warpTo = { x: 0, y: 0 };
   /** 選択したモブを動かす・複製・削除するとき、足元の影も一緒に扱う */
   linkShadow = true;
-  show = { collision: true, hitboxes: true, grid: false, objects: true };
+  show = { collision: true, hitboxes: true, grid: false, objects: true, viewport: false };
   layerVisible: boolean[] = [];
   selected: ObjectEntry | null = null;
   panel!: EditorPanel;
@@ -67,6 +69,9 @@ export class EditorScene extends WorldScene {
   /** 1回のドラッグで変えたマス（元に戻す用に、最初の値を覚える） */
   private tileStroke = new Map<string, { li: number; x: number; y: number; prev: number; next: number }>();
   private collStroke = new Map<string, { x: number; y: number; prev: number; next: number }>();
+  private warpStroke = new Map<string, { x: number; y: number; prev: WarpDef | null; next: WarpDef | null }>();
+  /** 「消す」ツールのドラッグ中に消す対象になった物（ストローク終わりでまとめて削除） */
+  private eraseObjs = new Set<ObjectEntry>();
   private alphaCache = new Map<string, (id: number) => boolean>();
   private saveTimer = 0;
   /** 保存されていない変更があるか（元に戻す履歴はモード切り替えのたびにリセットするので、これとは別に持つ） */
@@ -169,7 +174,7 @@ export class EditorScene extends WorldScene {
       e.preventDefault();
       void this.save();
     } else if (!ctrl) {
-      const tools: Record<string, Tool> = { KeyV: "select", KeyO: "object", KeyC: "collision", KeyT: "tile", KeyP: "spawn", KeyG: "prefab" };
+      const tools: Record<string, Tool> = { KeyV: "select", KeyO: "object", KeyC: "collision", KeyT: "tile", KeyP: "spawn", KeyG: "prefab", KeyE: "erase", KeyR: "warp" };
       if (tools[e.code]) this.setTool(tools[e.code]);
       else if (e.code === "Delete" || e.code === "Backspace") this.deleteSelected();
       else if (e.code === "KeyF") this.flipSelected();
@@ -229,6 +234,14 @@ export class EditorScene extends WorldScene {
       case "prefab":
         this.placePrefab(w.x, w.y);
         break;
+      case "erase":
+        this.drag = { kind: "paint", erase: right, lx: w.x, ly: w.y };
+        this.eraseAt(w.x, w.y);
+        break;
+      case "warp":
+        this.drag = { kind: "paint", erase: right, lx: w.x, ly: w.y };
+        this.warpPaintAt(w.x, w.y, right);
+        break;
     }
   }
 
@@ -249,7 +262,9 @@ export class EditorScene extends WorldScene {
       const dist = Math.hypot(w.x - d.lx, w.y - d.ly);
       const step = 4; // px。最小のマス(16px)より十分細かい
       const n = Math.max(1, Math.ceil(dist / step));
-      for (let i = 1; i <= n; i++) this.paintAt(d.lx + ((w.x - d.lx) * i) / n, d.ly + ((w.y - d.ly) * i) / n, d.erase);
+      const fn: (x: number, y: number) => void =
+        this.tool === "erase" ? (x, y) => this.eraseAt(x, y) : this.tool === "warp" ? (x, y) => this.warpPaintAt(x, y, d.erase) : (x, y) => this.paintAt(x, y, d.erase);
+      for (let i = 1; i <= n; i++) fn(d.lx + ((w.x - d.lx) * i) / n, d.ly + ((w.y - d.ly) * i) / n);
       d.lx = w.x;
       d.ly = w.y;
     }
@@ -263,6 +278,12 @@ export class EditorScene extends WorldScene {
       this.pushObjectEdits(d.group.length > 1 ? "モブと影を移動" : "物を移動", d.befores);
     } else if (d.kind === "paint") {
       this.finishStroke();
+      this.finishWarpStroke();
+      if (this.eraseObjs.size) {
+        const list = [...this.eraseObjs];
+        this.eraseObjs.clear();
+        this.deleteEntries(`消去: 物 ${list.length}個`, list);
+      }
     } else this.persist();
   }
 
@@ -701,6 +722,57 @@ export class EditorScene extends WorldScene {
     }
   }
 
+  // ---------------------------------------------------------------- 消すツール
+  /** そのマスの全レイヤーのタイル・当たり判定を消し、足元がそこにある物を「削除待ち」にする（ストローク終わりでまとめて削除） */
+  private eraseAt(wx: number, wy: number): void {
+    const cx = Math.floor(wx / TS), cy = Math.floor(wy / TS);
+    (map.tileLayers ?? []).forEach((_l, li) => this.setTile(li, cx, cy, -1));
+    this.setCollision(cx, cy, 0);
+    for (const e of this.objectEntries) {
+      if (Math.floor(e.o.x / TS) === cx && Math.floor(e.o.by / TS) === cy) this.eraseObjs.add(e);
+    }
+  }
+
+  // ---------------------------------------------------------------- ワープツール
+  private applyWarp(x: number, y: number, def: WarpDef | null): void {
+    const list = (map.warps ??= []);
+    const idx = list.findIndex((w) => w.x === x && w.y === y);
+    if (def) {
+      if (idx >= 0) list[idx] = def;
+      else list.push(def);
+    } else if (idx >= 0) {
+      list.splice(idx, 1);
+    }
+  }
+
+  private warpAt(x: number, y: number): WarpDef | null {
+    return map.warps?.find((w) => w.x === x && w.y === y) ?? null;
+  }
+
+  /** 左ドラッグ: そのマスに現在の「移動先」でワープを設定する。右ドラッグ: そのマスのワープを消す */
+  private warpPaintAt(wx: number, wy: number, erase: boolean): void {
+    const cx = Math.floor(wx / TS), cy = Math.floor(wy / TS);
+    if (cx < 0 || cy < 0 || cx >= map.width || cy >= map.height) return;
+    const prev = this.warpAt(cx, cy);
+    const next = erase ? null : { x: cx, y: cy, toX: this.warpTo.x, toY: this.warpTo.y };
+    if (JSON.stringify(prev) === JSON.stringify(next)) return;
+    this.applyWarp(cx, cy, next);
+    const key = `${cx},${cy}`;
+    const first = this.warpStroke.get(key);
+    this.warpStroke.set(key, { x: cx, y: cy, prev: first ? first.prev : prev, next });
+  }
+
+  private finishWarpStroke(): void {
+    if (!this.warpStroke.size) return;
+    const changes = [...this.warpStroke.values()];
+    this.warpStroke.clear();
+    this.push({
+      label: `ワープ ${changes.length} マス`,
+      undo: () => changes.forEach((c) => this.applyWarp(c.x, c.y, c.prev)),
+      redo: () => changes.forEach((c) => this.applyWarp(c.x, c.y, c.next)),
+    });
+  }
+
   /** タイルセット上でそのタイルが完全に透明か（透明タイルは貼らない設定用） */
   private isEmptyTile(tsName: string, id: number): boolean {
     let fn = this.alphaCache.get(tsName);
@@ -869,6 +941,43 @@ export class EditorScene extends WorldScene {
     // スポーン位置
     g.lineStyle(line * 1.5, 0x4080ff, 1);
     g.strokeRect(map.spawn.x * TS, map.spawn.y * TS, TS, TS);
+
+    // ワープ: 設定済みのマスを塗り、それぞれの移動先へ細い線を引く
+    if (this.tool === "warp" || map.warps?.length) {
+      g.fillStyle(0xb060ff, 0.45);
+      g.lineStyle(line, 0xb060ff, 0.8);
+      for (const wdef of map.warps ?? []) {
+        if (wdef.x < c0 || wdef.x > c1 || wdef.y < r0 || wdef.y > r1) continue;
+        g.fillRect(wdef.x * TS, wdef.y * TS, TS, TS);
+        g.lineBetween(wdef.x * TS + TS / 2, wdef.y * TS + TS / 2, wdef.toX * TS + TS / 2, wdef.toY * TS + TS / 2);
+        g.strokeRect(wdef.toX * TS, wdef.toY * TS, TS, TS);
+      }
+    }
+    if (this.tool === "erase") {
+      const w = this.world(this.input.activePointer);
+      const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
+      g.lineStyle(line * 2, 0xff4040, 0.95);
+      g.strokeRect(cx * TS, cy * TS, TS, TS);
+      g.lineBetween(cx * TS, cy * TS, cx * TS + TS, cy * TS + TS);
+      g.lineBetween(cx * TS + TS, cy * TS, cx * TS, cy * TS + TS);
+    } else if (this.tool === "warp") {
+      const w = this.world(this.input.activePointer);
+      const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
+      g.lineStyle(line * 2, 0xb060ff, 0.95);
+      g.strokeRect(cx * TS, cy * TS, TS, TS);
+      g.lineStyle(line * 1.5, 0x30e0ff, 0.9);
+      g.strokeRect(this.warpTo.x * TS, this.warpTo.y * TS, TS, TS);
+    }
+
+    // プレイ画面の見える範囲（スマホ想定・カーソル中心）
+    if (this.show.viewport) {
+      const REF_W = 390, REF_H = 700;
+      const z = Phaser.Math.Clamp(Math.floor(Math.min(REF_W / 320, REF_H / 200)), 2, 3);
+      const vw = REF_W / z, vh = REF_H / z;
+      const w = this.world(this.input.activePointer);
+      g.lineStyle(line * 1.5, 0x30ff90, 0.9);
+      g.strokeRect(w.x - vw / 2, w.y - vh / 2, vw, vh);
+    }
   }
 
   private updateGhost(): void {

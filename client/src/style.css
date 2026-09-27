@@ -27,6 +27,8 @@ html, body {
 
 /* ---------- 名前ラベルと吹き出し（ワールド座標に追従するDOM） ---------- */
 #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+#warp-fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 60; transition: opacity 0.25s ease; }
+#warp-fade.on { opacity: 1; }
 .tag {
   position: absolute;
   left: 0;

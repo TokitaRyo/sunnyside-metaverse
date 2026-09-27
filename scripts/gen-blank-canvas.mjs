@@ -38,6 +38,7 @@ const map = {
   tilesets: src.tilesets,
   sprites: src.sprites,
   objects: [],
+  warps: [],
   tileLayers: src.tileLayers.map((l) => {
     const ts = src.tilesets[l.tileset];
     const cols = Math.ceil((W * 16) / ts.tileSize);

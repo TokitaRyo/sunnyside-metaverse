@@ -1,12 +1,20 @@
 import { readFileSync } from "node:fs";
 import { FOOT_H, FOOT_W, TILE_SIZE } from "@metaverse/shared";
 
+interface WarpDef {
+  x: number;
+  y: number;
+  toX: number;
+  toY: number;
+}
+
 interface MapFile {
   tileSize: number;
   width: number;
   height: number;
   spawn: { x: number; y: number };
   layers: { collision: number[][] };
+  warps?: WarpDef[];
 }
 
 /** クライアントと同じ map.json を読む（配置データは1か所だけ）。 */
@@ -15,6 +23,11 @@ export function loadMap() {
   const raw = JSON.parse(readFileSync(url, "utf8")) as MapFile;
   const tile = raw.tileSize ?? TILE_SIZE;
   const collision = raw.layers.collision;
+  const warps = (raw.warps ?? []).map((w) => ({
+    cx: w.x,
+    cy: w.y,
+    to: { x: w.toX * tile + tile / 2, y: w.toY * tile + tile / 2 },
+  }));
   return {
     pixelW: raw.width * tile,
     pixelH: raw.height * tile,
@@ -31,6 +44,12 @@ export function loadMap() {
       for (let row = Math.floor(t / tile); row <= Math.floor((b - 0.001) / tile); row++)
         for (let col = Math.floor(l / tile); col <= Math.floor((r - 0.001) / tile); col++) if (collision[row]?.[col] !== 0) return true;
       return false;
+    },
+    /** 足元がワープタイルに乗っていれば移動先(px)を返す */
+    warpAt(px: number, py: number) {
+      const c = Math.floor(px / tile);
+      const r = Math.floor(py / tile);
+      return warps.find((w) => w.cx === c && w.cy === r)?.to ?? null;
     },
     tile,
   };

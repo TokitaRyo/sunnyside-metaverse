@@ -112,6 +112,14 @@ export interface ObjectDef {
   hx?: number;
 }
 
+/** このマス(x,y)に足元が乗ったら (toX,toY) へワープする（ブラックアウト演出つき） */
+export interface WarpDef {
+  x: number;
+  y: number;
+  toX: number;
+  toY: number;
+}
+
 export interface MapJson {
   name: string;
   tileset: string;
@@ -132,4 +140,5 @@ export interface MapJson {
   tileLayers?: TileLayerDef[];
   sprites?: Record<string, MapSpriteDef>;
   objects?: ObjectDef[];
+  warps?: WarpDef[];
 }
