@@ -25,6 +25,7 @@ const TOOLS: [Tool, string, string][] = [
   ["select", "選択・移動", "V"],
   ["object", "物を置く", "O"],
   ["prefab", "パーツ", "G"],
+  ["rect", "範囲選択", "B"],
   ["erase", "消す", "E"],
   ["warp", "ワープ", "R"],
   ["collision", "衝突", "C"],
@@ -60,6 +61,8 @@ export class EditorPanel {
   private activeCat: Category = "goblin";
   private prefabTabRow!: HTMLDivElement;
   private prefabGrid!: HTMLDivElement;
+  private rectInfo!: HTMLDivElement;
+  private stampInfo!: HTMLDivElement;
   private prefabCatTabs = new Map<Prefab["category"], HTMLButtonElement>();
   private prefabThumbBtns = new Map<string, HTMLButtonElement>();
   private activePrefabCat: Prefab["category"] = "building";
@@ -198,6 +201,40 @@ export class EditorPanel {
       ),
     );
 
+    this.rectInfo = h("div", { class: "ed-hint" }, "ドラッグして範囲を選びます。");
+    const rectButtons = h(
+      "div",
+      { class: "ed-row" },
+      h("button", { class: "danger", onclick: () => ed.deleteSelection() }, "削除"),
+      h("button", { onclick: () => ed.copySelection() }, "複製してスタンプ"),
+    );
+    this.sections.set(
+      "rect",
+      h(
+        "div",
+        {},
+        this.rectInfo,
+        rectButtons,
+        h(
+          "div",
+          { class: "ed-hint" },
+          "ドラッグ: 矩形の範囲を選びます（水色）。\n削除: 選んだ範囲の全レイヤーのタイル・当たり判定・物(影も含む)をまとめて消します。\n複製してスタンプ: 選んだ範囲をコピーして「スタンプ」ツールに切り替え、クリックした場所に何度でも置けます。",
+        ),
+      ),
+    );
+
+    this.stampInfo = h("div", { class: "ed-hint" }, "コピーした範囲がありません。「範囲選択」で選んでから複製してください。");
+    this.sections.set(
+      "stamp",
+      h(
+        "div",
+        {},
+        this.stampInfo,
+        h("div", { class: "ed-row" }, h("button", { onclick: () => ed.setTool("rect") }, "選択に戻る (Esc)")),
+        h("div", { class: "ed-hint" }, "クリックした位置が左上になるように、コピーした範囲を置きます。\n続けて何回でも置けます。"),
+      ),
+    );
+
     this.layerSelect = h("select", { onchange: (e: Event) => this.ed.setLayer(Number((e.target as HTMLSelectElement).value)) });
     (map.tileLayers ?? []).forEach((l, i) => this.layerSelect.append(h("option", { value: i }, `${l.name}（${l.tileset}・${l.mode}）`)));
     this.palette = h("canvas", { class: "ed-palette" });
@@ -261,6 +298,15 @@ export class EditorPanel {
       this.drawPalette();
     }
     if (this.ed.tool === "select") this.refreshInspector();
+    if (this.ed.tool === "rect" || this.ed.tool === "stamp") this.onSelectionChanged();
+  }
+
+  /** 範囲選択・スタンプの表示更新（ドラッグ中・コピー後・削除後に呼ぶ） */
+  onSelectionChanged(): void {
+    const r = this.ed.selRect;
+    this.rectInfo.textContent = r ? `選択中: ${r.w}×${r.h}マス（左上 ${r.x},${r.y}）` : "ドラッグして範囲を選びます。";
+    const cb = this.ed.clipboard;
+    this.stampInfo.textContent = cb ? `コピー済み: ${cb.w}×${cb.h}マス（タイル${cb.tiles.length}・物${cb.objects?.length ?? 0}）` : "コピーした範囲がありません。「範囲選択」で選んでから複製してください。";
   }
 
   refreshHistory(): void {

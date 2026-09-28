@@ -7,8 +7,9 @@ import { EditorPanel } from "./EditorPanel";
 import { makeObject } from "./objectDefaults";
 import { SHADOW_OFFSET, SHADOW_SPRITE, categoryOf } from "./mobCatalog";
 import { PREFABS } from "./prefabs";
+import type { Prefab } from "./prefabTypes";
 
-export type Tool = "select" | "object" | "collision" | "tile" | "spawn" | "prefab" | "erase" | "warp";
+export type Tool = "select" | "object" | "collision" | "tile" | "spawn" | "prefab" | "erase" | "warp" | "rect" | "stamp";
 /** タイルパレットで選んだ矩形（タイルセット上の座標） */
 export interface Stamp {
   tileset: string;
@@ -16,6 +17,13 @@ export interface Stamp {
   ty: number;
   tw: number;
   th: number;
+}
+/** 「範囲選択」ツールで選んでいる矩形（マス座標） */
+export interface SelRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 interface Cmd {
   label: string;
@@ -25,7 +33,8 @@ interface Cmd {
 type Drag =
   | { kind: "pan"; sx: number; sy: number; cx: number; cy: number }
   | { kind: "obj"; main: ObjectEntry; group: ObjectEntry[]; dx: number; dy: number; befores: { e: ObjectEntry; before: ObjectDef }[] }
-  | { kind: "paint"; erase: boolean; lx: number; ly: number };
+  | { kind: "paint"; erase: boolean; lx: number; ly: number }
+  | { kind: "rectsel"; x0: number; y0: number };
 
 const TS = map.tileSize;
 const ZOOMS = [0.5, 1, 2, 3, 4, 6];
@@ -50,6 +59,10 @@ export class EditorScene extends WorldScene {
   prefabId: string = PREFABS[0]?.id ?? "";
   /** 「ワープ」ツールで、これから塗るマスに設定する移動先（タイル座標） */
   warpTo = { x: 0, y: 0 };
+  /** 「範囲選択」ツールで選んでいる矩形（マス座標） */
+  selRect: SelRect | null = null;
+  /** 「複製」でコピーした中身。「スタンプ」ツールでクリックした位置に置ける */
+  clipboard: Prefab | null = null;
   /** 選択したモブを動かす・複製・削除するとき、足元の影も一緒に扱う */
   linkShadow = true;
   show = { collision: true, hitboxes: true, grid: false, objects: true, viewport: false };
@@ -174,8 +187,9 @@ export class EditorScene extends WorldScene {
       e.preventDefault();
       void this.save();
     } else if (!ctrl) {
-      const tools: Record<string, Tool> = { KeyV: "select", KeyO: "object", KeyC: "collision", KeyT: "tile", KeyP: "spawn", KeyG: "prefab", KeyE: "erase", KeyR: "warp" };
+      const tools: Record<string, Tool> = { KeyV: "select", KeyO: "object", KeyC: "collision", KeyT: "tile", KeyP: "spawn", KeyG: "prefab", KeyE: "erase", KeyR: "warp", KeyB: "rect" };
       if (tools[e.code]) this.setTool(tools[e.code]);
+      else if (e.code === "Escape" && this.tool === "stamp") this.setTool("rect");
       else if (e.code === "Delete" || e.code === "Backspace") this.deleteSelected();
       else if (e.code === "KeyF") this.flipSelected();
       else if (e.code === "KeyN") this.duplicateSelected();
@@ -242,6 +256,16 @@ export class EditorScene extends WorldScene {
         this.drag = { kind: "paint", erase: right, lx: w.x, ly: w.y };
         this.warpPaintAt(w.x, w.y, right);
         break;
+      case "rect": {
+        const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
+        this.drag = { kind: "rectsel", x0: cx, y0: cy };
+        this.selRect = { x: cx, y: cy, w: 1, h: 1 };
+        this.panel.onSelectionChanged();
+        break;
+      }
+      case "stamp":
+        this.placeClipboard(w.x, w.y);
+        break;
     }
   }
 
@@ -252,6 +276,11 @@ export class EditorScene extends WorldScene {
     if (d.kind === "pan") {
       this.center.x = d.cx - (p.x - d.sx) / this.zoom;
       this.center.y = d.cy - (p.y - d.sy) / this.zoom;
+    } else if (d.kind === "rectsel") {
+      const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
+      const x0 = Math.min(d.x0, cx), y0 = Math.min(d.y0, cy);
+      this.selRect = { x: x0, y: y0, w: Math.abs(cx - d.x0) + 1, h: Math.abs(cy - d.y0) + 1 };
+      this.panel.onSelectionChanged();
     } else if (d.kind === "obj") {
       const nx = Math.round(w.x + d.dx), ny = Math.round(w.y + d.dy);
       const ddx = nx - d.main.o.x, ddy = ny - d.main.o.y;
@@ -538,6 +567,16 @@ export class EditorScene extends WorldScene {
   private placePrefab(wx: number, wy: number): void {
     const pf = PREFABS.find((p) => p.id === this.prefabId);
     if (!pf) return;
+    this.stampPrefab(pf, wx, wy, "パーツ");
+  }
+
+  /** 「スタンプ」ツール: コピーした範囲(clipboard)をクリック位置に置く。パーツと全く同じ仕組み */
+  private placeClipboard(wx: number, wy: number): void {
+    if (!this.clipboard) return;
+    this.stampPrefab(this.clipboard, wx, wy, "スタンプ");
+  }
+
+  private stampPrefab(pf: Prefab, wx: number, wy: number, verb: string): void {
     const ox = Math.floor(wx / TS), oy = Math.floor(wy / TS);
     const originPx = { x: ox * TS, y: oy * TS };
 
@@ -585,7 +624,7 @@ export class EditorScene extends WorldScene {
     entries.forEach((e, i) => this.attach(e, start + i));
 
     this.push({
-      label: `パーツ「${pf.label}」を置く`,
+      label: `${verb}「${pf.label}」を置く`,
       undo: () => {
         tileChanges.forEach((c) => this.applyTile(c.li, c.x, c.y, c.prev));
         collChanges.forEach((c) => (map.layers.collision[c.y][c.x] = c.prev));
@@ -598,6 +637,64 @@ export class EditorScene extends WorldScene {
       },
     });
     this.panel.status(`置きました: ${pf.label}（タイル${tileChanges.length}・物${entries.length}）`);
+  }
+
+  // ---------------------------------------------------------------- 範囲選択（削除・複製）
+  /** 選択範囲の全レイヤーのタイル・当たり判定・物(影も含む)をまとめて削除する */
+  deleteSelection(): void {
+    const r = this.selRect;
+    if (!r) return;
+    for (const [li] of (map.tileLayers ?? []).entries()) {
+      for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) this.setTile(li, x, y, -1);
+    }
+    for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) this.setCollision(x, y, 0);
+    this.finishStroke();
+    const objs = this.objectEntries.filter((e) => {
+      const ex = Math.floor(e.o.x / TS), ey = Math.floor(e.o.by / TS);
+      return ex >= r.x && ex < r.x + r.w && ey >= r.y && ey < r.y + r.h;
+    });
+    if (objs.length) this.deleteEntries(`選択範囲の物 ${objs.length}個`, objs);
+    this.selRect = null;
+    this.panel.onSelectionChanged();
+    this.panel.status(`選択範囲(${r.w}×${r.h}マス)を削除しました。`);
+  }
+
+  /** 選択範囲の中身をコピーして clipboard に持ち、「スタンプ」ツールへ切り替える */
+  copySelection(): void {
+    const r = this.selRect;
+    if (!r) return;
+    const tiles: Prefab["tiles"] = [];
+    for (const layer of map.tileLayers ?? []) {
+      for (let y = r.y; y < r.y + r.h; y++) {
+        const row = layer.data[y];
+        if (!row) continue;
+        for (let x = r.x; x < r.x + r.w; x++) {
+          const id = row[x];
+          if (id >= 0) tiles.push({ layer: layer.name, dx: x - r.x, dy: y - r.y, id });
+        }
+      }
+    }
+    const collision: NonNullable<Prefab["collision"]> = [];
+    for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (map.layers.collision[y]?.[x] === 1) collision.push({ dx: x - r.x, dy: y - r.y });
+    const originPx = { x: r.x * TS, y: r.y * TS };
+    const objects: NonNullable<Prefab["objects"]> = [];
+    for (const e of this.objectEntries) {
+      const o = e.o;
+      const ex = Math.floor(o.x / TS), ey = Math.floor(o.by / TS);
+      if (ex < r.x || ex >= r.x + r.w || ey < r.y || ey >= r.y + r.h) continue;
+      const rec: NonNullable<Prefab["objects"]>[number] = { sprite: o.sprite, dx: o.x - originPx.x, dy: o.y - originPx.y, sort: o.sort, byOff: o.by - originPx.y };
+      if (o.sx !== undefined) rec.sx = o.sx;
+      if (o.sy !== undefined) rec.sy = o.sy;
+      if (o.angle !== undefined) rec.angle = o.angle;
+      if (o.frame !== undefined) rec.frame = o.frame;
+      if (o.speed !== undefined) rec.speed = o.speed;
+      if (o.hit !== undefined) rec.hit = o.hit;
+      if (o.hx !== undefined) rec.hxOff = o.hx - originPx.x;
+      objects.push(rec);
+    }
+    this.clipboard = { id: "clipboard", label: "コピーした範囲", category: "building", w: r.w, h: r.h, tiles, collision, objects };
+    this.setTool("stamp");
+    this.panel.status(`コピーしました(${r.w}×${r.h}マス、タイル${tiles.length}・物${objects.length})。クリックで配置できます(Escで選択に戻る)。`);
   }
 
   deleteSelected(): void {
@@ -930,6 +1027,19 @@ export class EditorScene extends WorldScene {
         g.lineStyle(line * 1.5, 0xffa030, 0.9);
         g.strokeRect(cx * TS, cy * TS, pf.w * TS, pf.h * TS);
       }
+    }
+    if (this.selRect) {
+      const r = this.selRect;
+      g.fillStyle(0x30e0ff, 0.18);
+      g.fillRect(r.x * TS, r.y * TS, r.w * TS, r.h * TS);
+      g.lineStyle(line * 1.5, 0x30e0ff, 0.95);
+      g.strokeRect(r.x * TS, r.y * TS, r.w * TS, r.h * TS);
+    }
+    if (this.tool === "stamp" && this.clipboard) {
+      const w = this.world(this.input.activePointer);
+      const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
+      g.lineStyle(line * 1.5, 0x30e0ff, 0.9);
+      g.strokeRect(cx * TS, cy * TS, this.clipboard.w * TS, this.clipboard.h * TS);
     }
     if (this.selected) {
       const b = this.selected.s.getBounds();
