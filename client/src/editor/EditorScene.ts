@@ -216,7 +216,7 @@ export class EditorScene extends WorldScene {
   private onDown(p: Phaser.Input.Pointer): void {
     const w = this.world(p);
     const right = p.rightButtonDown();
-    if (p.middleButtonDown() || this.keys.has("Space") || (right && this.tool !== "collision" && this.tool !== "tile")) {
+    if (p.middleButtonDown() || this.keys.has("Space") || (right && this.tool !== "collision" && this.tool !== "tile" && this.tool !== "warp")) {
       this.drag = { kind: "pan", sx: p.x, sy: p.y, cx: this.center.x, cy: this.center.y };
       return;
     }
