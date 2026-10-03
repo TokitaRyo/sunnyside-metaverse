@@ -110,6 +110,8 @@ export interface ObjectDef {
   speed?: number;
   hit?: [number, number];
   hx?: number;
+  /** 所属する GroupDef.id（グループの一部として、まとめて選択・移動・削除される） */
+  group?: string;
 }
 
 /** このマス(x,y)に足元が乗ったら (toX,toY) へワープする（ブラックアウト演出つき） */
@@ -118,6 +120,24 @@ export interface WarpDef {
   y: number;
   toX: number;
   toY: number;
+}
+
+/**
+ * タイルとして貼り付けたもの（家・島・コピーした範囲など）を「1つの物」として扱うための記録。
+ * エディタ専用で、ゲーム本体は読まない。x,y は左上のマス。tiles/collision/warps は左上からの相対位置。
+ * prev は「置く前の値」で、移動・削除のとき元に戻すのに使う。
+ */
+export interface GroupDef {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  tiles: { layer: string; dx: number; dy: number; id: number; prev: number }[];
+  /** v=グループが入れる当たり判定の値(1=塞ぐ/0=歩ける)、prev=置く前の値 */
+  collision: { dx: number; dy: number; v: number; prev: number }[];
+  warps?: { dx: number; dy: number; toX: number; toY: number }[];
 }
 
 export interface MapJson {
@@ -141,4 +161,5 @@ export interface MapJson {
   sprites?: Record<string, MapSpriteDef>;
   objects?: ObjectDef[];
   warps?: WarpDef[];
+  groups?: GroupDef[];
 }

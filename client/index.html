@@ -10,7 +10,14 @@
   <body>
     <div id="game"></div>
     <div id="labels"></div>
-    <div id="warp-fade"></div>
+    <div id="warp-fade" aria-hidden="true">
+      <div class="wl-box">
+        <div class="wl-title">Sunnyside World</div>
+        <div class="wl-bar"><i></i></div>
+        <div class="wl-text">Now Loading<span class="wl-dots"></span></div>
+        <div class="wl-tip" id="wl-tip"></div>
+      </div>
+    </div>
     <button id="bgm-toggle" type="button" aria-pressed="false" title="BGM ON/OFF">🔈</button>
 
     <div id="hud" hidden>

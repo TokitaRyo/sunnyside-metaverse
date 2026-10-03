@@ -38,6 +38,16 @@ const REMOTE_SMOOTHING = 0.001;
 /** これ以上離れたら補間せず瞬間移動（入室直後・棄却復帰など） */
 const REMOTE_SNAP_DIST = 96;
 
+/** ワープのロード画面: 画面が覆われるまで(CSSのフェード)と、ロードバーが満ちるまで */
+const WARP_COVER_MS = 300;
+const WARP_LOAD_MS = 1100;
+const WARP_TIPS = [
+  "黄色い足場に乗ると、となりの島へ移動できます",
+  "エモートは 1〜6 キー、チャットは Enter",
+  "雲の上の島は、みんなの待ち合わせ場所",
+  "Shift を押しながら動くと走れます",
+];
+
 const DEPTH_GROUND = -2;
 const DEPTH_DECO = -1;
 /** キャラや木(depth=y)より必ず手前に出す */
@@ -95,6 +105,8 @@ export class WorldScene extends Phaser.Scene {
   private sendAcc = 0;
   private sent = { x: NaN, y: NaN, flipX: false, action: "" };
   private lost = false;
+  /** ワープのロード画面を出している間は、自分の操作・移動送信を止める */
+  private warping = false;
   /** pagehide のリスナーはページ全体で1回だけ張る（マップエディタとの行き来で何度も接続しても積み重ねない） */
   private pagehideBound = false;
 
@@ -113,6 +125,7 @@ export class WorldScene extends Phaser.Scene {
     this.me = undefined;
     this.emote = null;
     this.lost = false;
+    this.warping = false;
     this.sent = { x: NaN, y: NaN, flipX: false, action: "" };
   }
 
@@ -408,23 +421,37 @@ export class WorldScene extends Phaser.Scene {
       this.playWarp(m.x, m.y);
       return;
     }
+    // ワープ中は操作を止めているが、ワープ直前に送った移動が棄却されて補正が届くことがある。ロード画面が出ている間は無視する
+    if (this.warping) return;
     this.me.setPosition(m.x, m.y);
     this.sent.x = m.x;
     this.sent.y = m.y;
   }
 
-  /** ワープタイル演出: 画面を黒く覆ってから瞬間移動し、フェードを戻す */
+  /**
+   * ワープ演出: ロード画面(#warp-fade)で覆い、読み込み中のように少し待ってから瞬間移動し、画面を戻す。
+   * サーバーは受け取った時点でもう移動先に動かしているので、待っている間に自分が動いて棄却されないよう操作は止める。
+   */
   private playWarp(x: number, y: number): void {
+    if (this.warping) return;
+    this.warping = true;
+    this.init0.input.clear();
+    this.me?.play("idle");
     const fade = document.getElementById("warp-fade");
+    const tip = document.getElementById("wl-tip");
+    if (tip) tip.textContent = WARP_TIPS[Math.floor(Math.random() * WARP_TIPS.length)];
+    fade?.style.setProperty("--wl-ms", `${WARP_LOAD_MS}ms`);
     fade?.classList.add("on");
     window.setTimeout(() => {
-      if (!this.me) return;
-      this.me.setPosition(x, y);
-      this.sent.x = x;
-      this.sent.y = y;
-      this.cameras.main.centerOn(x, y); // startFollow のlerpだと1フレーム分ズレるので、瞬間移動に合わせて中心も合わせ直す
-      window.setTimeout(() => fade?.classList.remove("on"), 40);
-    }, 260);
+      if (this.me) {
+        this.me.setPosition(x, y);
+        this.sent.x = x;
+        this.sent.y = y;
+        this.cameras.main.centerOn(x, y); // startFollow のlerpだと1フレーム分ズレるので、瞬間移動に合わせて中心も合わせ直す
+      }
+      fade?.classList.remove("on");
+      window.setTimeout(() => (this.warping = false), 300); // フェードが戻りきってから操作を再開
+    }, WARP_COVER_MS + WARP_LOAD_MS);
   }
 
   // ---------------------------------------------------------------- エモート（自分）
@@ -469,7 +496,7 @@ export class WorldScene extends Phaser.Scene {
       char.syncDepth();
     }
 
-    if (this.me && this.hud) this.updateLocal(dt, delta);
+    if (this.me && this.hud && !this.warping) this.updateLocal(dt, delta);
   }
 
   private updateLocal(dt: number, deltaMs: number): void {

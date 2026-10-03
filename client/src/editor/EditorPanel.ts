@@ -325,12 +325,39 @@ export class EditorPanel {
   }
 
   // ---------------------------------------------------------------- インスペクタ（選択中の物）
+  /** タイルで貼った物(グループ)を選んだときのインスペクタ */
+  private groupInspector(g: import("../config").GroupDef): HTMLElement[] {
+    const ed = this.ed;
+    const num = (label: string, value: number, apply: (v: number) => void) =>
+      h("label", { class: "ed-field" }, h("span", {}, label), h("input", { type: "number", value, step: 1, onchange: (ev: Event) => apply(Math.round(Number((ev.target as HTMLInputElement).value))) }));
+    const mode = h(
+      "select",
+      { onchange: (ev: Event) => ed.setGroupCollision(g, (ev.target as HTMLSelectElement).value as "none" | "all" | "building") },
+      h("option", { value: "" }, "（今のまま）"),
+      h("option", { value: "none" }, "なし（通り抜けられる）"),
+      h("option", { value: "all" }, "全面を塞ぐ"),
+      h("option", { value: "building" }, "建物（下2行だけ通れる）"),
+    );
+    const blocked = g.collision.filter((c) => c.v === 1).length;
+    return [
+      h("div", { class: "ed-sel" }, h("b", {}, g.label), h("small", {}, `${g.w}×${g.h}マス ／ タイル${g.tiles.length}・判定${blocked}マス${g.warps?.length ? `・ワープ${g.warps.length}` : ""}`)),
+      h("div", { class: "ed-grid" }, num("x", g.x, (v) => ed.moveGroupTo(g, v, g.y)), num("y", g.y, (v) => ed.moveGroupTo(g, g.x, v))),
+      h("label", { class: "ed-field" }, h("span", {}, "当たり判定"), mode),
+      h("div", { class: "ed-hint" }, "ドラッグ／矢印キー(Shiftで4マス)で、タイル・当たり判定・付属の物をまとめて動かせます。"),
+      h("div", { class: "ed-row" }, h("button", { class: "danger", onclick: () => ed.deleteGroup(g) }, "削除 (Del)")),
+    ];
+  }
+
   refreshInspector(): void {
     const e = this.ed.selected;
     const box = this.inspector;
     box.replaceChildren();
+    if (this.ed.selectedGroup) {
+      box.append(...this.groupInspector(this.ed.selectedGroup));
+      return;
+    }
     if (!e) {
-      box.append(h("div", { class: "ed-hint" }, "物をクリックして選びます。ドラッグで移動、矢印キーで微調整。\n何もない所をクリックすると選択解除。"));
+      box.append(h("div", { class: "ed-hint" }, "物をクリックして選びます。ドラッグで移動、矢印キーで微調整。\n何もない所をクリックすると選択解除。\nパーツや島などタイルで貼った物も、クリックするとまとめて選べます。"));
       return;
     }
     const o = e.o;

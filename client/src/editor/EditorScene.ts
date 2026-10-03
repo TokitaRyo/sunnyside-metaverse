@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { map, sprites, tileset, type ObjectDef, type WarpDef } from "../config";
+import { map, sprites, tileset, type GroupDef, type ObjectDef, type WarpDef } from "../config";
 import { validateMap } from "../config/validate";
 import { objectKey, tilesetKey } from "../game/assets";
 import { WorldScene, type ObjectEntry } from "../scenes/WorldScene";
@@ -34,7 +34,9 @@ type Drag =
   | { kind: "pan"; sx: number; sy: number; cx: number; cy: number }
   | { kind: "obj"; main: ObjectEntry; group: ObjectEntry[]; dx: number; dy: number; befores: { e: ObjectEntry; before: ObjectDef }[] }
   | { kind: "paint"; erase: boolean; lx: number; ly: number }
-  | { kind: "rectsel"; x0: number; y0: number };
+  | { kind: "rectsel"; x0: number; y0: number }
+  /** グループ(タイルで貼った物)をドラッグして動かす。ox,oy=ドラッグ開始時の左上マス、gx,gy=つかんだ位置の左上からのずれ(マス) */
+  | { kind: "group"; g: GroupDef; ox: number; oy: number; gx: number; gy: number };
 
 const TS = map.tileSize;
 const ZOOMS = [0.5, 1, 2, 3, 4, 6];
@@ -63,6 +65,9 @@ export class EditorScene extends WorldScene {
   selRect: SelRect | null = null;
   /** 「複製」でコピーした中身。「スタンプ」ツールでクリックした位置に置ける */
   clipboard: Prefab | null = null;
+  /** 「選択・移動」で選んでいる、タイルで貼った物(グループ) */
+  selectedGroup: GroupDef | null = null;
+  private groupSeq = 0;
   /** 選択したモブを動かす・複製・削除するとき、足元の影も一緒に扱う */
   linkShadow = true;
   show = { collision: true, hitboxes: true, grid: false, objects: true, viewport: false };
@@ -128,6 +133,7 @@ export class EditorScene extends WorldScene {
     this.history = [];
     this.hi = 0;
     this.selected = null;
+    this.selectedGroup = null;
     this.drag = null;
     this.ghost = undefined;
     this.ghostShadow = undefined;
@@ -193,7 +199,13 @@ export class EditorScene extends WorldScene {
       else if (e.code === "Delete" || e.code === "Backspace") this.deleteSelected();
       else if (e.code === "KeyF") this.flipSelected();
       else if (e.code === "KeyN") this.duplicateSelected();
-      else if (e.code.startsWith("Arrow") && this.selected && this.tool === "select") {
+      else if (e.code.startsWith("Arrow") && this.selectedGroup && this.tool === "select") {
+        e.preventDefault();
+        const step = e.shiftKey ? 4 : 1;
+        const dx = e.code === "ArrowLeft" ? -step : e.code === "ArrowRight" ? step : 0;
+        const dy = e.code === "ArrowUp" ? -step : e.code === "ArrowDown" ? step : 0;
+        this.moveGroupTo(this.selectedGroup, this.selectedGroup.x + dx, this.selectedGroup.y + dy);
+      } else if (e.code.startsWith("Arrow") && this.selected && this.tool === "select") {
         e.preventDefault();
         const step = e.shiftKey ? 8 : 1;
         const dx = e.code === "ArrowLeft" ? -step : e.code === "ArrowRight" ? step : 0;
@@ -223,6 +235,14 @@ export class EditorScene extends WorldScene {
     switch (this.tool) {
       case "select": {
         const hit = this.pickObject(w.x, w.y);
+        const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
+        // タイルで貼った物(グループ)に属する配置物をクリックしたときも、グループ全体を選ぶ
+        const grp = hit?.o.group ? (map.groups ?? []).find((g) => g.id === hit.o.group) ?? null : hit ? null : this.groupAt(cx, cy);
+        if (grp) {
+          this.selectGroup(grp);
+          this.drag = { kind: "group", g: grp, ox: grp.x, oy: grp.y, gx: cx - grp.x, gy: cy - grp.y };
+          break;
+        }
         this.select(hit);
         if (hit) {
           // 影と連動する設定なら、影も一緒に動かす（ドラッグ開始時に対応を確定する）
@@ -276,6 +296,12 @@ export class EditorScene extends WorldScene {
     if (d.kind === "pan") {
       this.center.x = d.cx - (p.x - d.sx) / this.zoom;
       this.center.y = d.cy - (p.y - d.sy) / this.zoom;
+    } else if (d.kind === "group") {
+      const nx = Math.floor(w.x / TS) - d.gx, ny = Math.floor(w.y / TS) - d.gy;
+      if (nx !== d.g.x || ny !== d.g.y) {
+        this.moveGroup(d.g, nx, ny);
+        this.panel.refreshInspector();
+      }
     } else if (d.kind === "rectsel") {
       const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
       const x0 = Math.min(d.x0, cx), y0 = Math.min(d.y0, cy);
@@ -303,7 +329,16 @@ export class EditorScene extends WorldScene {
     const d = this.drag;
     this.drag = null;
     if (!d) return;
-    if (d.kind === "obj") {
+    if (d.kind === "group") {
+      const g = d.g, from = { x: d.ox, y: d.oy }, to = { x: g.x, y: g.y };
+      if (from.x !== to.x || from.y !== to.y) {
+        this.push({
+          label: `「${g.label}」を移動`,
+          undo: () => this.moveGroup(g, from.x, from.y),
+          redo: () => this.moveGroup(g, to.x, to.y),
+        });
+      }
+    } else if (d.kind === "obj") {
       this.pushObjectEdits(d.group.length > 1 ? "モブと影を移動" : "物を移動", d.befores);
     } else if (d.kind === "paint") {
       this.finishStroke();
@@ -342,6 +377,13 @@ export class EditorScene extends WorldScene {
 
   select(e: ObjectEntry | null): void {
     this.selected = e;
+    this.selectedGroup = null;
+    this.panel.refreshInspector();
+  }
+
+  selectGroup(g: GroupDef | null): void {
+    this.selected = null;
+    this.selectedGroup = g;
     this.panel.refreshInspector();
   }
 
@@ -600,8 +642,10 @@ export class EditorScene extends WorldScene {
       collChanges.push({ x, y, prev: row[x], next: 1 });
     }
 
+    // 置いたものを「1つの物」(グループ)として記録する。あとで選択・移動・削除できるようにするため
+    const gid = `g${Date.now().toString(36)}${(this.groupSeq++).toString(36)}`;
     const objectDatas: ObjectDef[] = (pf.objects ?? []).map((o) => {
-      const data: ObjectDef = { sprite: o.sprite, x: originPx.x + o.dx, y: originPx.y + o.dy, sort: o.sort, by: originPx.y + o.byOff };
+      const data: ObjectDef = { sprite: o.sprite, x: originPx.x + o.dx, y: originPx.y + o.dy, sort: o.sort, by: originPx.y + o.byOff, group: gid };
       if (o.sx !== undefined) data.sx = o.sx;
       if (o.sy !== undefined) data.sy = o.sy;
       if (o.angle !== undefined) data.angle = o.angle;
@@ -617,11 +661,24 @@ export class EditorScene extends WorldScene {
       return;
     }
 
+    const group: GroupDef = {
+      id: gid,
+      label: pf.label,
+      x: ox,
+      y: oy,
+      w: pf.w,
+      h: pf.h,
+      tiles: tileChanges.map((c) => ({ layer: map.tileLayers![c.li].name, dx: c.x - ox, dy: c.y - oy, id: c.next, prev: c.prev })),
+      collision: collChanges.map((c) => ({ dx: c.x - ox, dy: c.y - oy, v: c.next, prev: c.prev })),
+    };
+    const groups = (map.groups ??= []);
+
     const entries: ObjectEntry[] = objectDatas.map((o) => ({ o, s: undefined as unknown as Phaser.GameObjects.Sprite }));
     const start = this.objectEntries.length;
     tileChanges.forEach((c) => this.applyTile(c.li, c.x, c.y, c.next));
     collChanges.forEach((c) => (map.layers.collision[c.y][c.x] = c.next));
     entries.forEach((e, i) => this.attach(e, start + i));
+    groups.push(group);
 
     this.push({
       label: `${verb}「${pf.label}」を置く`,
@@ -629,14 +686,17 @@ export class EditorScene extends WorldScene {
         tileChanges.forEach((c) => this.applyTile(c.li, c.x, c.y, c.prev));
         collChanges.forEach((c) => (map.layers.collision[c.y][c.x] = c.prev));
         [...entries].reverse().forEach((e) => this.detach(e));
+        groups.splice(groups.indexOf(group), 1);
+        if (this.selectedGroup === group) this.selectGroup(null);
       },
       redo: () => {
         tileChanges.forEach((c) => this.applyTile(c.li, c.x, c.y, c.next));
         collChanges.forEach((c) => (map.layers.collision[c.y][c.x] = c.next));
         entries.forEach((e, i) => this.attach(e, start + i));
+        groups.push(group);
       },
     });
-    this.panel.status(`置きました: ${pf.label}（タイル${tileChanges.length}・物${entries.length}）`);
+    this.panel.status(`置きました: ${pf.label}（タイル${tileChanges.length}・物${entries.length}）。「選択・移動」でクリックすると、まとめて動かせます。`);
   }
 
   // ---------------------------------------------------------------- 範囲選択（削除・複製）
@@ -697,7 +757,139 @@ export class EditorScene extends WorldScene {
     this.panel.status(`コピーしました(${r.w}×${r.h}マス、タイル${tiles.length}・物${objects.length})。クリックで配置できます(Escで選択に戻る)。`);
   }
 
+  // ---------------------------------------------------------------- グループ（タイルで貼った物を1つの物として扱う）
+  /** そのマスを含むグループ（重なっていれば後から置いた方） */
+  private groupAt(cx: number, cy: number): GroupDef | null {
+    const list = map.groups ?? [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const g = list[i];
+      if (cx >= g.x && cx < g.x + g.w && cy >= g.y && cy < g.y + g.h) return g;
+    }
+    return null;
+  }
+
+  /** グループのタイル・当たり判定・ワープを今の位置から外す（置く前の値に戻す。今の値がグループのものでなければ触らない） */
+  private groupRemoveCells(g: GroupDef): void {
+    for (const t of g.tiles) {
+      const li = map.tileLayers!.findIndex((l) => l.name === t.layer);
+      const x = g.x + t.dx, y = g.y + t.dy;
+      if (li >= 0 && map.tileLayers![li].data[y]?.[x] === t.id) this.applyTile(li, x, y, t.prev);
+    }
+    for (const c of g.collision) {
+      const x = g.x + c.dx, y = g.y + c.dy;
+      const row = map.layers.collision[y];
+      if (row && x >= 0 && x < row.length && row[x] === c.v) row[x] = c.prev;
+    }
+    for (const w of g.warps ?? []) this.applyWarp(g.x + w.dx, g.y + w.dy, null);
+  }
+
+  /** グループを今の位置(g.x,g.y)に置く。置く前の値は prev に控え直す */
+  private groupApplyCells(g: GroupDef): void {
+    for (const t of g.tiles) {
+      const li = map.tileLayers!.findIndex((l) => l.name === t.layer);
+      const x = g.x + t.dx, y = g.y + t.dy;
+      const row = li >= 0 ? map.tileLayers![li].data[y] : undefined;
+      if (!row || x < 0 || x >= row.length) continue;
+      t.prev = row[x];
+      this.applyTile(li, x, y, t.id);
+    }
+    for (const c of g.collision) {
+      const x = g.x + c.dx, y = g.y + c.dy;
+      const row = map.layers.collision[y];
+      if (!row || x < 0 || x >= row.length) continue;
+      c.prev = row[x];
+      row[x] = c.v;
+    }
+    for (const w of g.warps ?? []) {
+      const x = g.x + w.dx, y = g.y + w.dy;
+      if (x >= 0 && y >= 0 && x < map.width && y < map.height) this.applyWarp(x, y, { x, y, toX: w.toX, toY: w.toY });
+    }
+  }
+
+  /** グループを (nx,ny) へ動かす（履歴には積まない。呼び出し側でまとめて積む） */
+  moveGroup(g: GroupDef, nx: number, ny: number): void {
+    const dx = nx - g.x, dy = ny - g.y;
+    if (!dx && !dy) return;
+    this.groupRemoveCells(g);
+    g.x = nx;
+    g.y = ny;
+    this.groupApplyCells(g);
+    for (const e of this.objectEntries) if (e.o.group === g.id) this.moveObjectBy(e, dx * TS, dy * TS);
+  }
+
+  /** 数値入力・矢印キー用: 履歴つきで動かす */
+  moveGroupTo(g: GroupDef, nx: number, ny: number): void {
+    const from = { x: g.x, y: g.y };
+    if (from.x === nx && from.y === ny) return;
+    this.moveGroup(g, nx, ny);
+    this.push({
+      label: `「${g.label}」を移動`,
+      undo: () => this.moveGroup(g, from.x, from.y),
+      redo: () => this.moveGroup(g, nx, ny),
+    });
+    this.panel.refreshInspector();
+  }
+
+  /** グループを丸ごと削除する（タイル・当たり判定・ワープ・付属の物。元に戻せる） */
+  deleteGroup(g: GroupDef): void {
+    const list = (map.groups ??= []);
+    const idx = list.indexOf(g);
+    if (idx < 0) return;
+    const removed = this.objectEntries
+      .filter((e) => e.o.group === g.id)
+      .map((e) => ({ e, index: this.objectEntries.indexOf(e) }))
+      .sort((a, b) => a.index - b.index);
+    const doRemove = () => {
+      this.groupRemoveCells(g);
+      [...removed].reverse().forEach((r) => this.detach(r.e));
+      list.splice(list.indexOf(g), 1);
+      if (this.selectedGroup === g) this.selectGroup(null);
+    };
+    doRemove();
+    this.push({
+      label: `「${g.label}」を削除`,
+      undo: () => {
+        list.splice(idx, 0, g);
+        this.groupApplyCells(g);
+        removed.forEach((r) => this.attach(r.e, r.index));
+      },
+      redo: doRemove,
+    });
+    this.panel.status(`「${g.label}」を削除しました。`);
+  }
+
+  /** グループの当たり判定を作り直す: none=判定なし / all=絵のあるマスを全部塞ぐ / building=下2行だけ空けて塞ぐ */
+  setGroupCollision(g: GroupDef, mode: "none" | "all" | "building"): void {
+    const before = g.collision.map((c) => ({ ...c }));
+    const cells = new Set(g.tiles.map((t) => `${t.dx},${t.dy}`));
+    const next: GroupDef["collision"] = [];
+    if (mode !== "none") {
+      for (let dy = 0; dy < g.h; dy++) {
+        if (mode === "building" && dy >= g.h - 2) continue;
+        for (let dx = 0; dx < g.w; dx++) if (cells.has(`${dx},${dy}`)) next.push({ dx, dy, v: 1, prev: 0 });
+      }
+    }
+    const apply = (list: GroupDef["collision"]) => {
+      this.groupRemoveCells(g);
+      g.collision = list.map((c) => ({ ...c }));
+      this.groupApplyCells(g);
+    };
+    apply(next);
+    const after = g.collision.map((c) => ({ ...c }));
+    this.push({
+      label: `「${g.label}」の当たり判定`,
+      undo: () => apply(before),
+      redo: () => apply(after),
+    });
+    this.panel.refreshInspector();
+    this.panel.status(`当たり判定を設定しました（${mode === "none" ? "なし" : mode === "all" ? "全面" : "建物（下2行は通れる）"}）。`);
+  }
+
   deleteSelected(): void {
+    if (this.selectedGroup) {
+      this.deleteGroup(this.selectedGroup);
+      return;
+    }
     const e = this.selected;
     if (!e) return;
     const group = this.groupOf(e);
@@ -975,7 +1167,7 @@ export class EditorScene extends WorldScene {
     const cam = this.cameras.main;
     if (!this.typing()) {
       const sp = ((this.keys.has("ShiftLeft") || this.keys.has("ShiftRight") ? 700 : 320) / this.zoom) * (delta / 1000);
-      const arrows = !(this.selected && this.tool === "select");
+      const arrows = !((this.selected || this.selectedGroup) && this.tool === "select");
       if (this.keys.has("KeyA") || (arrows && this.keys.has("ArrowLeft"))) this.center.x -= sp;
       if (this.keys.has("KeyD") || (arrows && this.keys.has("ArrowRight"))) this.center.x += sp;
       if (this.keys.has("KeyW") || (arrows && this.keys.has("ArrowUp"))) this.center.y -= sp;
@@ -1040,6 +1232,13 @@ export class EditorScene extends WorldScene {
       const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
       g.lineStyle(line * 1.5, 0x30e0ff, 0.9);
       g.strokeRect(cx * TS, cy * TS, this.clipboard.w * TS, this.clipboard.h * TS);
+    }
+    if (this.selectedGroup) {
+      const sg = this.selectedGroup;
+      g.fillStyle(0xffd000, 0.12);
+      g.fillRect(sg.x * TS, sg.y * TS, sg.w * TS, sg.h * TS);
+      g.lineStyle(line * 2, 0xffd000, 0.95);
+      g.strokeRect(sg.x * TS, sg.y * TS, sg.w * TS, sg.h * TS);
     }
     if (this.selected) {
       const b = this.selected.s.getBounds();
