@@ -15,6 +15,11 @@ const args = process.argv.slice(2);
 const opt = (k, d) => (args.includes(`--${k}`) ? args[args.indexOf(`--${k}`) + 1] : d);
 const inPath = args.find((a) => !a.startsWith("--")) ?? "client/src/config/map.json";
 const outPath = opt("out", inPath);
+// --grid 6x5: 同じ形の平らな島を 列x行 並べる（木なし）。--m/--k は島の中央の列数・草の面の行数
+const GRID = opt("grid", null);
+const IM = Number(opt("m", 10)), IK = Number(opt("k", 6));
+const GAPX = Number(opt("gapx", 5)), GAPY = Number(opt("gapy", 4)), MARGIN = Number(opt("margin", 3));
+const NO_TREES = args.includes("--no-trees") || !!GRID;
 
 const map = JSON.parse(readFileSync(inPath, "utf8"));
 const W = map.width, H = map.height, TS = 16;
@@ -80,7 +85,7 @@ function placeIsland(ox, oy, m, k) {
   for (let i = 1; i <= w - 2; i++) if (shadows.data[sy]?.[ox + i] === -1) shadows.data[sy][ox + i] = SHADOW_ROW;
 
   // 木を数本（スプライトは 32x34、原点は左上。足元は y+34）
-  const trees = ri(0, Math.min(3, m - 1));
+  const trees = NO_TREES ? 0 : ri(0, Math.min(3, m - 1));
   const placed = [];
   for (let t = 0; t < trees; t++) {
     for (let attempt = 0; attempt < 12; attempt++) {
@@ -103,19 +108,40 @@ const ISLANDS = [
   [47, 2, 7, 3], [55, 11, 3, 1], [46, 20, 8, 4], [54, 31, 3, 2], [47, 35, 5, 1],
 ];
 let made = 0;
-// スポーン地点が空の上だと動けなくなるので、スポーン(map.spawn)を中心にした大きめの島を最初に置く
-{
-  const sx = map.spawn.x, sy = map.spawn.y;
-  if (!placeIsland(sx - 6, sy - 4, 8, 5)) console.warn("スポーン島を置けませんでした（既存の地面と重なっています）。スポーンを動かすか、その周りを空けてください");
-  else made++;
+if (GRID) {
+  // 同じ大きさの平らな島を格子状に並べる。スポーンは中ほどの島の中央に置く
+  const [C, R] = GRID.split("x").map(Number);
+  const iw = IM + 4, ih = IK + 5;
+  const needW = MARGIN * 2 + C * iw + (C - 1) * GAPX, needH = MARGIN * 2 + R * ih + (R - 1) * GAPY;
+  if (needW > W || needH > H) {
+    console.error(`マップが小さすぎます: ${C}x${R} 個には ${needW}x${needH} マス必要（今は ${W}x${H}）。先に node scripts/gen-blank-canvas.mjs --w ${needW} --h ${needH} で作り直してください`);
+    process.exit(1);
+  }
+  const offX = Math.floor((W - (C * iw + (C - 1) * GAPX)) / 2), offY = Math.floor((H - (R * ih + (R - 1) * GAPY)) / 2);
+  const spawnCol = Math.floor((C - 1) / 2), spawnRow = Math.floor((R - 1) / 2);
+  for (let r = 0; r < R; r++)
+    for (let c = 0; c < C; c++) {
+      const ox = offX + c * (iw + GAPX), oy = offY + r * (ih + GAPY);
+      if (placeIsland(ox, oy, IM, IK)) made++;
+      else console.warn(`島 (${c},${r}) を置けませんでした`);
+      if (c === spawnCol && r === spawnRow) map.spawn = { x: ox + 2 + Math.floor(IM / 2), y: oy + 1 + Math.floor(IK / 2) };
+    }
+  console.log(`浮島 ${made}/${C * R}（${iw}x${ih}マス・平地）、スポーン (${map.spawn.x},${map.spawn.y})`);
+} else {
+  // スポーン地点が空の上だと動けなくなるので、スポーン(map.spawn)を中心にした大きめの島を最初に置く
+  {
+    const sx = map.spawn.x, sy = map.spawn.y;
+    if (!placeIsland(sx - 6, sy - 4, 8, 5)) console.warn("スポーン島を置けませんでした（既存の地面と重なっています）。スポーンを動かすか、その周りを空けてください");
+    else made++;
+  }
+  for (const [ox, oy, m, k] of ISLANDS) {
+    let ok = false;
+    for (let dy = 0; dy < 6 && !ok; dy++) for (let dx = 0; dx < 5 && !ok; dx++) ok = placeIsland(ox + dx, oy + dy, m, k);
+    if (ok) made++;
+    else console.warn(`島 (${ox},${oy}) m=${m} k=${k} は置けませんでした`);
+  }
+  console.log(`浮島 ${made}/${ISLANDS.length + 1}（スポーン島を含む）`);
 }
-for (const [ox, oy, m, k] of ISLANDS) {
-  let ok = false;
-  for (let dy = 0; dy < 6 && !ok; dy++) for (let dx = 0; dx < 5 && !ok; dx++) ok = placeIsland(ox + dx, oy + dy, m, k);
-  if (ok) made++;
-  else console.warn(`島 (${ox},${oy}) m=${m} k=${k} は置けませんでした`);
-}
-console.log(`浮島 ${made}/${ISLANDS.length + 1}（スポーン島を含む）`);
 
 // ---------------------------------------------------------------- 3. 雲
 /** 角を落とした長方形(半幅a・半高b・面取りc)のマスク。マップの外にはみ出した分は clampEdges で続いているように見せる */
@@ -165,11 +191,32 @@ const sky = (x, y) => !hasGround(x, y);
 const notSky = (x, y) => !sky(x, y);
 
 // 奥の雲(clouds_02)と、手前の薄い雲(clouds_01)。どちらも地面の上には置かない
-const BACK = [
+let BACK = [
   [8, 10, 4, 2, 2], [18, 3, 5, 2, 2], [56, 7, 4, 2, 2], [10, 28, 5, 2, 2], [58, 28, 4, 3, 2], [52, 42, 6, 2, 2], [4, 42, 5, 2, 2], [40, 1, 3, 1, 1],
   [36, 6, 5, 2, 2], [39, 40, 5, 2, 2], [41, 20, 4, 2, 2], [25, 6, 4, 2, 2], [24, 40, 5, 2, 2], [36, 30, 3, 2, 1],
 ];
-const FRONT = [[1, 22, 3, 2, 1], [62, 20, 3, 3, 1], [34, 43, 6, 2, 2], [20, 40, 4, 2, 2], [60, 2, 3, 2, 1], [38, 13, 4, 2, 2], [31, 36, 4, 2, 2], [44, 27, 3, 1, 1]];
+let FRONT = [[1, 22, 3, 2, 1], [62, 20, 3, 3, 1], [34, 43, 6, 2, 2], [20, 40, 4, 2, 2], [60, 2, 3, 2, 1], [38, 13, 4, 2, 2], [31, 36, 4, 2, 2], [44, 27, 3, 1, 1]];
+if (GRID) {
+  // 島の数に合わせて広いマップなので、雲は乱数で空の部分にばらまく（同じレイヤーの雲同士が重ならないように）
+  const taken = { back: new Set(), front: new Set() };
+  const gen = (list, key, count) => {
+    for (let attempt = 0; attempt < count * 30 && list.length < count; attempt++) {
+      // 小さすぎると三角やひし形の破片になるので、半幅3以上・半高2以上にする
+      const a = ri(3, 6), b = ri(2, 3), c = 1, cx = ri(0, W - 1), cy = ri(0, H - 1);
+      const cells = [];
+      for (let y = cy - b - 1; y <= cy + b + 1; y++) for (let x = cx - a - 1; x <= cx + a + 1; x++) cells.push(`${x},${y}`);
+      if (cells.some((s) => taken[key].has(s))) continue;
+      const mask = blobMask(cx, cy, a, b, c, notSky);
+      if (!mask) continue;
+      cells.forEach((s) => taken[key].add(s));
+      list.push([cx, cy, a, b, c]);
+    }
+  };
+  BACK = [];
+  FRONT = [];
+  gen(BACK, "back", Math.round((W * H) / 450));
+  gen(FRONT, "front", Math.round((W * H) / 800));
+}
 let cloudCount = 0;
 for (const [cx, cy, a, b, c] of BACK) {
   const mask = blobMask(cx, cy, a, b, c, notSky);
