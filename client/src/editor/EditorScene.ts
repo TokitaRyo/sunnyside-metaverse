@@ -1034,6 +1034,27 @@ export class EditorScene extends WorldScene {
     }
   }
 
+  /**
+   * ワープツールでの設定・削除。島などのグループが持つワープの記録(GroupDef.warps)も合わせて更新する。
+   * しないと、消したワープが、島を動かしたときに記録から復活してしまう。
+   * 新しく設定したマスがグループの範囲内なら、そのグループのワープとして記録し、島と一緒に動くようにする。
+   */
+  private setWarpCell(x: number, y: number, def: WarpDef | null): void {
+    this.applyWarp(x, y, def);
+    for (const g of map.groups ?? []) {
+      const dx = x - g.x, dy = y - g.y;
+      const i = g.warps?.findIndex((w) => w.dx === dx && w.dy === dy) ?? -1;
+      if (i >= 0) {
+        if (def) g.warps![i] = { dx, dy, toX: def.toX, toY: def.toY };
+        else g.warps!.splice(i, 1);
+      }
+    }
+    if (def) {
+      const g = this.groupAt(x, y);
+      if (g && !(g.warps ?? []).some((w) => w.dx === x - g.x && w.dy === y - g.y)) (g.warps ??= []).push({ dx: x - g.x, dy: y - g.y, toX: def.toX, toY: def.toY });
+    }
+  }
+
   private warpAt(x: number, y: number): WarpDef | null {
     return map.warps?.find((w) => w.x === x && w.y === y) ?? null;
   }
@@ -1045,7 +1066,7 @@ export class EditorScene extends WorldScene {
     const prev = this.warpAt(cx, cy);
     const next = erase ? null : { x: cx, y: cy, toX: this.warpTo.x, toY: this.warpTo.y };
     if (JSON.stringify(prev) === JSON.stringify(next)) return;
-    this.applyWarp(cx, cy, next);
+    this.setWarpCell(cx, cy, next);
     const key = `${cx},${cy}`;
     const first = this.warpStroke.get(key);
     this.warpStroke.set(key, { x: cx, y: cy, prev: first ? first.prev : prev, next });
@@ -1057,8 +1078,8 @@ export class EditorScene extends WorldScene {
     this.warpStroke.clear();
     this.push({
       label: `ワープ ${changes.length} マス`,
-      undo: () => changes.forEach((c) => this.applyWarp(c.x, c.y, c.prev)),
-      redo: () => changes.forEach((c) => this.applyWarp(c.x, c.y, c.next)),
+      undo: () => changes.forEach((c) => this.setWarpCell(c.x, c.y, c.prev)),
+      redo: () => changes.forEach((c) => this.setWarpCell(c.x, c.y, c.next)),
     });
   }
 
