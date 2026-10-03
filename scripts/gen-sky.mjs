@@ -20,6 +20,7 @@ const GRID = opt("grid", null);
 const IM = Number(opt("m", 10)), IK = Number(opt("k", 6));
 const GAPX = Number(opt("gapx", 5)), GAPY = Number(opt("gapy", 4)), MARGIN = Number(opt("margin", 3));
 const NO_TREES = args.includes("--no-trees") || !!GRID;
+const PAD_VISIBLE = args.includes("--pad-tiles");
 
 const map = JSON.parse(readFileSync(inPath, "utf8"));
 const W = map.width, H = map.height, TS = 16;
@@ -150,8 +151,11 @@ if (GRID) {
   // 反対側の足場の2マス内側に飛ぶ（着地点は足場ではないので、すぐ戻されることはない）
   const addPad = (isl, cells, dests) => {
     cells.forEach(([x, y], i) => {
-      paths.data[y][x] = PAD_TILE;
-      isl.g.tiles.push({ layer: "paths", dx: x - isl.ox, dy: y - isl.oy, id: PAD_TILE, prev: -1 });
+      // 見える目印(黄色い足場)は --pad-tiles を付けたときだけ。既定ではワープだけで、地面には何も敷かない
+      if (PAD_VISIBLE) {
+        paths.data[y][x] = PAD_TILE;
+        isl.g.tiles.push({ layer: "paths", dx: x - isl.ox, dy: y - isl.oy, id: PAD_TILE, prev: -1 });
+      }
       isl.g.warps.push({ dx: x - isl.ox, dy: y - isl.oy, toX: dests[i][0], toY: dests[i][1] });
       (map.warps ??= []).push({ x, y, toX: dests[i][0], toY: dests[i][1] });
     });
