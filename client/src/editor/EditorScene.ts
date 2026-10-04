@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { map, sprites, tileset, type GroupDef, type KeyItemDef, type ObjectDef, type WarpDef } from "../config";
+import { map, sprites, tileset, type GroupDef, type KeyItemDef, type MapSpriteDef, type ObjectDef, type WarpDef } from "../config";
 import { validateMap } from "../config/validate";
 import { objectKey, tilesetKey } from "../game/assets";
 import { WorldScene, type ObjectEntry } from "../scenes/WorldScene";
@@ -61,6 +61,10 @@ export class EditorScene extends WorldScene {
   placeShadow = true;
   /** 「物を置く」で次に置く物の向き（度・時計回り。0〜359） */
   placeAngle = 0;
+  /** 「物を置く」で、置く物を「常にキャラより下」(床に敷く扱い)にする */
+  placeFloor = false;
+  /** タイルから組み立てた物は、置く位置を16pxのマスに合わせる */
+  placeSnap = true;
   /** 「パーツ」ツールで選択中のプレハブ */
   prefabId: string = PREFABS[0]?.id ?? "";
   /** 「ワープ」ツールで、これから塗るマスに設定する移動先（タイル座標） */
@@ -779,17 +783,40 @@ export class EditorScene extends WorldScene {
     });
   }
 
-  private placeObject(x: number, y: number): void {
+  /** タイルから組み立てた物は、左上と足元をマスの線に合わせる（そうでない物はそのまま） */
+  private placePos(def: MapSpriteDef, x: number, y: number): { x: number; y: number } {
+    if (!def.tiles || !this.placeSnap) return { x, y };
+    return { x: Math.round((x - def.ox) / TS) * TS + def.ox, y: Math.round((y - def.oy) / TS) * TS + def.oy };
+  }
+
+  private placeObject(px: number, py: number): void {
     const def = map.sprites?.[this.placeSprite];
     if (!def) return;
+    const { x, y } = this.placePos(def, px, py);
     const main = makeObject(this.placeSprite, def, x, y);
     if (this.placeAngle) main.angle = this.placeAngle;
+    if (this.placeFloor) main.sort = "floor";
     const datas = [main];
+    // パーツ由来の物は、パーツが持っていた付属の物（煙など）も一緒に置く
+    const pf = def.tiles?.prefab ? PREFABS.find((p) => p.id === def.tiles!.prefab) : undefined;
+    const tlx = x - def.ox, tly = y - def.oy;
+    for (const o of pf?.objects ?? []) {
+      if (!map.sprites?.[o.sprite]) continue;
+      const d: ObjectDef = { sprite: o.sprite, x: tlx + o.dx, y: tly + o.dy, sort: o.sort, by: tly + o.byOff };
+      if (o.sx !== undefined) d.sx = o.sx;
+      if (o.sy !== undefined) d.sy = o.sy;
+      if (o.angle !== undefined) d.angle = o.angle;
+      if (o.frame !== undefined) d.frame = o.frame;
+      if (o.speed !== undefined) d.speed = o.speed;
+      if (o.hit !== undefined) d.hit = o.hit;
+      if (o.hxOff !== undefined) d.hx = tlx + o.hxOff;
+      datas.push(d);
+    }
     // ゴブリン・スケルトン・人間は足元に影の物も一緒に置く（動物は絵に影が含まれるので不要）
     const shadow = this.placeShadow ? this.makeShadowFor(main) : null;
     if (shadow) datas.push(shadow);
     this.addObjectsCmd(`「${this.placeSprite}」を置く`, datas);
-    this.panel.status(`置きました: ${this.placeSprite} (${x}, ${y})${shadow ? "（影つき）" : ""}`);
+    this.panel.status(`置きました: ${this.placeSprite} (${x}, ${y})${shadow ? "（影つき）" : ""}${datas.length > 1 && !shadow ? `（付属の物 ${datas.length - 1}個つき）` : ""}`);
   }
 
   /**
@@ -1356,6 +1383,16 @@ export class EditorScene extends WorldScene {
   }
 
   // ---------------------------------------------------------------- 保存
+  /**
+   * 保存用のJSON。タイルから組み立てた絵のうち、まだ1つも置いていない見本(エディタで選んだだけのもの)は含めない
+   * （選ぶたびに map.json が膨らまないように）。メモリ上の map は触らない。
+   */
+  private serialize(): string {
+    const used = new Set((map.objects ?? []).map((o) => o.sprite));
+    const kept = Object.fromEntries(Object.entries(map.sprites ?? {}).filter(([n, d]) => !(d.tiles && d.catalog && !used.has(n))));
+    return JSON.stringify({ ...map, sprites: kept });
+  }
+
   async save(): Promise<void> {
     const errors = validateMap(map, sprites, tileset);
     if (errors.length) {
@@ -1363,7 +1400,7 @@ export class EditorScene extends WorldScene {
       return;
     }
     try {
-      const res = await fetch("/__editor/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(map) });
+      const res = await fetch("/__editor/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: this.serialize() });
       const text = await res.text();
       if (!res.ok) throw new Error(text);
       this.hasUnsaved = false;
@@ -1376,7 +1413,7 @@ export class EditorScene extends WorldScene {
 
   /** ファイルとしてダウンロード（開発サーバー以外で編集したときなど） */
   download(): void {
-    const blob = new Blob([JSON.stringify(map)], { type: "application/json" });
+    const blob = new Blob([this.serialize()], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "map.json";
@@ -1550,7 +1587,7 @@ export class EditorScene extends WorldScene {
     if (!this.ghost) this.ghost = this.add.sprite(0, 0, objectKey(this.placeSprite)).setAlpha(0.6).setDepth(299999);
     if (this.ghost.texture.key !== objectKey(this.placeSprite)) this.ghost.setTexture(objectKey(this.placeSprite), 0);
     const w = this.world(this.input.activePointer);
-    const gx = Math.round(w.x), gy = Math.round(w.y);
+    const { x: gx, y: gy } = this.placePos(def, Math.round(w.x), Math.round(w.y));
     this.ghost.setVisible(true).setOrigin(def.ox / def.fw, def.oy / def.fh).setPosition(gx, gy).setAngle(this.placeAngle);
 
     // 影も置く設定なら、影の位置にも薄いプレビューを出す

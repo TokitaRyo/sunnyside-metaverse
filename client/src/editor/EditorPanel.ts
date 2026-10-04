@@ -1,5 +1,7 @@
-import { map, type ObjectDef } from "../config";
+import { map, type MapSpriteDef, type ObjectDef } from "../config";
 import { objectKey, tilesetKey } from "../game/assets";
+import { buildTileSprite, prefabSpriteName, rectSpriteDef, rectSpriteName } from "../game/tileSprites";
+import { prefabIsFloorOnly, prefabSpriteDef } from "./tileObjects";
 import { defaultHit } from "./objectDefaults";
 import { CATEGORY_LABEL, CATEGORY_ORDER, categoryOf, hasShadow, isMobCategory, labelOf, sortNames, SHADOW_SPRITE, type Category } from "./mobCatalog";
 import { PREFABS, PREFAB_CATEGORY_LABEL, PREFAB_CATEGORY_ORDER } from "./prefabs";
@@ -59,6 +61,26 @@ export class EditorPanel {
   private shadowBox!: HTMLDivElement;
   private rotateBox!: HTMLDivElement;
   private keyItemBox!: HTMLDivElement;
+  /** 「物を置く」の3つの選び方: スプライト一覧 / パーツを物として / タイルの範囲を物として */
+  private objMode: "sprite" | "prefab" | "tile" = "sprite";
+  private objModeBtns = new Map<"sprite" | "prefab" | "tile", HTMLButtonElement>();
+  private spriteBox!: HTMLDivElement;
+  private pobjBox!: HTMLDivElement;
+  private pobjTabRow!: HTMLDivElement;
+  private pobjGrid!: HTMLDivElement;
+  private pobjThumbBtns = new Map<string, HTMLButtonElement>();
+  private pobjCatTabs = new Map<Prefab["category"], HTMLButtonElement>();
+  private pobjCat: Prefab["category"] = "building";
+  private pobjId = "";
+  private tileBox!: HTMLDivElement;
+  private objPalette!: HTMLCanvasElement;
+  private objPalInfo!: HTMLDivElement;
+  private objTilesetSel!: HTMLSelectElement;
+  private objPalScale = 2;
+  private objPalDrag: { tx: number; ty: number } | null = null;
+  private objTileSel: { tileset: string; tx: number; ty: number; tw: number; th: number } | null = null;
+  /** 「キャラ・小物」に戻したときに選び直すスプライト */
+  private lastSprite = "";
   private catTabs = new Map<Category, HTMLButtonElement>();
   private thumbBtns = new Map<string, HTMLButtonElement>();
   private activeCat: Category = "goblin";
@@ -143,13 +165,45 @@ export class EditorPanel {
     this.shadowBox = h("div", {});
     this.rotateBox = h("div", {});
     this.refreshRotation();
+    this.spriteBox = h("div", {}, this.tabRow, this.grid);
+    this.pobjTabRow = h("div", { class: "ed-cats" });
+    this.pobjGrid = h("div", { class: "ed-mobgrid" });
+    this.pobjBox = h(
+      "div",
+      {},
+      this.pobjTabRow,
+      this.pobjGrid,
+      h("div", { class: "ed-hint" }, "建物・木・柵など、タイルで作られていた「パーツ」を、1つの物として置きます。\n位置・回転・複製・削除が物と同じようにできます（当たり判定は初期値が付くので、必要なら選択して調整）。\n煙など付属の動く物も一緒に置かれます。"),
+    );
+    this.objTileSel = null;
+    this.objPalInfo = h("div", { class: "ed-hint" }, "タイルセットから、置きたい範囲をドラッグで選びます（最大24×24マス）。選んだ範囲が1つの物になります。");
+    this.objPalette = h("canvas", { class: "ed-palette" });
+    this.objTilesetSel = h("select", { onchange: () => this.drawObjPalette() }) as HTMLSelectElement;
+    for (const name of Object.keys(map.tilesets ?? {})) this.objTilesetSel.append(h("option", { value: name }, `${name}（${map.tilesets![name].tileSize}px）`));
+    this.bindObjPalette();
+    this.tileBox = h(
+      "div",
+      {},
+      h("label", { class: "ed-field" }, h("span", {}, "タイルセット"), this.objTilesetSel),
+      h("div", { class: "ed-row" }, h("span", {}, "倍率"), h("button", { onclick: () => this.setObjPalScale(1) }, "1x"), h("button", { onclick: () => this.setObjPalScale(2) }, "2x"), h("button", { onclick: () => this.setObjPalScale(3) }, "3x")),
+      h("div", { class: "ed-palwrap" }, this.objPalette),
+      this.objPalInfo,
+    );
+    const modeRow = h("div", { class: "ed-cats" });
+    for (const [m, label] of [["sprite", "キャラ・小物"], ["prefab", "建物・自然"], ["tile", "タイル素材"]] as const) {
+      const b = h("button", { onclick: () => this.setObjMode(m) }, label);
+      this.objModeBtns.set(m, b);
+      modeRow.append(b);
+    }
     this.sections.set(
       "object",
       h(
         "div",
         {},
-        this.tabRow,
-        this.grid,
+        modeRow,
+        this.spriteBox,
+        this.pobjBox,
+        this.tileBox,
         h("div", { class: "ed-row" }, this.preview, this.pickedLabel),
         this.rotateBox,
         this.shadowBox,
@@ -157,6 +211,8 @@ export class EditorPanel {
       ),
     );
     this.buildCategoryTabs();
+    this.buildPobjTabs();
+    this.setObjMode("sprite");
 
     this.prefabTabRow = h("div", { class: "ed-cats" });
     this.prefabGrid = h("div", { class: "ed-mobgrid" });
@@ -417,6 +473,8 @@ export class EditorPanel {
         h("span", {}, "向き（度）"),
         h("input", { type: "number", value: ed.placeAngle, step: 15, onchange: (ev: Event) => ed.setPlaceAngle(Number((ev.target as HTMLInputElement).value)) }),
       ),
+      this.check("床に敷く（常にキャラより下）", ed.placeFloor, (v) => (ed.placeFloor = v)),
+      map.sprites?.[ed.placeSprite]?.tiles ? this.check("16pxのマスに合わせて置く", ed.placeSnap, (v) => (ed.placeSnap = v)) : h("span", {}),
     );
   }
 
@@ -564,6 +622,7 @@ export class EditorPanel {
   private categories(): Map<Category, string[]> {
     const by = new Map<Category, string[]>();
     for (const [name, def] of Object.entries(map.sprites ?? {})) {
+      if (def.tiles) continue; // タイルから組み立てた物は「建物・自然」「タイル素材」から選ぶ
       if (!this.ed.textures.exists(objectKey(name))) continue; // 読み込まれていない(エディタ外)ものは出さない
       const c = categoryOf(name, def);
       if (!by.has(c)) by.set(c, []);
@@ -620,23 +679,202 @@ export class EditorPanel {
     }
   }
 
-  private pickSprite(name: string): void {
-    this.ed.placeSprite = name;
-    this.ed.persist();
-    const def = map.sprites?.[name];
-    if (!def) return;
-    const c = categoryOf(name, def);
-    if (c !== this.activeCat) this.setCategory(c);
-    for (const [n, b] of this.thumbBtns) b.classList.toggle("on", n === name);
+  /** 選んだ物の見本（プレビュー）を描く */
+  private drawPreview(name: string, def: MapSpriteDef): void {
     const cv = this.preview;
     const img = this.ed.textures.get(objectKey(name)).getSourceImage() as HTMLImageElement;
-    const scale = Math.max(1, Math.floor(96 / Math.max(def.fw, def.fh)));
+    const scale = Math.max(1, Math.min(6, Math.floor(96 / Math.max(def.fw, def.fh))));
     cv.width = def.fw * scale;
     cv.height = def.fh * scale;
     const ctx = cv.getContext("2d")!;
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, cv.width, cv.height);
     ctx.drawImage(img, 0, 0, def.fw, def.fh, 0, 0, cv.width, cv.height);
+  }
+
+  // ---------------------------------------------------------------- 物を置く: パーツ／タイルを「物」として置く
+  private setObjMode(m: "sprite" | "prefab" | "tile"): void {
+    this.objMode = m;
+    for (const [k, b] of this.objModeBtns) b.classList.toggle("on", k === m);
+    this.spriteBox.hidden = m !== "sprite";
+    this.pobjBox.hidden = m !== "prefab";
+    this.tileBox.hidden = m !== "tile";
+    if (m === "sprite") {
+      if (this.lastSprite && map.sprites?.[this.lastSprite] && this.ed.textures.exists(objectKey(this.lastSprite))) this.pickSprite(this.lastSprite);
+    } else if (m === "prefab") {
+      const list = this.pobjList();
+      const pf = list.find((p) => p.id === this.pobjId) ?? list[0];
+      if (pf) this.pickPobj(pf);
+    } else {
+      this.drawObjPalette();
+      if (this.objTileSel) this.pickObjTile();
+      else {
+        // 範囲を選ぶまでは置けない（前に選んでいた物が置かれてしまわないように）
+        this.ed.placeSprite = "";
+        this.preview.width = 1;
+        this.preview.height = 1;
+        this.pickedLabel.replaceChildren(h("small", {}, "タイルセットから範囲を選んでください"));
+        this.shadowBox.replaceChildren();
+        this.refreshRotation();
+      }
+    }
+  }
+
+  /** タイルから組み立てた物を「次に置く物」に選ぶ（定義と絵が無ければ作る） */
+  private pickBuilt(name: string, make: () => MapSpriteDef, floor: boolean, title: string, sub: string): void {
+    const defs = (map.sprites ??= {});
+    const def = (defs[name] ??= make());
+    if (!buildTileSprite(this.ed.textures, name, def)) {
+      this.status("この物の絵を作れませんでした（タイルセットが読み込まれていません）", true);
+      return;
+    }
+    this.ed.placeSprite = name;
+    this.ed.placeFloor = floor;
+    this.ed.persist();
+    this.drawPreview(name, def);
+    this.pickedLabel.replaceChildren(h("b", {}, title), h("small", {}, `${sub} ／ ${def.fw}×${def.fh}px`));
+    this.shadowBox.replaceChildren();
+    this.refreshRotation();
+  }
+
+  /** タイルを持つパーツだけ（木立・岩のように「物」だけのパーツは、すでに「キャラ・小物」の木・岩で置ける） */
+  private pobjList(): Prefab[] {
+    return PREFABS.filter((p) => prefabSpriteDef(p).tiles!.parts.length > 0);
+  }
+
+  private buildPobjTabs(): void {
+    this.pobjTabRow.replaceChildren();
+    this.pobjCatTabs.clear();
+    for (const c of PREFAB_CATEGORY_ORDER) {
+      const count = this.pobjList().filter((p) => p.category === c).length;
+      if (!count) continue;
+      const b = h("button", { onclick: () => this.setPobjCategory(c) }, `${PREFAB_CATEGORY_LABEL[c]} `, h("small", {}, String(count)));
+      this.pobjCatTabs.set(c, b);
+      this.pobjTabRow.append(b);
+    }
+    this.setPobjCategory(this.pobjList().find((p) => p.id === this.pobjId)?.category ?? "building");
+  }
+
+  private setPobjCategory(c: Prefab["category"]): void {
+    this.pobjCat = c;
+    for (const [k, b] of this.pobjCatTabs) b.classList.toggle("on", k === c);
+    this.pobjGrid.replaceChildren();
+    this.pobjThumbBtns.clear();
+    for (const pf of this.pobjList().filter((p) => p.category === c)) {
+      const cv = h("canvas", { width: 56, height: 56 });
+      this.drawPrefabThumb(cv, pf);
+      const b = h("button", { class: "ed-thumb", title: `${pf.label}（${pf.w}×${pf.h}マス）`, onclick: () => this.pickPobj(pf) }, cv, h("span", {}, pf.label));
+      this.pobjThumbBtns.set(pf.id, b);
+      this.pobjGrid.append(b);
+    }
+    for (const [id, b] of this.pobjThumbBtns) b.classList.toggle("on", id === this.pobjId);
+  }
+
+  private pickPobj(pf: Prefab): void {
+    this.pobjId = pf.id;
+    if (pf.category !== this.pobjCat) this.setPobjCategory(pf.category);
+    for (const [id, b] of this.pobjThumbBtns) b.classList.toggle("on", id === pf.id);
+    this.pickBuilt(prefabSpriteName(pf.id), () => prefabSpriteDef(pf), prefabIsFloorOnly(pf), pf.label, `パーツ ${pf.w}×${pf.h}マス`);
+  }
+
+  private objTilesetName(): string {
+    return this.objTilesetSel.value || Object.keys(map.tilesets ?? {})[0] || "main";
+  }
+
+  private setObjPalScale(n: number): void {
+    this.objPalScale = n;
+    this.drawObjPalette();
+  }
+
+  private drawObjPalette(): void {
+    const name = this.objTilesetName();
+    const def = map.tilesets?.[name];
+    if (!def || !this.ed.textures.exists(tilesetKey(name))) return;
+    const img = this.ed.textures.get(tilesetKey(name)).getSourceImage() as HTMLImageElement;
+    const sc = this.objPalScale;
+    const cv = this.objPalette;
+    cv.width = img.width * sc;
+    cv.height = img.height * sc;
+    const ctx = cv.getContext("2d")!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = "#2a3340";
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    const cell = def.tileSize * sc;
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x <= cv.width; x += cell) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, cv.height); }
+    for (let y = 0; y <= cv.height; y += cell) { ctx.moveTo(0, y + 0.5); ctx.lineTo(cv.width, y + 0.5); }
+    ctx.stroke();
+    const st = this.objTileSel;
+    if (st && st.tileset === name) {
+      ctx.strokeStyle = "#ffd23f";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(st.tx * cell + 1, st.ty * cell + 1, st.tw * cell - 2, st.th * cell - 2);
+    }
+  }
+
+  /** タイルパレットを範囲選択（ドラッグ）し、指を離したところで1つの物として確定する */
+  private bindObjPalette(): void {
+    const MAX = 24;
+    const cellAt = (e: PointerEvent) => {
+      const def = map.tilesets![this.objTilesetName()];
+      const r = this.objPalette.getBoundingClientRect();
+      const cell = def.tileSize * this.objPalScale;
+      return { tx: Math.max(0, Math.floor((e.clientX - r.left) / cell)), ty: Math.max(0, Math.floor((e.clientY - r.top) / cell)) };
+    };
+    const apply = (a: { tx: number; ty: number }, b: { tx: number; ty: number }) => {
+      const name = this.objTilesetName();
+      const def = map.tilesets![name];
+      const rows = Math.floor(this.objPalette.height / (def.tileSize * this.objPalScale));
+      const tx0 = Math.min(a.tx, b.tx, def.columns - 1), ty0 = Math.min(a.ty, b.ty, rows - 1);
+      const tx1 = Math.min(Math.max(a.tx, b.tx), def.columns - 1, tx0 + MAX - 1), ty1 = Math.min(Math.max(a.ty, b.ty), rows - 1, ty0 + MAX - 1);
+      this.objTileSel = { tileset: name, tx: tx0, ty: ty0, tw: tx1 - tx0 + 1, th: ty1 - ty0 + 1 };
+      this.objPalInfo.textContent = `選択: ${this.objTileSel.tw}×${this.objTileSel.th} マス（左上のタイルID ${ty0 * def.columns + tx0}）`;
+      this.drawObjPalette();
+    };
+    this.objPalette.addEventListener("pointerdown", (e) => {
+      this.objPalette.setPointerCapture(e.pointerId);
+      this.objPalDrag = cellAt(e);
+      apply(this.objPalDrag, this.objPalDrag);
+    });
+    this.objPalette.addEventListener("pointermove", (e) => {
+      if (this.objPalDrag) apply(this.objPalDrag, cellAt(e));
+    });
+    this.objPalette.addEventListener("pointerup", () => {
+      if (!this.objPalDrag) return;
+      this.objPalDrag = null;
+      this.pickObjTile();
+    });
+  }
+
+  private pickObjTile(): void {
+    const s = this.objTileSel;
+    if (!s) return;
+    this.pickBuilt(rectSpriteName(s.tileset, s.tx, s.ty, s.tw, s.th), () => rectSpriteDef(s.tileset, s.tx, s.ty, s.tw, s.th), false, `タイル ${s.tw}×${s.th}`, `${s.tileset} (${s.tx},${s.ty})`);
+  }
+
+  private pickSprite(name: string): void {
+    this.ed.placeSprite = name;
+    this.ed.placeFloor = false;
+    this.lastSprite = name;
+    this.ed.persist();
+    const def = map.sprites?.[name];
+    if (!def) return;
+    if (def.tiles) {
+      // タイルから組み立てた物（前回の選択が復元されたとき）。一覧には出ないので、見本だけ更新する
+      this.drawPreview(name, def);
+      this.pickedLabel.replaceChildren(h("b", {}, name), h("small", {}, `${def.fw}×${def.fh}px`));
+      this.shadowBox.replaceChildren();
+      this.refreshRotation();
+      return;
+    }
+    const c = categoryOf(name, def);
+    if (c !== this.activeCat) this.setCategory(c);
+    for (const [n, b] of this.thumbBtns) b.classList.toggle("on", n === name);
+    this.drawPreview(name, def);
+    this.refreshRotation();
     this.pickedLabel.replaceChildren(h("b", {}, labelOf(name, c)), h("small", {}, `${CATEGORY_LABEL[c]} ／ ${name}`));
     // 影: ゴブリン・スケルトン・人間は別の物として置く。動物は絵に含まれるので不要
     this.shadowBox.replaceChildren(
