@@ -56,6 +56,7 @@ export class EditorPanel {
   private grid!: HTMLDivElement;
   private pickedLabel!: HTMLDivElement;
   private shadowBox!: HTMLDivElement;
+  private rotateBox!: HTMLDivElement;
   private catTabs = new Map<Category, HTMLButtonElement>();
   private thumbBtns = new Map<string, HTMLButtonElement>();
   private activeCat: Category = "goblin";
@@ -138,6 +139,8 @@ export class EditorPanel {
     this.grid = h("div", { class: "ed-mobgrid" });
     this.pickedLabel = h("div", { class: "ed-picked" });
     this.shadowBox = h("div", {});
+    this.rotateBox = h("div", {});
+    this.refreshRotation();
     this.sections.set(
       "object",
       h(
@@ -146,8 +149,9 @@ export class EditorPanel {
         this.tabRow,
         this.grid,
         h("div", { class: "ed-row" }, this.preview, this.pickedLabel),
+        this.rotateBox,
         this.shadowBox,
-        h("div", { class: "ed-hint" }, "一覧から選んで、マップをクリックすると置けます（続けて何個でも）。\n置いた後は「選択・移動」で位置を直せます。"),
+        h("div", { class: "ed-hint" }, "一覧から選んで、マップをクリックすると置けます（続けて何個でも）。\n置く前に Q で右に90°、Shift+Q で左に90°回せます。置いた後は「選択・移動」で位置・向きを直せます。\n※当たり判定の四角は回転しません。"),
       ),
     );
     this.buildCategoryTabs();
@@ -348,6 +352,26 @@ export class EditorPanel {
     ];
   }
 
+  /** 「物を置く」の向き指定（左回り・右回り・角度の数値）。向きが変わるたびに作り直す */
+  refreshRotation(): void {
+    const ed = this.ed;
+    this.rotateBox.replaceChildren(
+      h(
+        "div",
+        { class: "ed-row" },
+        h("button", { title: "Shift+Q", onclick: () => ed.rotatePlace(-90) }, "↺ 左90°"),
+        h("button", { title: "Q", onclick: () => ed.rotatePlace(90) }, "↻ 右90°"),
+        h("button", { onclick: () => ed.setPlaceAngle(0) }, "0°に戻す"),
+      ),
+      h(
+        "label",
+        { class: "ed-field" },
+        h("span", {}, "向き（度）"),
+        h("input", { type: "number", value: ed.placeAngle, step: 15, onchange: (ev: Event) => ed.setPlaceAngle(Number((ev.target as HTMLInputElement).value)) }),
+      ),
+    );
+  }
+
   refreshInspector(): void {
     const e = this.ed.selected;
     const box = this.inspector;
@@ -415,6 +439,13 @@ export class EditorPanel {
             num("足元y", o.by, (v) => this.ed.editSelected("足元y", (t) => (t.by = v), false)),
           )
         : h("div", { class: "ed-hint" }, "（判定なし。歩いて通り抜けられます）"),
+      h(
+        "div",
+        { class: "ed-row" },
+        h("button", { title: "Shift+Q", onclick: () => this.ed.rotateSelected(-90) }, "↺ 左90°"),
+        h("button", { title: "Q", onclick: () => this.ed.rotateSelected(90) }, "↻ 右90° (Q)"),
+        num("角度", o.angle ?? 0, (v) => this.ed.setSelectedAngle(v), 15),
+      ),
       h("div", { class: "ed-row" }, h("button", { onclick: () => this.ed.flipSelected() }, "左右反転 (F)"), h("button", { onclick: () => this.ed.duplicateSelected() }, "複製 (N)"), h("button", { class: "danger", onclick: () => this.ed.deleteSelected() }, "削除 (Del)")),
     );
   }

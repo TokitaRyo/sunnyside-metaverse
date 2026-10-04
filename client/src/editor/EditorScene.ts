@@ -57,6 +57,8 @@ export class EditorScene extends WorldScene {
   placeSprite = "";
   /** 置くとき、ゴブリン等には足元の影も一緒に置く */
   placeShadow = true;
+  /** 「物を置く」で次に置く物の向き（度・時計回り。0〜359） */
+  placeAngle = 0;
   /** 「パーツ」ツールで選択中のプレハブ */
   prefabId: string = PREFABS[0]?.id ?? "";
   /** 「ワープ」ツールで、これから塗るマスに設定する移動先（タイル座標） */
@@ -209,6 +211,7 @@ export class EditorScene extends WorldScene {
       else if (e.code === "Escape" && this.tool === "stamp") this.setTool("rect");
       else if (e.code === "Delete" || e.code === "Backspace") this.deleteSelected();
       else if (e.code === "KeyF") this.flipSelected();
+      else if (e.code === "KeyQ") this.rotateByKey(e.shiftKey ? -90 : 90);
       else if (e.code === "KeyN") this.duplicateSelected();
       else if (e.code.startsWith("Arrow") && this.selectedGroup && this.tool === "select") {
         e.preventDefault();
@@ -546,6 +549,38 @@ export class EditorScene extends WorldScene {
     this.panel.refreshInspector();
   }
 
+  /** Q: 置く前ならこれから置く物を、選択中ならその物を回す（Shift+Qで逆回り） */
+  private rotateByKey(delta: number): void {
+    if (this.tool === "object") this.rotatePlace(delta);
+    else if (this.selected) this.rotateSelected(delta);
+  }
+
+  /** これから置く物の向きを変える（delta=度。絶対値にしたいときは setPlaceAngle） */
+  rotatePlace(delta: number): void {
+    this.setPlaceAngle(this.placeAngle + delta);
+  }
+
+  setPlaceAngle(deg: number): void {
+    this.placeAngle = ((Math.round(deg) % 360) + 360) % 360;
+    this.updateGhost();
+    this.panel.refreshRotation();
+  }
+
+  /** 選択中の物を delta 度回す（角度0に戻ったらデータから angle を消す） */
+  rotateSelected(delta: number): void {
+    const e = this.selected;
+    if (!e) return;
+    this.setSelectedAngle(((e.o.angle ?? 0) + delta));
+  }
+
+  setSelectedAngle(deg: number): void {
+    const a = ((Math.round(deg) % 360) + 360) % 360;
+    this.editSelected("回転", (o) => {
+      if (a) o.angle = a;
+      else delete o.angle;
+    }, false);
+  }
+
   flipSelected(): void {
     this.editSelected("左右反転", (o) => {
       o.sx = -(o.sx ?? 1);
@@ -604,6 +639,7 @@ export class EditorScene extends WorldScene {
     const def = map.sprites?.[this.placeSprite];
     if (!def) return;
     const main = makeObject(this.placeSprite, def, x, y);
+    if (this.placeAngle) main.angle = this.placeAngle;
     const datas = [main];
     // ゴブリン・スケルトン・人間は足元に影の物も一緒に置く（動物は絵に影が含まれるので不要）
     const shadow = this.placeShadow ? this.makeShadowFor(main) : null;
@@ -1333,7 +1369,7 @@ export class EditorScene extends WorldScene {
     if (this.ghost.texture.key !== objectKey(this.placeSprite)) this.ghost.setTexture(objectKey(this.placeSprite), 0);
     const w = this.world(this.input.activePointer);
     const gx = Math.round(w.x), gy = Math.round(w.y);
-    this.ghost.setVisible(true).setOrigin(def.ox / def.fw, def.oy / def.fh).setPosition(gx, gy);
+    this.ghost.setVisible(true).setOrigin(def.ox / def.fw, def.oy / def.fh).setPosition(gx, gy).setAngle(this.placeAngle);
 
     // 影も置く設定なら、影の位置にも薄いプレビューを出す
     const main = makeObject(this.placeSprite, def, gx, gy);
