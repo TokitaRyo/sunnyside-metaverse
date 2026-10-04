@@ -94,20 +94,6 @@ export interface MapSpriteDef {
   oy: number;
   /** true = エディタで置くための見本(カタログ)。配置物で使われていない限り、ゲームは読み込まない */
   catalog?: boolean;
-  /**
-   * タイルから組み立てる絵（file は使わず、起動時にタイルセットの絵を貼り合わせて1枚のテクスチャを作る）。
-   * 「物を置く」で、建物・木・柵などタイルだけで描かれていたものを1つの物として置くために使う。
-   */
-  tiles?: TileSpriteRecipe;
-}
-
-export interface TileSpriteRecipe {
-  /** 貼るタイル。x,y はスプライトの左上からのpx、id はそのタイルセットでのタイルID */
-  parts: { tileset: string; id: number; x: number; y: number }[];
-  /** 置いたときの当たり判定の初期値（幅,高さ px と、原点Xから判定の中心までのずれ px） */
-  hit?: { w: number; h: number; dx: number };
-  /** パーツ(プレハブ)由来の場合そのID。置くとき、パーツが持つ付属の物（煙など）も一緒に置く */
-  prefab?: string;
 }
 
 /** ピクセル座標に置く配置物。by=足元のY(前後判定用)。hit=当たり判定(幅,高さ px)、hx=その中心X */
