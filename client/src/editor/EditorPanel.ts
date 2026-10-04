@@ -1,5 +1,7 @@
-import { map, type ObjectDef } from "../config";
+import { map, type MapSpriteDef, type ObjectDef } from "../config";
 import { objectKey, tilesetKey } from "../game/assets";
+import { buildCropSprite, cropSpriteDef, cropSpriteName } from "../game/cropSprites";
+import { detectTileItems, type TileItem } from "./tileItems";
 import { defaultHit } from "./objectDefaults";
 import { CATEGORY_LABEL, CATEGORY_ORDER, categoryOf, hasShadow, isMobCategory, labelOf, sortNames, SHADOW_SPRITE, type Category } from "./mobCatalog";
 import { PREFABS, PREFAB_CATEGORY_LABEL, PREFAB_CATEGORY_ORDER } from "./prefabs";
@@ -59,6 +61,14 @@ export class EditorPanel {
   private shadowBox!: HTMLDivElement;
   private rotateBox!: HTMLDivElement;
   private keyItemBox!: HTMLDivElement;
+  /** 「タイルの絵」タブ（タイルセットから自動で見つけた1個ずつの絵） */
+  private tileView = false;
+  private tileCtl!: HTMLDivElement;
+  private tileTabBtn!: HTMLButtonElement;
+  private tileSetSel!: HTMLSelectElement;
+  private tileFilter: "all" | "s" | "m" | "l" = "all";
+  private tileFilterBtns = new Map<"all" | "s" | "m" | "l", HTMLButtonElement>();
+  private tileThumbBtns = new Map<string, HTMLButtonElement>();
   private catTabs = new Map<Category, HTMLButtonElement>();
   private thumbBtns = new Map<string, HTMLButtonElement>();
   private activeCat: Category = "goblin";
@@ -143,12 +153,29 @@ export class EditorPanel {
     this.shadowBox = h("div", {});
     this.rotateBox = h("div", {});
     this.refreshRotation();
+    this.tileSetSel = h("select", { onchange: () => this.renderTileGrid() }) as HTMLSelectElement;
+    for (const name of Object.keys(map.tilesets ?? {})) this.tileSetSel.append(h("option", { value: name }, `${name}（${map.tilesets![name].tileSize}px）`));
+    const filterRow = h("div", { class: "ed-cats" });
+    for (const [k, label] of [["all", "全部"], ["s", "小〜16px"], ["m", "中〜32px"], ["l", "大"]] as const) {
+      const b = h("button", { onclick: () => { this.tileFilter = k; this.renderTileGrid(); } }, `${label} `, h("small", {}, ""));
+      this.tileFilterBtns.set(k, b);
+      filterRow.append(b);
+    }
+    this.tileCtl = h(
+      "div",
+      {},
+      h("label", { class: "ed-field" }, h("span", {}, "どのタイルセットから探すか"), this.tileSetSel),
+      filterRow,
+      h("div", { class: "ed-hint" }, "タイルセット画像に描かれている果物・野菜・家具・鉱石・木などを、1個ずつ自動で見つけて並べています。選んでマップをクリックすると、普通の物と同じように置けます。"),
+    );
+    this.tileCtl.hidden = true;
     this.sections.set(
       "object",
       h(
         "div",
         {},
         this.tabRow,
+        this.tileCtl,
         this.grid,
         h("div", { class: "ed-row" }, this.preview, this.pickedLabel),
         this.rotateBox,
@@ -417,6 +444,7 @@ export class EditorPanel {
         h("span", {}, "向き（度）"),
         h("input", { type: "number", value: ed.placeAngle, step: 15, onchange: (ev: Event) => ed.setPlaceAngle(Number((ev.target as HTMLInputElement).value)) }),
       ),
+      this.check("床に敷く（常にキャラより下。敷物など）", ed.placeFloor, (v) => (ed.placeFloor = v)),
     );
   }
 
@@ -564,6 +592,7 @@ export class EditorPanel {
   private categories(): Map<Category, string[]> {
     const by = new Map<Category, string[]>();
     for (const [name, def] of Object.entries(map.sprites ?? {})) {
+      if (def.crop) continue; // タイルセットからの切り出しは「タイルの絵」タブから選ぶ
       if (!this.ed.textures.exists(objectKey(name))) continue; // 読み込まれていない(エディタ外)ものは出さない
       const c = categoryOf(name, def);
       if (!by.has(c)) by.set(c, []);
@@ -584,11 +613,86 @@ export class EditorPanel {
       this.catTabs.set(c, b);
       this.tabRow.append(b);
     }
+    // タイルセットに描かれていた果物・置物などを1個ずつ選ぶタブ
+    this.tileTabBtn = h("button", { onclick: () => this.setTileView() }, "タイルの絵 ");
+    this.tabRow.append(this.tileTabBtn);
     const cur = map.sprites?.[this.ed.placeSprite];
-    this.setCategory(cur ? categoryOf(this.ed.placeSprite, cur) : "goblin");
+    this.setCategory(cur && !cur.crop ? categoryOf(this.ed.placeSprite, cur) : "goblin");
+  }
+
+  // ---------------------------------------------------------------- タイルの絵（タイルセットから自動で見つけた1個ずつの絵）
+  private setTileView(): void {
+    this.tileView = true;
+    for (const b of this.catTabs.values()) b.classList.remove("on");
+    this.tileTabBtn.classList.add("on");
+    this.tileCtl.hidden = false;
+    this.renderTileGrid();
+  }
+
+  private renderTileGrid(): void {
+    const set = this.tileSetSel.value || Object.keys(map.tilesets ?? {})[0];
+    const all = detectTileItems(this.ed.textures, set);
+    const side = (t: TileItem) => Math.max(t.w, t.h);
+    const bySize = { all: all, s: all.filter((t) => side(t) <= 16), m: all.filter((t) => side(t) > 16 && side(t) <= 32), l: all.filter((t) => side(t) > 32) };
+    for (const [k, b] of this.tileFilterBtns) {
+      b.classList.toggle("on", k === this.tileFilter);
+      b.querySelector("small")!.textContent = String(bySize[k].length);
+    }
+    this.tileTabBtn.replaceChildren("タイルの絵 ", h("small", {}, String(all.length)));
+    const img = this.ed.textures.get(tilesetKey(set)).getSourceImage() as HTMLImageElement;
+    this.grid.replaceChildren();
+    this.tileThumbBtns.clear();
+    for (const t of bySize[this.tileFilter]) {
+      const cv = h("canvas", { width: 44, height: 44 });
+      const ctx = cv.getContext("2d")!;
+      ctx.imageSmoothingEnabled = false;
+      const s = Math.min(44 / t.w, 44 / t.h, 4);
+      ctx.drawImage(img, t.x, t.y, t.w, t.h, (44 - t.w * s) / 2, (44 - t.h * s) / 2, t.w * s, t.h * s);
+      const name = cropSpriteName(t);
+      const b = h("button", { class: "ed-thumb", title: `${t.w}×${t.h}px ／ ${set} (${t.x},${t.y})`, onclick: () => this.pickCrop(t) }, cv, h("span", {}, `${t.w}×${t.h}`));
+      b.classList.toggle("on", name === this.ed.placeSprite);
+      this.tileThumbBtns.set(name, b);
+      this.grid.append(b);
+    }
+    if (!this.grid.childElementCount) this.grid.append(h("div", { class: "ed-hint" }, "この大きさの絵は見つかりませんでした。"));
+  }
+
+  /** タイルセットから見つけた絵を「次に置く物」に選ぶ（定義と絵が無ければ作る） */
+  private pickCrop(t: TileItem): void {
+    const name = cropSpriteName(t);
+    const defs = (map.sprites ??= {});
+    const def = (defs[name] ??= cropSpriteDef(t));
+    if (!buildCropSprite(this.ed.textures, name, def)) {
+      this.status("この絵を作れませんでした（タイルセットが読み込まれていません）", true);
+      return;
+    }
+    this.ed.placeSprite = name;
+    this.ed.placeFloor = false;
+    this.ed.persist();
+    for (const [n, b] of this.tileThumbBtns) b.classList.toggle("on", n === name);
+    this.drawPreview(name, def);
+    this.pickedLabel.replaceChildren(h("b", {}, "タイルの絵"), h("small", {}, `${t.tileset} (${t.x},${t.y}) ／ ${t.w}×${t.h}px`));
+    this.shadowBox.replaceChildren(h("div", { class: "ed-hint" }, "足元（絵の下の中央）がクリックした位置になります。敷物など床に敷く物は下の「床に敷く」を入れてください。"));
+    this.refreshRotation();
+  }
+
+  /** 選んだ物の見本（プレビュー）を描く */
+  private drawPreview(name: string, def: MapSpriteDef): void {
+    const cv = this.preview;
+    const img = this.ed.textures.get(objectKey(name)).getSourceImage() as HTMLImageElement;
+    const scale = Math.max(1, Math.min(8, Math.floor(96 / Math.max(def.fw, def.fh))));
+    cv.width = def.fw * scale;
+    cv.height = def.fh * scale;
+    const ctx = cv.getContext("2d")!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, def.fw, def.fh, 0, 0, cv.width, cv.height);
   }
 
   private setCategory(c: Category): void {
+    this.tileView = false;
+    this.tileCtl.hidden = true;
+    this.tileTabBtn?.classList.remove("on");
     this.activeCat = c;
     for (const [k, b] of this.catTabs) b.classList.toggle("on", k === c);
     const names = this.categories().get(c) ?? [];
@@ -622,21 +726,23 @@ export class EditorPanel {
 
   private pickSprite(name: string): void {
     this.ed.placeSprite = name;
+    this.ed.placeFloor = false;
     this.ed.persist();
     const def = map.sprites?.[name];
     if (!def) return;
+    if (def.crop) {
+      // 前回選んだタイルの絵が復元されたとき。一覧には出ないので、見本だけ更新する
+      this.drawPreview(name, def);
+      this.pickedLabel.replaceChildren(h("b", {}, "タイルの絵"), h("small", {}, `${def.crop.tileset} (${def.crop.x},${def.crop.y}) ／ ${def.fw}×${def.fh}px`));
+      this.shadowBox.replaceChildren();
+      this.refreshRotation();
+      return;
+    }
     const c = categoryOf(name, def);
-    if (c !== this.activeCat) this.setCategory(c);
+    if (c !== this.activeCat || this.tileView) this.setCategory(c);
     for (const [n, b] of this.thumbBtns) b.classList.toggle("on", n === name);
-    const cv = this.preview;
-    const img = this.ed.textures.get(objectKey(name)).getSourceImage() as HTMLImageElement;
-    const scale = Math.max(1, Math.floor(96 / Math.max(def.fw, def.fh)));
-    cv.width = def.fw * scale;
-    cv.height = def.fh * scale;
-    const ctx = cv.getContext("2d")!;
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, cv.width, cv.height);
-    ctx.drawImage(img, 0, 0, def.fw, def.fh, 0, 0, cv.width, cv.height);
+    this.drawPreview(name, def);
+    this.refreshRotation();
     this.pickedLabel.replaceChildren(h("b", {}, labelOf(name, c)), h("small", {}, `${CATEGORY_LABEL[c]} ／ ${name}`));
     // 影: ゴブリン・スケルトン・人間は別の物として置く。動物は絵に含まれるので不要
     this.shadowBox.replaceChildren(

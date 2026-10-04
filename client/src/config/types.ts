@@ -94,6 +94,11 @@ export interface MapSpriteDef {
   oy: number;
   /** true = エディタで置くための見本(カタログ)。配置物で使われていない限り、ゲームは読み込まない */
   catalog?: boolean;
+  /**
+   * タイルセット画像の一部を切り出した絵（file は使わない）。タイルセットにだけ描かれていた果物・置物などを、
+   * 「物を置く」で1個ずつ置くために使う。起動時にタイルセット画像から1枚のテクスチャを作る。
+   */
+  crop?: { tileset: string; x: number; y: number; w: number; h: number };
 }
 
 /** ピクセル座標に置く配置物。by=足元のY(前後判定用)。hit=当たり判定(幅,高さ px)、hx=その中心X */

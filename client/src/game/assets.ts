@@ -43,6 +43,7 @@ export function queueAssets(load: Phaser.Loader.LoaderPlugin): void {
     const used = new Set((map.objects ?? []).map((o) => o.sprite));
     const editing = import.meta.env.DEV && new URLSearchParams(location.search).has("edit");
     for (const [name, sp] of Object.entries(map.sprites ?? {})) {
+      if (sp.crop) continue; // タイルセットの切り出しは、読み込み後に PreloadScene で作る
       if (sp.catalog && !used.has(name) && !editing) continue;
       load.spritesheet(objectKey(name), sp.file, { frameWidth: sp.fw, frameHeight: sp.fh });
     }

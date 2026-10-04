@@ -61,6 +61,8 @@ export class EditorScene extends WorldScene {
   placeShadow = true;
   /** 「物を置く」で次に置く物の向き（度・時計回り。0〜359） */
   placeAngle = 0;
+  /** 「物を置く」で、置く物を「常にキャラより下」(床に敷く扱い。敷物など)にする */
+  placeFloor = false;
   /** 「パーツ」ツールで選択中のプレハブ */
   prefabId: string = PREFABS[0]?.id ?? "";
   /** 「ワープ」ツールで、これから塗るマスに設定する移動先（タイル座標） */
@@ -784,6 +786,7 @@ export class EditorScene extends WorldScene {
     if (!def) return;
     const main = makeObject(this.placeSprite, def, x, y);
     if (this.placeAngle) main.angle = this.placeAngle;
+    if (this.placeFloor) main.sort = "floor";
     const datas = [main];
     // ゴブリン・スケルトン・人間は足元に影の物も一緒に置く（動物は絵に影が含まれるので不要）
     const shadow = this.placeShadow ? this.makeShadowFor(main) : null;
@@ -1356,6 +1359,16 @@ export class EditorScene extends WorldScene {
   }
 
   // ---------------------------------------------------------------- 保存
+  /**
+   * 保存用のJSON。タイルセットから切り出した絵のうち、まだ1つも置いていない見本（一覧で選んだだけのもの）は含めない
+   * （選ぶたびに map.json が膨らまないように）。メモリ上の map は触らない。
+   */
+  private serialize(): string {
+    const used = new Set((map.objects ?? []).map((o) => o.sprite));
+    const kept = Object.fromEntries(Object.entries(map.sprites ?? {}).filter(([n, d]) => !(d.crop && d.catalog && !used.has(n))));
+    return JSON.stringify({ ...map, sprites: kept });
+  }
+
   async save(): Promise<void> {
     const errors = validateMap(map, sprites, tileset);
     if (errors.length) {
@@ -1363,7 +1376,7 @@ export class EditorScene extends WorldScene {
       return;
     }
     try {
-      const res = await fetch("/__editor/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(map) });
+      const res = await fetch("/__editor/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: this.serialize() });
       const text = await res.text();
       if (!res.ok) throw new Error(text);
       this.hasUnsaved = false;
@@ -1376,7 +1389,7 @@ export class EditorScene extends WorldScene {
 
   /** ファイルとしてダウンロード（開発サーバー以外で編集したときなど） */
   download(): void {
-    const blob = new Blob([JSON.stringify(map)], { type: "application/json" });
+    const blob = new Blob([this.serialize()], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "map.json";

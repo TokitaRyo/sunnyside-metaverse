@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { createAnimations, queueAssets } from "../game/assets";
+import { buildCropSprites } from "../game/cropSprites";
 
 export const EV_PROGRESS = "assets-progress";
 export const EV_READY = "assets-ready";
@@ -25,6 +26,7 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create(): void {
+    buildCropSprites(this.textures, import.meta.env.DEV && new URLSearchParams(location.search).has("edit"));
     createAnimations(this);
     this.game.events.emit(EV_READY);
   }
