@@ -30,6 +30,7 @@ export interface PrefabObject {
   hit?: [number, number];
   /** hx(当たり判定中心Xのオフセット, px) */
   hxOff?: number;
+  npc?: import("../config").NpcDef;
 }
 
 export interface Prefab {

@@ -97,6 +97,13 @@ export interface MapSpriteDef {
 }
 
 /** ピクセル座標に置く配置物。by=足元のY(前後判定用)。hit=当たり判定(幅,高さ px)、hx=その中心X */
+/** 話しかけられる物（NPC）のセリフ。lines の1要素が1ページ */
+export interface NpcDef {
+  /** 会話ウィンドウに出す名前（省略可） */
+  name?: string;
+  lines: string[];
+}
+
 export interface ObjectDef {
   sprite: string;
   x: number;
@@ -110,6 +117,8 @@ export interface ObjectDef {
   speed?: number;
   hit?: [number, number];
   hx?: number;
+  /** あれば、近づくと「話す」が選べる */
+  npc?: NpcDef;
   /** 所属する GroupDef.id（グループの一部として、まとめて選択・移動・削除される） */
   group?: string;
 }

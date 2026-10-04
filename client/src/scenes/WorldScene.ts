@@ -18,6 +18,7 @@ import { Character } from "../game/Character";
 import type { InputState } from "../game/InputState";
 import { Network } from "../net/Network";
 import { Hud } from "../ui/Hud";
+import { Talk } from "../ui/Talk";
 
 export const EV_JOINED = "joined";
 export const EV_JOIN_FAILED = "join-failed";
@@ -47,6 +48,10 @@ const WARP_TIPS = [
   "雲の上の島は、みんなの待ち合わせ場所",
   "Shift を押しながら動くと走れます",
 ];
+
+/** NPCの足元からこの距離(px)以内に入ると「話す」が選べる。会話中にこれ+TALK_LEAVE_EXTRA 以上離れたら閉じる */
+const TALK_RANGE = 40;
+const TALK_LEAVE_EXTRA = 24;
 
 const DEPTH_GROUND = -2;
 const DEPTH_DECO = -1;
@@ -93,6 +98,11 @@ export class WorldScene extends Phaser.Scene {
   private init0!: WorldInit;
   private net = new Network();
   private hud!: Hud;
+  private talk?: Talk;
+  /** 話しかけられる位置にいる相手（いなければ null） */
+  private npcNear: ObjectEntry | null = null;
+  /** 会話中の相手 */
+  private npcTalking: ObjectEntry | null = null;
   private me?: Character;
   private myId = "";
   private remotes = new Map<string, Remote>();
@@ -126,6 +136,9 @@ export class WorldScene extends Phaser.Scene {
     this.emote = null;
     this.lost = false;
     this.warping = false;
+    this.talk = undefined;
+    this.npcNear = null;
+    this.npcTalking = null;
     this.sent = { x: NaN, y: NaN, flipX: false, action: "" };
   }
 
@@ -297,6 +310,9 @@ export class WorldScene extends Phaser.Scene {
       onSend: (text) => this.net.sendChat(text),
       onEmote: (id) => this.triggerEmote(id),
     });
+    this.talk = new Talk({ onPrompt: () => this.onTalkKey(), onAdvance: () => this.onTalkKey() });
+    input.onAction = () => this.onTalkKey();
+    input.onEscape = () => this.endTalk();
     // タブを閉じたら即座にキャラを消す（consented leave。しないと再接続待ちの間ゴーストが残る）。
     // ページで1回だけ張る（マップエディタと行き来して何度も接続しても、閉じるときに1回leaveすれば十分）
     if (!this.pagehideBound) {
@@ -313,6 +329,9 @@ export class WorldScene extends Phaser.Scene {
         this.lost = true;
         this.net.leave();
       }
+      this.endTalk();
+      input.onAction = undefined;
+      input.onEscape = undefined;
       document.getElementById("hud")!.hidden = true;
       document.getElementById("labels")!.replaceChildren();
     });
@@ -328,6 +347,61 @@ export class WorldScene extends Phaser.Scene {
       const name = map.mobs[i].name;
       if (name) this.hud.addTag(`mob:${i}`, name, "mob");
     });
+    // 話しかけられる物には 💬 の目印（名前があれば名前も）。位置は動かないので1回だけ置く
+    this.objectEntries.forEach((e, i) => {
+      if (!e.o.npc) return;
+      this.hud.addTag(`npc:${i}`, `💬${e.o.npc.name ? " " + e.o.npc.name : ""}`, "mob");
+    });
+  }
+
+  // ---------------------------------------------------------------- NPCと会話
+  private npcEntries(): ObjectEntry[] {
+    return this.objectEntries.filter((e) => e.o.npc);
+  }
+
+  /** 足元 (x,y) から TALK_RANGE 以内で一番近いNPC */
+  private nearestNpc(x: number, y: number): ObjectEntry | null {
+    let best: ObjectEntry | null = null;
+    let bestD = TALK_RANGE;
+    for (const e of this.npcEntries()) {
+      const d = Math.hypot(x - e.o.x, y - e.o.by);
+      if (d <= bestD) {
+        best = e;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  /** E / Space / 「話す」ボタン / 会話ウィンドウのクリック */
+  private onTalkKey(): void {
+    if (!this.scene.isActive() || !this.me || !this.talk || this.warping) return;
+    if (this.npcTalking) {
+      this.talk.advance();
+      if (!this.talk.isOpen) this.npcTalking = null;
+    } else if (this.npcNear?.o.npc) {
+      this.npcTalking = this.npcNear;
+      this.init0.input.clear();
+      this.talk.open(this.npcNear.o.npc);
+    }
+  }
+
+  private endTalk(): void {
+    this.npcTalking = null;
+    this.talk?.close();
+  }
+
+  /** 毎フレーム: 近くのNPCを探して「話す」ボタンを出し、会話中に離れすぎたら閉じる */
+  private updateTalk(): void {
+    const me = this.me;
+    if (!me || !this.talk) return;
+    if (this.npcTalking) {
+      const o = this.npcTalking.o;
+      if (Math.hypot(me.x - o.x, me.y - o.by) > TALK_RANGE + TALK_LEAVE_EXTRA) this.endTalk();
+      return;
+    }
+    this.npcNear = this.nearestNpc(me.x, me.y);
+    this.talk.setPrompt(this.npcNear ? (this.npcNear.o.npc!.name ?? "") : null);
   }
 
   private nameOf(id: string): string {
@@ -435,6 +509,8 @@ export class WorldScene extends Phaser.Scene {
   private playWarp(x: number, y: number): void {
     if (this.warping) return;
     this.warping = true;
+    this.endTalk();
+    this.talk?.setPrompt(null);
     this.init0.input.clear();
     this.me?.play("idle");
     const fade = document.getElementById("warp-fade");
@@ -502,7 +578,9 @@ export class WorldScene extends Phaser.Scene {
   private updateLocal(dt: number, deltaMs: number): void {
     const me = this.me!;
     const input = this.init0.input;
-    const v = input.vector;
+    this.updateTalk();
+    // 会話中はその場で立ち止まる
+    const v = this.npcTalking ? { x: 0, y: 0 } : input.vector;
     const moving = v.x !== 0 || v.y !== 0;
 
     // 移動入力でエモートは即キャンセル
@@ -583,5 +661,8 @@ export class WorldScene extends Phaser.Scene {
     if (this.me) place(this.myId, this.me.x, this.me.y);
     for (const [id, r] of this.remotes) place(id, r.char.x, r.char.y);
     this.mobs.forEach((c, i) => place(`mob:${i}`, c.x, c.y));
+    this.objectEntries.forEach((e, i) => {
+      if (e.o.npc) place(`npc:${i}`, e.o.x, e.o.by);
+    });
   }
 }

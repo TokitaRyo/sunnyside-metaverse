@@ -9,6 +9,9 @@ export class InputState {
   private pad = { up: false, down: false, left: false, right: false, run: false };
   onEmoteKey?: (index: number) => void;
   onEnter?: () => void;
+  /** E / Space（話す・会話を進める） */
+  onAction?: () => void;
+  onEscape?: () => void;
 
   constructor() {
     window.addEventListener("keydown", this.onKeyDown);
@@ -41,6 +44,15 @@ export class InputState {
     }
     if (e.repeat) {
       if (this.isGameKey(e.code)) e.preventDefault();
+      return;
+    }
+    if (e.code === "KeyE" || e.code === "Space") {
+      e.preventDefault();
+      this.onAction?.();
+      return;
+    }
+    if (e.code === "Escape") {
+      this.onEscape?.();
       return;
     }
     if (/^Digit[1-9]$/.test(e.code)) {

@@ -192,6 +192,51 @@ html, body {
 }
 #emote-bar button:active, #emote-bar button.on { background: var(--sun); }
 
+/* NPCとの会話: 近づくと出る「話す」ボタンと、会話ウィンドウ */
+#talk-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  height: 44px;
+  padding: 0 18px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--sun);
+  border: 2px solid rgba(20, 30, 15, 0.7);
+  border-radius: 12px;
+  box-shadow: 0 3px 0 var(--shadow);
+  cursor: pointer;
+  animation: pop 0.14s ease-out;
+}
+#talk-prompt[hidden], #talk-box[hidden] { display: none; }
+#talk-box {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 24px));
+  min-height: 108px;
+  padding: 12px 18px 22px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 4px 0 var(--shadow);
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+  z-index: 3;
+  animation: pop 0.14s ease-out;
+}
+#talk-name { font-size: 13px; font-weight: 800; color: var(--leaf-dark); margin-bottom: 4px; }
+#talk-name[hidden] { display: none; }
+#talk-text { font-size: 16px; line-height: 1.55; white-space: pre-wrap; word-break: break-all; min-height: 3.1em; }
+#talk-hint { position: absolute; right: 14px; bottom: 5px; font-size: 11px; font-weight: 700; opacity: 0.6; }
+.touch #talk-prompt { bottom: 190px; }
+.touch #talk-box { bottom: 16px; }
+
 /* バーチャルパッド: タッチ端末のみ表示（?pad=1 で強制表示） */
 #pad, #run-btn { display: none; }
 .touch #pad { display: grid; }
@@ -419,7 +464,7 @@ html, body {
 #ed button.on { background: #1f6f8b; border-color: #30e0ff; }
 #ed button.primary { background: #2f7d3e; border-color: #4cc55f; font-weight: 700; }
 #ed button.danger { background: #7a2b2b; border-color: #c65454; }
-#ed select, #ed input[type="number"] {
+#ed select, #ed input[type="number"], #ed input[type="text"], #ed textarea {
   width: 100%;
   padding: 4px 6px;
   color: #e6edf3;
@@ -442,6 +487,7 @@ html, body {
 #ed .ed-sel { margin: 4px 0 8px; display: grid; }
 #ed .ed-sel small { color: #93a4b5; }
 #ed .ed-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#ed textarea { font: inherit; resize: vertical; line-height: 1.4; }
 #ed .ed-field { display: grid; gap: 2px; margin: 4px 0; }
 #ed .ed-field span { color: #93a4b5; font-size: 11px; }
 #ed .ed-preview { display: block; margin: 6px 0; background: #2a3340; image-rendering: pixelated; border-radius: 6px; max-width: 100%; }

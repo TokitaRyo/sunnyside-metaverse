@@ -52,6 +52,9 @@ export function validateMap(map: MapJson, sprites: SpritesJson, tileset: Tileset
   });
   (map.objects ?? []).forEach((o, i) => {
     if (!map.sprites?.[o.sprite]) errors.push(`objects[${i}].sprite "${o.sprite}" は map.sprites にありません`);
+    if (o.npc && (!Array.isArray(o.npc.lines) || o.npc.lines.some((t) => typeof t !== "string"))) {
+      errors.push(`objects[${i}].npc.lines は文字列の配列にしてください`);
+    }
   });
 
   (map.warps ?? []).forEach((w, i) => {

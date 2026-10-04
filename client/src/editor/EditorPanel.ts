@@ -1,4 +1,4 @@
-import { map } from "../config";
+import { map, type ObjectDef } from "../config";
 import { objectKey, tilesetKey } from "../game/assets";
 import { defaultHit } from "./objectDefaults";
 import { CATEGORY_LABEL, CATEGORY_ORDER, categoryOf, hasShadow, isMobCategory, labelOf, sortNames, SHADOW_SPRITE, type Category } from "./mobCatalog";
@@ -439,6 +439,7 @@ export class EditorPanel {
             num("足元y", o.by, (v) => this.ed.editSelected("足元y", (t) => (t.by = v), false)),
           )
         : h("div", { class: "ed-hint" }, "（判定なし。歩いて通り抜けられます）"),
+      ...this.npcControls(o),
       h(
         "div",
         { class: "ed-row" },
@@ -448,6 +449,45 @@ export class EditorPanel {
       ),
       h("div", { class: "ed-row" }, h("button", { onclick: () => this.ed.flipSelected() }, "左右反転 (F)"), h("button", { onclick: () => this.ed.duplicateSelected() }, "複製 (N)"), h("button", { class: "danger", onclick: () => this.ed.deleteSelected() }, "削除 (Del)")),
     );
+  }
+
+  /** 会話（NPC）の編集。1行=1ページ。セリフを全部消すと話しかけられなくなる */
+  private npcControls(o: ObjectDef): HTMLElement[] {
+    const ed = this.ed;
+    const text = h("textarea", {
+      rows: 5,
+      maxlength: 600,
+      placeholder: "こんにちは！\nここはひろい島だよ。\n（1行が1ページになります）",
+      onchange: (ev: Event) => {
+        const lines = (ev.target as HTMLTextAreaElement).value.split("\n").map((s) => s.trim()).filter(Boolean);
+        ed.editSelected("セリフ", (t) => {
+          if (lines.length) t.npc = { ...(t.npc?.name ? { name: t.npc.name } : {}), lines };
+          else delete t.npc;
+        }, false);
+      },
+    }) as HTMLTextAreaElement;
+    text.value = (o.npc?.lines ?? []).join("\n");
+    const name = h("input", {
+      type: "text",
+      maxlength: 12,
+      value: o.npc?.name ?? "",
+      placeholder: "（なし）",
+      disabled: !o.npc,
+      onchange: (ev: Event) => {
+        const v = (ev.target as HTMLInputElement).value.trim();
+        ed.editSelected("NPCの名前", (t) => {
+          if (!t.npc) return;
+          if (v) t.npc.name = v;
+          else delete t.npc.name;
+        }, false);
+      },
+    });
+    return [
+      h("div", { class: "ed-title" }, o.npc ? "💬 会話（話しかけられる）" : "会話（NPC）"),
+      h("label", { class: "ed-field" }, h("span", {}, "セリフ"), text),
+      h("label", { class: "ed-field" }, h("span", {}, "名前"), name),
+      h("div", { class: "ed-hint" }, "セリフを入れると、プレイ中に近づいて E キー(または「話す」ボタン)で話せます。空にすると解除。名前はセリフを入れてから設定できます。"),
+    ];
   }
 
   /** 影まわりの操作（モブを選んだときだけ）。影そのものを選んだときは案内を出す */

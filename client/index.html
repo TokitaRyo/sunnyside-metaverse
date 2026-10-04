@@ -25,6 +25,12 @@
       <form id="chat-form" autocomplete="off">
         <input id="chat-input" type="text" maxlength="140" placeholder="Enter でチャット / Esc で戻る" enterkeyhint="send" />
       </form>
+      <button id="talk-prompt" type="button" hidden></button>
+      <div id="talk-box" hidden>
+        <div id="talk-name"></div>
+        <div id="talk-text"></div>
+        <div id="talk-hint"></div>
+      </div>
       <div id="emote-bar"></div>
       <div id="pad" aria-hidden="true">
         <button data-pad="up" class="pad-up"><img src="assets/ui/arrow_up.png" alt="上" /></button>
@@ -57,7 +63,7 @@
         <button id="join-btn" type="submit" disabled>読み込み中…</button>
         <div class="bar"><i id="load-bar"></i></div>
         <p id="join-error" class="error" hidden></p>
-        <p class="hint">移動: WASD / 矢印キー ・ 走る: Shift ・ チャット: Enter ・ エモート: 1〜6</p>
+        <p class="hint">移動: WASD / 矢印キー ・ 走る: Shift ・ チャット: Enter ・ エモート: 1〜6 ・ 話す: E</p>
       </form>
     </div>
 

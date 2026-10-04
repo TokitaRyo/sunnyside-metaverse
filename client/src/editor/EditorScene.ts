@@ -700,6 +700,7 @@ export class EditorScene extends WorldScene {
       if (o.speed !== undefined) data.speed = o.speed;
       if (o.hit !== undefined) data.hit = o.hit;
       if (o.hxOff !== undefined) data.hx = originPx.x + o.hxOff;
+      if (o.npc) data.npc = structuredClone(o.npc);
       return data;
     });
 
@@ -797,6 +798,7 @@ export class EditorScene extends WorldScene {
       if (o.speed !== undefined) rec.speed = o.speed;
       if (o.hit !== undefined) rec.hit = o.hit;
       if (o.hx !== undefined) rec.hxOff = o.hx - originPx.x;
+      if (o.npc) rec.npc = structuredClone(o.npc);
       objects.push(rec);
     }
     this.clipboard = { id: "clipboard", label: "コピーした範囲", category: "building", w: r.w, h: r.h, tiles, collision, objects };
@@ -1262,6 +1264,18 @@ export class EditorScene extends WorldScene {
     // マップの外周（常に表示。境界がどこか一目で分かるように）
     g.lineStyle(Math.max(2, 3 / this.zoom), 0xffe066, 0.9);
     g.strokeRect(0, 0, map.width * TS, map.height * TS);
+
+    // 話しかけられる物（セリフあり）に、頭上へ吹き出しの目印
+    if (this.show.objects) {
+      const r = Math.max(3, 5 / this.zoom);
+      g.fillStyle(0x7fe0ff, 0.95).lineStyle(Math.max(1, 1.5 / this.zoom), 0x0b3a52, 1);
+      for (const e of this.objectEntries) {
+        if (!e.o.npc) continue;
+        const def = map.sprites![e.o.sprite];
+        const top = e.o.y - def.oy * Math.abs(e.o.sy ?? 1);
+        g.fillCircle(e.o.x, top - r - 2, r).strokeCircle(e.o.x, top - r - 2, r);
+      }
+    }
 
     if (this.show.collision || this.tool === "collision") {
       g.fillStyle(0xff3030, 0.38);
