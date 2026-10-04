@@ -140,7 +140,15 @@ export class EditorScene extends WorldScene {
     this.restore();
     this.panel = new EditorPanel(this);
     // プレイ画面へ切り替わってこのシーンが止まったら、パネルのDOMと専用リスナーを片付ける
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.panel.destroy());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.panel.destroy();
+      // 選択・ドラッグ中の状態を持ち越さない（破棄済みのスプライトやタイルレイヤーを指したままになるため）
+      this.selected = null;
+      this.selectedGroup = null;
+      this.drag = null;
+      this.selRect = null;
+      this.keys.clear();
+    });
     if (!this.windowKeysBound) {
       this.windowKeysBound = true;
       window.addEventListener("keydown", (e) => this.onKey(e));
@@ -180,6 +188,9 @@ export class EditorScene extends WorldScene {
   }
 
   private onKey(e: KeyboardEvent): void {
+    // このリスナーは window にページで1回だけ張るので、プレイ画面に切り替えたあとも生きている。
+    // エディタが動いていない間は何もしない（矢印キーで選択中の島を動かしたり、Deleteで消したりしてしまう）
+    if (!this.scene.isActive()) return;
     if (this.typing()) return;
     this.keys.add(e.code);
     const ctrl = e.ctrlKey || e.metaKey;
