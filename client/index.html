@@ -25,6 +25,14 @@
       <form id="chat-form" autocomplete="off">
         <input id="chat-input" type="text" maxlength="140" placeholder="Enter でチャット / Esc で戻る" enterkeyhint="send" />
       </form>
+      <button id="stamp-btn" type="button" title="スタンプカード" hidden></button>
+      <div id="stamp-toast" hidden></div>
+      <div id="stamp-card" hidden role="dialog" aria-label="スタンプカード">
+        <div class="sc-head"><b>スタンプカード</b><span id="stamp-count"></span><button id="stamp-close" type="button" aria-label="とじる">✕</button></div>
+        <div id="stamp-done" hidden>🎉 コンプリート！ おめでとう！</div>
+        <div id="stamp-grid"></div>
+        <div class="sc-foot">各島にある星のアイテムの前に行くと、スタンプが押されます。<button id="stamp-reset" type="button">はじめから</button></div>
+      </div>
       <button id="talk-prompt" type="button" hidden></button>
       <div id="talk-box" hidden>
         <div id="talk-name"></div>

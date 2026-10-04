@@ -28,6 +28,7 @@ const TOOLS: [Tool, string, string][] = [
   ["rect", "範囲選択", "B"],
   ["erase", "消す", "E"],
   ["warp", "ワープ", "R"],
+  ["item", "キーアイテム", "K"],
   ["collision", "衝突", "C"],
   ["tile", "タイル", "T"],
   ["spawn", "スポーン", "P"],
@@ -57,6 +58,7 @@ export class EditorPanel {
   private pickedLabel!: HTMLDivElement;
   private shadowBox!: HTMLDivElement;
   private rotateBox!: HTMLDivElement;
+  private keyItemBox!: HTMLDivElement;
   private catTabs = new Map<Category, HTMLButtonElement>();
   private thumbBtns = new Map<string, HTMLButtonElement>();
   private activeCat: Category = "goblin";
@@ -205,6 +207,23 @@ export class EditorPanel {
       ),
     );
 
+    this.keyItemBox = h("div", {});
+    this.sections.set(
+      "item",
+      h(
+        "div",
+        {},
+        h("div", { class: "ed-row" }, h("button", { onclick: () => ed.autoPlaceKeyItems() }, "島ごとに自動配置（無い島だけ）")),
+        this.keyItemBox,
+        h(
+          "div",
+          { class: "ed-hint" },
+          "左クリック: そのマスの中央にキーアイテム(星)を置く。\n置いた星をドラッグ: マス単位で移動。右クリック: 削除。\n黄枠＝キーアイテムのあるマス、赤枠＝まだ無い島。島を動かすと、その上の星も一緒に動きます。\nプレイ中は星の前に行くと取得され、スタンプカードの枠が埋まります。",
+        ),
+      ),
+    );
+    this.refreshKeyItems();
+
     this.rectInfo = h("div", { class: "ed-hint" }, "ドラッグして範囲を選びます。");
     const rectButtons = h(
       "div",
@@ -350,6 +369,35 @@ export class EditorPanel {
       h("div", { class: "ed-hint" }, "ドラッグ／矢印キー(Shiftで4マス)で、タイル・当たり判定・付属の物をまとめて動かせます。"),
       h("div", { class: "ed-row" }, h("button", { class: "danger", onclick: () => ed.deleteGroup(g) }, "削除 (Del)")),
     ];
+  }
+
+  /** キーアイテムの一覧（個数・島との対応・名前の編集）。増減・移動のたびに作り直す */
+  refreshKeyItems(): void {
+    const ed = this.ed;
+    const items = map.keyItems ?? [];
+    const TS = map.tileSize;
+    const islands = (map.groups ?? []).filter((g) => g.label.includes("島"));
+    const missing = islands.filter(
+      (g) =>
+        !items.some((k) => {
+          const cx = Math.floor(k.x / TS), cy = Math.floor(k.y / TS);
+          return cx >= g.x && cx < g.x + g.w && cy >= g.y && cy < g.y + g.h;
+        }),
+    ).length;
+    const rows = items.map((k, i) =>
+      h(
+        "div",
+        { class: "ed-kirow" },
+        h("b", {}, String(i + 1)),
+        h("input", { type: "text", maxlength: 16, value: k.name ?? "", placeholder: `スタンプ ${i + 1}`, onchange: (e: Event) => ed.renameKeyItem(k, (e.target as HTMLInputElement).value) }),
+        h("button", { title: "ここへ移動", onclick: () => ed.focusKeyItem(k) }, "📍"),
+        h("button", { class: "danger", title: "削除", onclick: () => ed.deleteKeyItem(k) }, "✕"),
+      ),
+    );
+    this.keyItemBox.replaceChildren(
+      h("div", { class: "ed-sel" }, h("b", {}, `キーアイテム ${items.length} 個`), h("small", {}, `島 ${islands.length} 個 ／ キーアイテムの無い島 ${missing} 個`)),
+      h("div", { class: "ed-kilist" }, ...rows),
+    );
   }
 
   /** 「物を置く」の向き指定（左回り・右回り・角度の数値）。向きが変わるたびに作り直す */

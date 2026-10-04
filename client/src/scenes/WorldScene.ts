@@ -12,7 +12,10 @@ import {
   type EmoteId,
   type Player,
 } from "@metaverse/shared";
-import { map, sprites, type ObjectDef, type TileLayerDef } from "../config";
+import { map, sprites, type KeyItemDef, type ObjectDef, type TileLayerDef } from "../config";
+import { ensureStarTexture, STAR_TEX } from "../game/starIcon";
+import { stamps } from "../game/stamps";
+import { StampCard } from "../ui/StampCard";
 import { TILES_KEY, elementKey, objectKey, tilesetKey } from "../game/assets";
 import { Character } from "../game/Character";
 import type { InputState } from "../game/InputState";
@@ -52,6 +55,11 @@ const WARP_TIPS = [
 /** NPCの足元からこの距離(px)以内に入ると「話す」が選べる。会話中にこれ+TALK_LEAVE_EXTRA 以上離れたら閉じる */
 const TALK_RANGE = 40;
 const TALK_LEAVE_EXTRA = 24;
+
+/** キーアイテムの中心からこの距離(px)以内に足元が来ると取得する */
+const KEY_ITEM_RANGE = 18;
+/** 星を地面から浮かせる高さ(px) */
+const KEY_ITEM_LIFT = 7;
 
 const DEPTH_GROUND = -2;
 const DEPTH_DECO = -1;
@@ -94,11 +102,21 @@ export interface ObjectEntry {
   s: Phaser.GameObjects.Sprite;
 }
 
+/** キーアイテム1個ぶんの「データ」と「描画」（星・光・影） */
+export interface KeyItemEntry {
+  d: KeyItemDef;
+  star: Phaser.GameObjects.Image;
+  glow: Phaser.GameObjects.Arc;
+  shade: Phaser.GameObjects.Ellipse;
+}
+
 export class WorldScene extends Phaser.Scene {
   private init0!: WorldInit;
   private net = new Network();
   private hud!: Hud;
   private talk?: Talk;
+  private stampCard?: StampCard;
+  protected keyItemEntries: KeyItemEntry[] = [];
   /** 話しかけられる位置にいる相手（いなければ null） */
   private npcNear: ObjectEntry | null = null;
   /** 会話中の相手 */
@@ -137,6 +155,8 @@ export class WorldScene extends Phaser.Scene {
     this.lost = false;
     this.warping = false;
     this.talk = undefined;
+    this.stampCard = undefined;
+    this.keyItemEntries = [];
     this.npcNear = null;
     this.npcTalking = null;
     this.sent = { x: NaN, y: NaN, flipX: false, action: "" };
@@ -151,6 +171,7 @@ export class WorldScene extends Phaser.Scene {
     }
     this.buildProps();
     this.buildMobs();
+    this.buildKeyItems();
 
     const cam = this.cameras.main;
     cam.setBackgroundColor("#1b2a1a");
@@ -269,6 +290,66 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
+  // ---------------------------------------------------------------- キーアイテム（スタンプラリー）
+  /** マップ編集中は取得済みでも全部見せる（EditorScene が true にする） */
+  protected showCollectedKeyItems(): boolean {
+    return false;
+  }
+
+  private buildKeyItems(): void {
+    ensureStarTexture(this.textures);
+    for (const d of map.keyItems ?? []) {
+      if (this.showCollectedKeyItems() || !stamps.has(d.id)) this.keyItemEntries.push(this.spawnKeyItem(d));
+    }
+  }
+
+  protected spawnKeyItem(d: KeyItemDef): KeyItemEntry {
+    ensureStarTexture(this.textures);
+    const shade = this.add.ellipse(d.x, d.y + 3, 11, 4, 0x000000, 0.28).setDepth(DEPTH_FLOOR_OBJECTS);
+    const glow = this.add.circle(d.x, d.y, 9, 0xfff08a, 0.3).setDepth(d.y - 1);
+    const star = this.add.image(d.x, d.y - KEY_ITEM_LIFT, STAR_TEX).setDepth(d.y);
+    const e: KeyItemEntry = { d, star, glow, shade };
+    this.placeKeyItem(e, 0);
+    return e;
+  }
+
+  protected destroyKeyItem(e: KeyItemEntry): void {
+    e.star.destroy();
+    e.glow.destroy();
+    e.shade.destroy();
+  }
+
+  /** 位置・上下のゆれ・光の脈動（データの位置を毎フレーム反映するので、エディタで動かしても追従する） */
+  private placeKeyItem(e: KeyItemEntry, time: number): void {
+    const bob = Math.sin(time / 260 + e.d.x) * 2;
+    e.star.setPosition(e.d.x, e.d.y - KEY_ITEM_LIFT + bob).setDepth(e.d.y);
+    e.glow.setPosition(e.d.x, e.d.y - KEY_ITEM_LIFT / 2).setDepth(e.d.y - 1).setScale(1 + Math.sin(time / 400 + e.d.y) * 0.18);
+    e.shade.setPosition(e.d.x, e.d.y + 3).setScale(1 - bob * 0.04);
+  }
+
+  /** 足元が近づいたキーアイテムを取得する（プレイ中のみ） */
+  private updateKeyItems(): void {
+    const me = this.me;
+    if (!me) return;
+    for (const e of [...this.keyItemEntries]) {
+      if (Math.hypot(me.x - e.d.x, me.y - e.d.y) > KEY_ITEM_RANGE) continue;
+      this.keyItemEntries.splice(this.keyItemEntries.indexOf(e), 1);
+      if (stamps.add(e.d.id)) this.stampCard?.collected(e.d.name);
+      // 取ったら星がぽんと跳ねて消える
+      e.glow.destroy();
+      e.shade.destroy();
+      this.tweens.add({
+        targets: e.star,
+        y: e.star.y - 18,
+        scale: 2.2,
+        alpha: 0,
+        duration: 450,
+        ease: "Cubic.easeOut",
+        onComplete: () => e.star.destroy(),
+      });
+    }
+  }
+
   protected applyZoom(): void {
     const { width, height } = this.scale;
     // ピクセルアートが滲まないよう整数倍のみ。2〜3倍を基準にする（SPEC 4.4）
@@ -311,8 +392,12 @@ export class WorldScene extends Phaser.Scene {
       onEmote: (id) => this.triggerEmote(id),
     });
     this.talk = new Talk({ onPrompt: () => this.onTalkKey(), onAdvance: () => this.onTalkKey() });
+    this.stampCard = new StampCard();
     input.onAction = () => this.onTalkKey();
-    input.onEscape = () => this.endTalk();
+    input.onEscape = () => {
+      this.endTalk();
+      this.stampCard?.close();
+    };
     // タブを閉じたら即座にキャラを消す（consented leave。しないと再接続待ちの間ゴーストが残る）。
     // ページで1回だけ張る（マップエディタと行き来して何度も接続しても、閉じるときに1回leaveすれば十分）
     if (!this.pagehideBound) {
@@ -330,6 +415,7 @@ export class WorldScene extends Phaser.Scene {
         this.net.leave();
       }
       this.endTalk();
+      this.stampCard?.hide();
       input.onAction = undefined;
       input.onEscape = undefined;
       document.getElementById("hud")!.hidden = true;
@@ -572,6 +658,7 @@ export class WorldScene extends Phaser.Scene {
       char.syncDepth();
     }
 
+    for (const e of this.keyItemEntries) this.placeKeyItem(e, this.time.now);
     if (this.me && this.hud && !this.warping) this.updateLocal(dt, delta);
   }
 
@@ -579,6 +666,7 @@ export class WorldScene extends Phaser.Scene {
     const me = this.me!;
     const input = this.init0.input;
     this.updateTalk();
+    this.updateKeyItems();
     // 会話中はその場で立ち止まる
     const v = this.npcTalking ? { x: 0, y: 0 } : input.vector;
     const moving = v.x !== 0 || v.y !== 0;

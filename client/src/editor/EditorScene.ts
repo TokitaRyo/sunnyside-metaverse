@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { map, sprites, tileset, type GroupDef, type ObjectDef, type WarpDef } from "../config";
+import { map, sprites, tileset, type GroupDef, type KeyItemDef, type ObjectDef, type WarpDef } from "../config";
 import { validateMap } from "../config/validate";
 import { objectKey, tilesetKey } from "../game/assets";
 import { WorldScene, type ObjectEntry } from "../scenes/WorldScene";
@@ -9,7 +9,7 @@ import { SHADOW_OFFSET, SHADOW_SPRITE, categoryOf } from "./mobCatalog";
 import { PREFABS } from "./prefabs";
 import type { Prefab } from "./prefabTypes";
 
-export type Tool = "select" | "object" | "collision" | "tile" | "spawn" | "prefab" | "erase" | "warp" | "rect" | "stamp";
+export type Tool = "select" | "object" | "collision" | "tile" | "spawn" | "prefab" | "erase" | "warp" | "rect" | "stamp" | "item";
 /** タイルパレットで選んだ矩形（タイルセット上の座標） */
 export interface Stamp {
   tileset: string;
@@ -36,7 +36,9 @@ type Drag =
   | { kind: "paint"; erase: boolean; lx: number; ly: number }
   | { kind: "rectsel"; x0: number; y0: number }
   /** グループ(タイルで貼った物)をドラッグして動かす。ox,oy=ドラッグ開始時の左上マス、gx,gy=つかんだ位置の左上からのずれ(マス) */
-  | { kind: "group"; g: GroupDef; ox: number; oy: number; gx: number; gy: number };
+  | { kind: "group"; g: GroupDef; ox: number; oy: number; gx: number; gy: number }
+  /** キーアイテムをドラッグして動かす（マスの中央に吸着） */
+  | { kind: "keyitem"; d: KeyItemDef; ox: number; oy: number };
 
 const TS = map.tileSize;
 const ZOOMS = [0.5, 1, 2, 3, 4, 6];
@@ -206,7 +208,7 @@ export class EditorScene extends WorldScene {
       e.preventDefault();
       void this.save();
     } else if (!ctrl) {
-      const tools: Record<string, Tool> = { KeyV: "select", KeyO: "object", KeyC: "collision", KeyT: "tile", KeyP: "spawn", KeyG: "prefab", KeyE: "erase", KeyR: "warp", KeyB: "rect" };
+      const tools: Record<string, Tool> = { KeyV: "select", KeyO: "object", KeyC: "collision", KeyT: "tile", KeyP: "spawn", KeyG: "prefab", KeyE: "erase", KeyR: "warp", KeyB: "rect", KeyK: "item" };
       if (tools[e.code]) this.setTool(tools[e.code]);
       else if (e.code === "Escape" && this.tool === "stamp") this.setTool("rect");
       else if (e.code === "Delete" || e.code === "Backspace") this.deleteSelected();
@@ -242,7 +244,7 @@ export class EditorScene extends WorldScene {
   private onDown(p: Phaser.Input.Pointer): void {
     const w = this.world(p);
     const right = p.rightButtonDown();
-    if (p.middleButtonDown() || this.keys.has("Space") || (right && this.tool !== "collision" && this.tool !== "tile" && this.tool !== "warp")) {
+    if (p.middleButtonDown() || this.keys.has("Space") || (right && this.tool !== "collision" && this.tool !== "tile" && this.tool !== "warp" && this.tool !== "item")) {
       this.drag = { kind: "pan", sx: p.x, sy: p.y, cx: this.center.x, cy: this.center.y };
       return;
     }
@@ -300,7 +302,133 @@ export class EditorScene extends WorldScene {
       case "stamp":
         this.placeClipboard(w.x, w.y);
         break;
+      case "item": {
+        const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
+        const at = this.keyItemAt(cx, cy);
+        if (right) {
+          if (at) this.deleteKeyItem(at);
+        } else if (at) {
+          this.drag = { kind: "keyitem", d: at, ox: at.x, oy: at.y };
+        } else {
+          this.addKeyItemCmd(cx, cy);
+        }
+        break;
+      }
     }
+  }
+
+  // ---------------------------------------------------------------- キーアイテム（スタンプラリー）
+  protected showCollectedKeyItems(): boolean {
+    return true;
+  }
+
+  keyItemAt(cx: number, cy: number): KeyItemDef | null {
+    return (map.keyItems ?? []).find((k) => Math.floor(k.x / TS) === cx && Math.floor(k.y / TS) === cy) ?? null;
+  }
+
+  private newKeyItemId(): string {
+    return `k${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+  }
+
+  /** 履歴に積まずにデータと描画へ加える／外す（undo/redo から使う） */
+  private attachKeyItem(d: KeyItemDef, index?: number): void {
+    const list = (map.keyItems ??= []);
+    const at = index === undefined ? list.length : Math.min(index, list.length);
+    list.splice(at, 0, d);
+    this.keyItemEntries.splice(at, 0, this.spawnKeyItem(d));
+    this.panel.refreshKeyItems();
+  }
+
+  private detachKeyItem(d: KeyItemDef): number {
+    const i = (map.keyItems ?? []).indexOf(d);
+    if (i < 0) return -1;
+    map.keyItems!.splice(i, 1);
+    const ei = this.keyItemEntries.findIndex((e) => e.d === d);
+    if (ei >= 0) this.destroyKeyItem(this.keyItemEntries.splice(ei, 1)[0]);
+    this.panel.refreshKeyItems();
+    return i;
+  }
+
+  /** マス(cx,cy)の中央に新しいキーアイテムを置く */
+  private addKeyItemCmd(cx: number, cy: number, name?: string): KeyItemDef {
+    const d: KeyItemDef = { id: this.newKeyItemId(), x: cx * TS + TS / 2, y: cy * TS + TS / 2 };
+    if (name) d.name = name;
+    this.attachKeyItem(d);
+    const index = map.keyItems!.length - 1;
+    this.push({ label: "キーアイテムを置く", undo: () => this.detachKeyItem(d), redo: () => this.attachKeyItem(d, index) });
+    this.panel.status(`キーアイテムを置きました (${cx}, ${cy})。全部で ${map.keyItems!.length} 個`);
+    return d;
+  }
+
+  deleteKeyItem(d: KeyItemDef): void {
+    const index = this.detachKeyItem(d);
+    if (index < 0) return;
+    this.push({ label: "キーアイテムを削除", undo: () => this.attachKeyItem(d, index), redo: () => this.detachKeyItem(d) });
+    this.panel.status(`キーアイテムを削除しました。残り ${map.keyItems!.length} 個`);
+  }
+
+  renameKeyItem(d: KeyItemDef, name: string): void {
+    const before = d.name;
+    const next = name.trim() || undefined;
+    if (before === next) return;
+    const apply = (v: string | undefined) => {
+      if (v) d.name = v;
+      else delete d.name;
+      this.panel.refreshKeyItems();
+    };
+    apply(next);
+    this.push({ label: "キーアイテムの名前", undo: () => apply(before), redo: () => apply(next) });
+  }
+
+  /** 画面の中心をそのキーアイテムへ */
+  focusKeyItem(d: KeyItemDef): void {
+    this.center.x = d.x;
+    this.center.y = d.y;
+    this.persist();
+  }
+
+  /**
+   * 「島」グループ（ラベルに「島」を含む）のうち、キーアイテムがまだ無い島の中央に1個ずつ置く。
+   * 中央に一番近い「歩ける」マスを選ぶ（水や衝突マスは避ける）。名前は島のラベルになる。
+   */
+  autoPlaceKeyItems(): void {
+    const added: KeyItemDef[] = [];
+    let skipped = 0;
+    for (const g of map.groups ?? []) {
+      if (!g.label.includes("島")) continue;
+      const has = (map.keyItems ?? []).some((k) => {
+        const cx = Math.floor(k.x / TS), cy = Math.floor(k.y / TS);
+        return cx >= g.x && cx < g.x + g.w && cy >= g.y && cy < g.y + g.h;
+      });
+      if (has) continue;
+      const mx = g.x + g.w / 2, my = g.y + g.h / 2;
+      let best: { x: number; y: number; d: number } | null = null;
+      for (let y = g.y; y < g.y + g.h; y++) {
+        for (let x = g.x; x < g.x + g.w; x++) {
+          if (map.layers.collision[y]?.[x] !== 0) continue;
+          if (this.keyItemAt(x, y)) continue;
+          const dist = Math.hypot(x + 0.5 - mx, y + 0.5 - my);
+          if (!best || dist < best.d) best = { x, y, d: dist };
+        }
+      }
+      if (!best) {
+        skipped++;
+        continue;
+      }
+      added.push({ id: this.newKeyItemId(), x: best.x * TS + TS / 2, y: best.y * TS + TS / 2, name: g.label });
+    }
+    if (!added.length) {
+      this.panel.status(skipped ? `置ける場所が見つからない島が ${skipped} 個あります` : "キーアイテムの無い島はありません");
+      return;
+    }
+    const base = (map.keyItems ?? []).length;
+    added.forEach((d) => this.attachKeyItem(d));
+    this.push({
+      label: `キーアイテム ${added.length} 個を島に配置`,
+      undo: () => [...added].reverse().forEach((d) => this.detachKeyItem(d)),
+      redo: () => added.forEach((d, i) => this.attachKeyItem(d, base + i)),
+    });
+    this.panel.status(`${added.length} 個を各島に置きました。全部で ${map.keyItems!.length} 個${skipped ? `（置けない島 ${skipped} 個）` : ""}`);
   }
 
   private onMove(p: Phaser.Input.Pointer): void {
@@ -315,6 +443,13 @@ export class EditorScene extends WorldScene {
       if (nx !== d.g.x || ny !== d.g.y) {
         this.moveGroup(d.g, nx, ny);
         this.panel.refreshInspector();
+      }
+    } else if (d.kind === "keyitem") {
+      const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
+      const other = this.keyItemAt(cx, cy);
+      if (cx >= 0 && cy >= 0 && cx < map.width && cy < map.height && (!other || other === d.d)) {
+        d.d.x = cx * TS + TS / 2;
+        d.d.y = cy * TS + TS / 2;
       }
     } else if (d.kind === "rectsel") {
       const cx = Math.floor(w.x / TS), cy = Math.floor(w.y / TS);
@@ -351,6 +486,15 @@ export class EditorScene extends WorldScene {
           undo: () => this.moveGroup(g, from.x, from.y),
           redo: () => this.moveGroup(g, to.x, to.y),
         });
+      }
+    } else if (d.kind === "keyitem") {
+      const k = d.d, from = { x: d.ox, y: d.oy }, to = { x: k.x, y: k.y };
+      if (from.x !== to.x || from.y !== to.y) {
+        const set = (p: { x: number; y: number }) => {
+          k.x = p.x;
+          k.y = p.y;
+        };
+        this.push({ label: "キーアイテムを移動", undo: () => set(from), redo: () => set(to) });
       }
     } else if (d.kind === "obj") {
       this.pushObjectEdits(d.group.length > 1 ? "モブと影を移動" : "物を移動", d.befores);
@@ -859,11 +1003,20 @@ export class EditorScene extends WorldScene {
   moveGroup(g: GroupDef, nx: number, ny: number): void {
     const dx = nx - g.x, dy = ny - g.y;
     if (!dx && !dy) return;
+    // 島の上にあるキーアイテムも一緒に動かす（動かす前の範囲で判定）
+    const carried = (map.keyItems ?? []).filter((k) => {
+      const cx = Math.floor(k.x / TS), cy = Math.floor(k.y / TS);
+      return cx >= g.x && cx < g.x + g.w && cy >= g.y && cy < g.y + g.h;
+    });
     this.groupRemoveCells(g);
     g.x = nx;
     g.y = ny;
     this.groupApplyCells(g);
     for (const e of this.objectEntries) if (e.o.group === g.id) this.moveObjectBy(e, dx * TS, dy * TS);
+    for (const k of carried) {
+      k.x += dx * TS;
+      k.y += dy * TS;
+    }
   }
 
   /** 数値入力・矢印キー用: 履歴つきで動かす */
@@ -1264,6 +1417,21 @@ export class EditorScene extends WorldScene {
     // マップの外周（常に表示。境界がどこか一目で分かるように）
     g.lineStyle(Math.max(2, 3 / this.zoom), 0xffe066, 0.9);
     g.strokeRect(0, 0, map.width * TS, map.height * TS);
+
+    // キーアイテムツール: アイテムのマスを黄枠、キーアイテムの無い島を赤枠で示す
+    if (this.tool === "item") {
+      g.lineStyle(Math.max(1, 2 / this.zoom), 0xffd23f, 1);
+      for (const k of map.keyItems ?? []) g.strokeRect(Math.floor(k.x / TS) * TS, Math.floor(k.y / TS) * TS, TS, TS);
+      g.lineStyle(Math.max(1, 2 / this.zoom), 0xff5c5c, 0.9);
+      for (const gr of map.groups ?? []) {
+        if (!gr.label.includes("島")) continue;
+        const has = (map.keyItems ?? []).some((k) => {
+          const cx = Math.floor(k.x / TS), cy = Math.floor(k.y / TS);
+          return cx >= gr.x && cx < gr.x + gr.w && cy >= gr.y && cy < gr.y + gr.h;
+        });
+        if (!has) g.strokeRect(gr.x * TS, gr.y * TS, gr.w * TS, gr.h * TS);
+      }
+    }
 
     // 話しかけられる物（セリフあり）に、頭上へ吹き出しの目印
     if (this.show.objects) {

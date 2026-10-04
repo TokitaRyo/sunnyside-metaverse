@@ -62,6 +62,13 @@ export function validateMap(map: MapJson, sprites: SpritesJson, tileset: Tileset
     if (w.toX < 0 || w.toY < 0 || w.toX >= width || w.toY >= height) errors.push(`warps[${i}] の移動先 (${w.toX},${w.toY}) がマップ外です`);
   });
 
+  const seenKeyIds = new Set<string>();
+  (map.keyItems ?? []).forEach((k, i) => {
+    if (!k.id || seenKeyIds.has(k.id)) errors.push(`keyItems[${i}].id "${k.id}" が空か重複しています`);
+    seenKeyIds.add(k.id);
+    if (k.x < 0 || k.y < 0 || k.x >= width * map.tileSize || k.y >= height * map.tileSize) errors.push(`keyItems[${i}] (${k.x},${k.y}) がマップ外です`);
+  });
+
   map.props.forEach((p, i) => {
     if (!sprites.elements[p.sprite]) errors.push(`props[${i}].sprite "${p.sprite}" は sprites.json の elements にありません`);
     if (p.x < 0 || p.y < 0 || p.x > width || p.y > height) errors.push(`props[${i}] (${p.x},${p.y}) がマップ外です`);

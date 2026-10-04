@@ -136,6 +136,17 @@ export interface WarpDef {
  * エディタ専用で、ゲーム本体は読まない。x,y は左上のマス。tiles/collision/warps は左上からの相対位置。
  * prev は「置く前の値」で、移動・削除のとき元に戻すのに使う。
  */
+/** スタンプラリーのキーアイテム。足元がこの近くに来ると取得でき、スタンプカードの枠が1つ埋まる */
+export interface KeyItemDef {
+  /** 取得済みの記録に使う不変のID（位置を動かしても変わらない） */
+  id: string;
+  /** 中心（px。マスの中央に置く） */
+  x: number;
+  y: number;
+  /** カードに出す名前（島の名前など。省略可） */
+  name?: string;
+}
+
 export interface GroupDef {
   id: string;
   label: string;
@@ -171,4 +182,5 @@ export interface MapJson {
   objects?: ObjectDef[];
   warps?: WarpDef[];
   groups?: GroupDef[];
+  keyItems?: KeyItemDef[];
 }
