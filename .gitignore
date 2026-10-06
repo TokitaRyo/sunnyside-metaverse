@@ -21,3 +21,6 @@ reference/itch/
 # このリポジトリに含めるべきではない、開発中の一時フォルダ
 /metaverse/
 /sunnyside-kit/
+
+# 出店の配置の確認用画像（scripts/preview-stall.mjs の出力）
+reference/stall-previews/
