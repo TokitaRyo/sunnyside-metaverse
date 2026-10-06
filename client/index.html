@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#1f3a24" />
-    <title>Sunnyside World</title>
+    <meta name="theme-color" content="#04020d" />
+    <title>AMPLIFIRE</title>
     <link rel="icon" href="data:," />
   </head>
   <body>
@@ -12,7 +12,7 @@
     <div id="labels"></div>
     <div id="warp-fade" aria-hidden="true">
       <div class="wl-box">
-        <div class="wl-title">Sunnyside World</div>
+        <div class="wl-title">AMPLIFIRE</div>
         <div class="wl-bar"><i></i></div>
         <div class="wl-text">Now Loading<span class="wl-dots"></span></div>
         <div class="wl-tip" id="wl-tip"></div>
@@ -56,10 +56,26 @@
       </div>
     </div>
 
+    <!-- 入室時の「衛星から降りていく」演出で、ゲーム画面の上に重ねる衛星モニター風の表示 -->
+    <div id="sat" aria-hidden="true">
+      <div class="sat-grid"></div>
+      <div class="sat-reticle"></div>
+      <i class="sat-corner tl"></i><i class="sat-corner tr"></i><i class="sat-corner bl"></i><i class="sat-corner br"></i>
+      <div class="sat-text">
+        <b>AMPLIFIRE // ORBITAL LINK</b>
+        <span id="sat-alt">ALT 408 km</span>
+        <span class="sat-sig"><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+      <div class="sat-skip">クリックでスキップ</div>
+    </div>
+
     <div id="join">
+      <div class="sp-bg"></div>
+      <img class="sp-earth" src="brand/earth.png" alt="" />
+      <img class="sp-logo" src="brand/amplifire-logo.png" alt="AMPLIFIRE" />
       <form id="join-form" class="panel" autocomplete="off">
-        <h1>Sunnyside World</h1>
-        <p class="lead">なまえと髪型を選んで入室しよう</p>
+        <h1 class="sr">AMPLIFIRE</h1>
+        <p class="lead">なまえと髪型を選んで、星に降りよう</p>
         <label class="field">
           <span>なまえ（12文字まで）</span>
           <input id="join-name" type="text" maxlength="12" placeholder="ゲスト" required />

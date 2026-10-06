@@ -155,7 +155,7 @@ function boot(): void {
     if (dev && new URLSearchParams(location.search).has("edit")) devToggle?.switchToEdit();
   });
   game.events.on(EV_LOAD_ERROR, (failed: string[]) => join.showError(`素材の読み込みに失敗しました: ${failed.length}件（コンソール参照）`));
-  game.events.on(EV_JOINED, () => join.hide());
+  game.events.on(EV_JOINED, () => join.dive());
   game.events.on(EV_JOIN_FAILED, (msg: string) => join.showError(msg.includes("満員") ? msg : `サーバーに接続できません（${msg}）`));
   game.events.on(EV_CONN, (kind: "ok" | "reconnecting" | "lost") => setConn(kind));
 

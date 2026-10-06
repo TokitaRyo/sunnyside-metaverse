@@ -1,5 +1,6 @@
 import { HAIRS, NAME_MAX, type Hair } from "@metaverse/shared";
 import { humanLayers } from "../game/assets";
+import { DIVE_FADE_AT_MS } from "./intro";
 
 const HAIR_LABEL: Record<Hair, string> = {
   bowlhair: "ボウル",
@@ -93,15 +94,40 @@ export class JoinScreen {
   }
 
   hide(): void {
+    this.clearDive();
     $("join").hidden = true;
+  }
+
+  /**
+   * 入室の演出: パネルとロゴが消え、惑星に向かって急降下し、ゲーム画面（上空からの映像）へ溶け込む。
+   * 画面を覆っているのはこの要素なので、終わったら hide() と同じ状態になる。
+   * ゲーム側（WorldScene）のカメラ演出は DIVE_COVER_MS 後から始まる前提で時間を合わせている。
+   */
+  dive(): void {
+    const el = $("join");
+    this.clearDive();
+    el.classList.add("dive");
+    // 惑星がほぼ画面を覆ったところから、全体をゆっくり消してゲーム画面を見せる
+    this.diveTimers.push(window.setTimeout(() => el.classList.add("out"), DIVE_FADE_AT_MS));
+    this.diveTimers.push(window.setTimeout(() => this.hide(), DIVE_FADE_AT_MS + 800));
+  }
+
+  private clearDive(): void {
+    this.diveTimers.forEach((t) => window.clearTimeout(t));
+    this.diveTimers = [];
   }
 
   /** マップエディタから戻ったときなど、もう一度この画面を使えるようにする */
   reset(): void {
+    this.clearDive();
     this.setBusy(false);
     $("join-error").hidden = true;
-    $("join").hidden = false;
+    const el = $("join");
+    el.classList.remove("dive", "out");
+    el.hidden = false;
   }
+
+  private diveTimers: number[] = [];
 
   private refresh(): void {
     document.querySelectorAll<HTMLElement>(".hair-opt").forEach((el) => {

@@ -44,7 +44,7 @@ html, body {
 .wl-box { width: min(320px, 78vw); text-align: center; color: #fff; }
 .wl-title { font-size: 22px; font-weight: 800; letter-spacing: 0.04em; margin-bottom: 18px; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4); }
 .wl-bar { height: 12px; border: 2px solid rgba(255, 255, 255, 0.55); border-radius: 8px; overflow: hidden; background: rgba(0, 0, 0, 0.35); }
-.wl-bar i { display: block; width: 0; height: 100%; background: linear-gradient(#ffd66b, #f0a830); }
+.wl-bar i { display: block; width: 0; height: 100%; background: linear-gradient(90deg, #ff3b3b, #ff9a1f, #ffe14a, #3be05a, #33d6ff, #4a6bff, #c24bff); }
 #warp-fade.on .wl-bar i { animation: wl-fill var(--wl-ms, 1100ms) cubic-bezier(0.3, 0.6, 0.4, 1) 0.3s forwards; }
 @keyframes wl-fill { to { width: 100%; } }
 .wl-text { margin-top: 12px; font-size: 14px; font-weight: 700; opacity: 0.9; }
@@ -396,57 +396,122 @@ html, body {
 #conn.soft .conn-box { margin-top: 14px; padding: 8px 16px; background: rgba(190, 60, 30, 0.92); color: #fff; }
 #conn.soft .conn-box p { margin: 0; }
 
-/* ---------- 入室画面 ---------- */
+/* ---------- 入室画面（AMPLIFIRE: 宇宙・RGB・ドット絵） ---------- */
+:root {
+  --rgb: linear-gradient(90deg, #ff3b3b, #ff9a1f, #ffe14a, #3be05a, #33d6ff, #4a6bff, #c24bff, #ff4bd8, #ff3b3b);
+  --night: rgba(8, 5, 26, 0.88);
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 #join {
   position: fixed;
   inset: 0;
   z-index: 10;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background:
-    radial-gradient(1200px 600px at 50% -10%, #8fd97a 0%, transparent 60%),
-    linear-gradient(#5fc250, #3c8f37);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 中央寄せは上下の auto マージンで行う（画面が低くて溢れたとき、上が切れてスクロールできなくなるのを避ける） */
+  gap: 6px;
+  padding: 12px 16px;
+  background: #04020d;
+  overflow: hidden auto;
   touch-action: pan-y;
+  color: #eceaff;
 }
+/* 星空（ドット絵をそのまま拡大。ゆっくり流れる） */
+.sp-bg {
+  position: absolute;
+  inset: -4%;
+  background: url(/brand/space-bg.png) center / cover no-repeat;
+  image-rendering: pixelated;
+  animation: sp-drift 90s linear infinite alternate;
+  pointer-events: none;
+}
+@keyframes sp-drift { from { transform: translate(-1.5%, 1%) scale(1.04); } to { transform: translate(1.5%, -1%) scale(1.04); } }
+/* 水平線のように下から覗く惑星 */
+.sp-earth {
+  position: absolute;
+  left: 50%;
+  bottom: -26vmin;
+  width: min(96vmin, 900px);
+  image-rendering: pixelated;
+  transform: translateX(-50%);
+  transform-origin: 50% 30%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 30px rgba(60, 140, 255, 0.45));
+  animation: sp-float 7s ease-in-out infinite alternate;
+}
+@keyframes sp-float { from { translate: 0 0; } to { translate: 0 -1.2vmin; } }
+.sp-logo {
+  position: relative;
+  margin-top: auto;
+  flex: none;
+  width: min(560px, 88vw, 70vh * 3.9);
+  image-rendering: pixelated;
+  mix-blend-mode: screen; /* ロゴ画像の黒を透明のように扱い、星空に重ねる */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent), linear-gradient(transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent), linear-gradient(transparent, #000 12%, #000 88%, transparent);
+  mask-composite: intersect;
+  filter: drop-shadow(0 0 14px rgba(180, 90, 255, 0.55));
+  animation: sp-glow 3.2s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes sp-glow { from { filter: drop-shadow(0 0 8px rgba(255, 80, 120, 0.45)); } to { filter: drop-shadow(0 0 18px rgba(80, 160, 255, 0.65)); } }
+
 .panel {
+  position: relative;
+  margin-bottom: auto;
+  flex: none;
   width: min(440px, 100%);
-  padding: 24px 24px 18px;
-  border-radius: 18px;
-  background: var(--paper);
-  box-shadow: 0 10px 0 rgba(20, 40, 15, 0.25), 0 18px 40px var(--shadow);
+  padding: 20px 22px 14px;
+  border: 3px solid transparent;
+  border-radius: 6px;
+  /* 縁だけ虹色（RGB）にゆっくり流す */
+  background: linear-gradient(var(--night), var(--night)) padding-box, var(--rgb) border-box;
+  background-size: 100% 100%, 300% 100%;
+  animation: rgb-run 9s linear infinite;
+  box-shadow: 0 0 0 3px #04020d, 0 0 28px rgba(120, 80, 255, 0.35), 0 12px 40px rgba(0, 0, 0, 0.6);
 }
-.panel h1 { margin: 0; font-size: 26px; letter-spacing: 0.02em; color: var(--leaf-dark); }
-.lead { margin: 4px 0 16px; opacity: 0.75; font-size: 14px; }
-.field { display: block; margin-bottom: 14px; }
-.field > span { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; opacity: 0.7; }
+@keyframes rgb-run { to { background-position: 0 0, 300% 0; } }
+.lead { margin: 0 0 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.04em; color: #bfe4ff; text-align: center; }
+.field { display: block; margin-bottom: 12px; }
+.field > span { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: #a99dff; letter-spacing: 0.06em; }
 #join-name {
   width: 100%;
   height: 44px;
   padding: 0 12px;
   font: inherit;
   font-size: 16px;
-  border: 2px solid #b9b08f;
-  border-radius: 10px;
-  background: #fff;
+  color: #fff;
+  border: 2px solid #4b3d9a;
+  border-radius: 4px;
+  background: #0d0825;
   outline: none;
   -webkit-user-select: text;
   user-select: text;
 }
-#join-name:focus { border-color: var(--leaf); }
+#join-name::placeholder { color: #6f66b0; }
+#join-name:focus { border-color: #33d6ff; box-shadow: 0 0 0 2px rgba(51, 214, 255, 0.35); }
 #hair-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .hair-opt {
   position: relative;
   height: 108px;
   padding: 0;
-  border: 3px solid #d8cfae;
-  border-radius: 12px;
-  background: #cbe8b0;
+  border: 3px solid #2f2570;
+  border-radius: 4px;
+  background: radial-gradient(circle at 50% 35%, #2a1f6b 0%, #120b33 75%);
   overflow: hidden;
+  cursor: pointer;
   touch-action: manipulation;
 }
-.hair-opt[aria-checked="true"] { border-color: var(--sun); background: #e3f5c8; box-shadow: 0 0 0 2px var(--sun); }
+.hair-opt:hover { border-color: #6a58d8; }
+.hair-opt[aria-checked="true"] {
+  border-color: transparent;
+  background: radial-gradient(circle at 50% 35%, #3a2a96 0%, #170f40 75%) padding-box, var(--rgb) border-box;
+  background-size: 100% 100%, 300% 100%;
+  animation: rgb-run 4s linear infinite;
+  box-shadow: 0 0 14px rgba(180, 100, 255, 0.55);
+}
 .hair-opt .pv {
   position: absolute;
   left: 50%;
@@ -464,25 +529,83 @@ html, body {
   left: 0; right: 0; bottom: 4px;
   font-size: 11px;
   font-weight: 700;
-  color: var(--ink);
+  color: #d8d2ff;
 }
 #join-btn {
   width: 100%;
-  height: 48px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-  background: var(--leaf);
-  border: 0;
-  border-radius: 12px;
-  box-shadow: 0 4px 0 var(--leaf-dark);
+  height: 50px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #0a0620;
+  background: var(--rgb);
+  background-size: 300% 100%;
+  animation: rgb-run 5s linear infinite;
+  border: 3px solid #04020d;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px #e7e0ff, 0 5px 0 #2b1d78, 0 0 22px rgba(160, 100, 255, 0.5);
+  cursor: pointer;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
 }
-#join-btn:disabled { background: #9db59a; box-shadow: 0 4px 0 #7f967c; cursor: progress; }
-#join-btn:not(:disabled):active { transform: translateY(2px); box-shadow: 0 2px 0 var(--leaf-dark); }
-.bar { height: 6px; margin-top: 12px; border-radius: 3px; background: #e5dcbc; overflow: hidden; }
-.bar i { display: block; width: 0; height: 100%; background: var(--sun); transition: width 0.15s; }
-.error { margin: 10px 0 0; color: #b3261e; font-size: 13px; font-weight: 700; }
-.hint { margin: 12px 0 0; font-size: 11px; opacity: 0.6; }
+#join-btn:disabled { background: #3a3470; animation: none; color: #9a93d6; box-shadow: 0 0 0 2px #4b3d9a, 0 4px 0 #1a1448; cursor: progress; text-shadow: none; }
+#join-btn:not(:disabled):hover { filter: brightness(1.12); }
+#join-btn:not(:disabled):active { transform: translateY(3px); box-shadow: 0 0 0 2px #e7e0ff, 0 2px 0 #2b1d78; }
+.bar { height: 6px; margin-top: 12px; border-radius: 0; background: #1a1448; overflow: hidden; }
+.bar i { display: block; width: 0; height: 100%; background: var(--rgb); background-size: 300% 100%; animation: rgb-run 3s linear infinite; transition: width 0.15s; }
+.error { margin: 10px 0 0; color: #ff7b7b; font-size: 13px; font-weight: 700; }
+.hint { margin: 10px 0 0; font-size: 11px; color: #8f87d8; }
+
+/* 画面が低いとき（横向きのスマホなど）は、ロゴとキャラ選択を小さくして1画面に収める */
+@media (max-height: 560px) {
+  .sp-logo { width: min(300px, 70vw); }
+  .panel { padding: 12px 16px 10px; }
+  .lead { margin-bottom: 8px; font-size: 13px; }
+  .field { margin-bottom: 8px; }
+  #hair-grid { grid-template-columns: repeat(6, 1fr); gap: 5px; }
+  .hair-opt { height: 86px; }
+  .hair-opt .pv { transform: translateX(-50%) scale(1.9); }
+  #join-btn { height: 42px; }
+  .panel { width: min(640px, 100%); }
+}
+
+/* 入室の演出: パネルとロゴが消え、惑星に向かって急降下 → ゲーム画面（上空から）へ */
+#join.dive .panel, #join.dive .sp-logo { opacity: 0; transform: scale(0.94); transition: opacity 0.45s ease, transform 0.45s ease; pointer-events: none; }
+#join.dive { overflow: hidden; }
+#join.dive .sp-earth { animation: none; translate: 0 0; transform-origin: 50% 22%; transition: transform 2s cubic-bezier(0.55, 0, 0.95, 0.5); transform: translateX(-50%) scale(12); }
+#join.dive .sp-bg { animation: none; transition: transform 2s cubic-bezier(0.55, 0, 0.95, 0.5); transform: scale(2.4); }
+#join.dive.out { opacity: 0; transition: opacity 0.7s ease; pointer-events: none; }
+
+/* 衛星モニター風の表示（ゲーム画面の上、入室画面の下） */
+#sat { position: fixed; inset: 0; z-index: 8; pointer-events: none; opacity: 0; transition: opacity 0.8s ease; color: #7fe3ff; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+body.intro #sat { opacity: 1; }
+.sat-grid {
+  position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 220, 255, 0.16) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(90deg, rgba(120, 220, 255, 0.16) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 4px);
+}
+.sat-reticle { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%; animation: sat-pulse 1.4s ease-in-out infinite; }
+.sat-reticle::before, .sat-reticle::after { content: ""; position: absolute; background: rgba(255, 255, 255, 0.8); }
+.sat-reticle::before { left: 50%; top: -18px; bottom: -18px; width: 2px; margin-left: -1px; }
+.sat-reticle::after { top: 50%; left: -18px; right: -18px; height: 2px; margin-top: -1px; }
+@keyframes sat-pulse { 50% { transform: scale(0.82); opacity: 0.6; } }
+.sat-corner { position: absolute; width: 34px; height: 34px; border: 3px solid #7fe3ff; }
+.sat-corner.tl { left: 14px; top: 14px; border-right: 0; border-bottom: 0; }
+.sat-corner.tr { right: 14px; top: 14px; border-left: 0; border-bottom: 0; }
+.sat-corner.bl { left: 14px; bottom: 14px; border-right: 0; border-top: 0; }
+.sat-corner.br { right: 14px; bottom: 14px; border-left: 0; border-top: 0; }
+.sat-text { position: absolute; left: 60px; top: 24px; display: grid; gap: 4px; font-size: 13px; font-weight: 700; text-shadow: 0 0 6px rgba(0, 0, 0, 0.9); }
+.sat-text b { color: #fff; letter-spacing: 0.1em; }
+.sat-sig { display: flex; gap: 3px; align-items: flex-end; height: 12px; }
+.sat-sig i { width: 4px; background: #3be05a; }
+.sat-sig i:nth-child(1) { height: 3px; } .sat-sig i:nth-child(2) { height: 5px; } .sat-sig i:nth-child(3) { height: 7px; } .sat-sig i:nth-child(4) { height: 9px; } .sat-sig i:nth-child(5) { height: 12px; }
+.sat-skip { position: absolute; right: 60px; bottom: 22px; font-size: 12px; opacity: 0.7; }
+/* 上空からの映像らしい色合い。降下が終わると元に戻る */
+#game canvas { transition: filter 1s ease; }
+body.intro #game canvas { filter: saturate(1.4) contrast(1.15) hue-rotate(-10deg) brightness(0.95); }
+#hud, #labels { transition: opacity 0.6s ease; }
+body.intro #hud, body.intro #labels { opacity: 0; pointer-events: none; }
 
 /* ---------- プレイ⇄編集の切り替え（開発時のみ main.ts が生成） ---------- */
 #mode-toggle {

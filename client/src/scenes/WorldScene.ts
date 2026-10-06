@@ -13,6 +13,7 @@ import {
   type Player,
 } from "@metaverse/shared";
 import { map, sprites, type KeyItemDef, type ObjectDef, type TileLayerDef } from "../config";
+import { INTRO_HOLD_MS, INTRO_ZOOM_MS } from "../ui/intro";
 import { ensureStarTexture, STAR_TEX } from "../game/starIcon";
 import { stamps } from "../game/stamps";
 import { StampCard } from "../ui/StampCard";
@@ -116,6 +117,9 @@ export class WorldScene extends Phaser.Scene {
   private hud!: Hud;
   private talk?: Talk;
   private stampCard?: StampCard;
+  /** 入室の降下演出中（この間は自分の操作を受け付けない） */
+  private intro = false;
+  private introCleanup?: () => void;
   protected keyItemEntries: KeyItemEntry[] = [];
   /** 話しかけられる位置にいる相手（いなければ null） */
   private npcNear: ObjectEntry | null = null;
@@ -156,6 +160,8 @@ export class WorldScene extends Phaser.Scene {
     this.warping = false;
     this.talk = undefined;
     this.stampCard = undefined;
+    this.intro = false;
+    this.introCleanup = undefined;
     this.keyItemEntries = [];
     this.npcNear = null;
     this.npcTalking = null;
@@ -350,11 +356,90 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  protected applyZoom(): void {
+  /** ふだんのズーム。ピクセルアートが滲まないよう整数倍のみ。2〜3倍を基準にする（SPEC 4.4） */
+  private targetZoom(): number {
     const { width, height } = this.scale;
-    // ピクセルアートが滲まないよう整数倍のみ。2〜3倍を基準にする（SPEC 4.4）
-    const zoom = Phaser.Math.Clamp(Math.floor(Math.min(width / 320, height / 200)), 2, 3);
-    this.cameras.main.setZoom(zoom);
+    return Phaser.Math.Clamp(Math.floor(Math.min(width / 320, height / 200)), 2, 3);
+  }
+
+  protected applyZoom(): void {
+    if (this.intro) return; // 入室の降下演出中はカメラを演出が動かす
+    this.cameras.main.setZoom(this.targetZoom());
+  }
+
+  // ---------------------------------------------------------------- 入室の演出（衛星から降下してゲーム画面へ）
+  /**
+   * マップ全体が見えるところまで引いたカメラ（衛星映像）から始め、INTRO_HOLD_MS 後に自分のキャラのところまでズームインする。
+   * 入室画面(DOM)の惑星ズームと時間を合わせてある（ui/intro.ts）。クリック・キーでいつでも飛ばせる。
+   */
+  private startIntro(): void {
+    // 自分のキャラは接続直後にまだ届いていないことがある。降下先は届いていればその位置、なければスポーン地点
+    const target = () => (this.me ? { x: this.me.x, y: this.me.y } : { x: map.spawn.x * TS + TS / 2, y: map.spawn.y * TS + TS / 2 });
+    const cam = this.cameras.main;
+    const { width, height } = this.scale;
+    const z0 = Math.min(width / WORLD_W, height / WORLD_H) * 0.96;
+    const z1 = this.targetZoom();
+    const c0 = { x: WORLD_W / 2, y: WORLD_H / 2 };
+    this.intro = true;
+    document.body.classList.add("intro");
+    cam.stopFollow();
+    cam.removeBounds();
+    cam.setZoom(z0);
+    cam.centerOn(c0.x, c0.y);
+    const alt = document.getElementById("sat-alt");
+    const setAlt = (t: number) => {
+      // 高度は対数でなめらかに減らす（408km → 約10m）
+      const m = 408000 * Math.pow(10 / 408000, t);
+      if (alt) alt.textContent = m >= 1000 ? `ALT ${(m / 1000).toFixed(m >= 100000 ? 0 : 1)} km` : `ALT ${Math.round(m)} m`;
+    };
+    setAlt(0);
+
+    let tween: Phaser.Tweens.Tween | null = null;
+    const cleanup = () => {
+      window.removeEventListener("pointerdown", skip);
+      window.removeEventListener("keydown", skip);
+    };
+    const finish = () => {
+      if (!this.intro) return;
+      this.intro = false;
+      cleanup();
+      tween?.stop();
+      document.body.classList.remove("intro");
+      cam.setBounds(0, 0, WORLD_W, WORLD_H);
+      cam.setZoom(this.targetZoom());
+      // まだ自分のキャラが届いていなければ、届いた時点(onPlayerAdd)で追従を始める
+      if (this.me) {
+        cam.startFollow(this.me, true, 0.2, 0.2);
+        cam.centerOn(this.me.x, this.me.y);
+      }
+    };
+    const skip = () => finish();
+    window.addEventListener("pointerdown", skip);
+    window.addEventListener("keydown", skip);
+    this.introCleanup = () => {
+      cleanup();
+      document.body.classList.remove("intro");
+      this.intro = false;
+    };
+
+    this.time.delayedCall(INTRO_HOLD_MS, () => {
+      if (!this.intro) return;
+      tween = this.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: INTRO_ZOOM_MS,
+        ease: "Cubic.easeInOut",
+        onUpdate: (tw) => {
+          const t = tw.getValue() ?? 0;
+          // ズームは倍率の比で補間（体感の速さが一定になる）。中心は自分のキャラへ寄せていく
+          cam.setZoom(z0 * Math.pow(z1 / z0, t));
+          const p = target();
+          cam.centerOn(c0.x + (p.x - c0.x) * t, c0.y + (p.y - c0.y) * t);
+          setAlt(t);
+        },
+        onComplete: finish,
+      });
+    });
   }
 
   // ---------------------------------------------------------------- 接続
@@ -416,6 +501,7 @@ export class WorldScene extends Phaser.Scene {
       }
       this.endTalk();
       this.stampCard?.hide();
+      this.introCleanup?.();
       input.onAction = undefined;
       input.onEscape = undefined;
       document.getElementById("hud")!.hidden = true;
@@ -423,6 +509,7 @@ export class WorldScene extends Phaser.Scene {
     });
     // 参加直後に届いていた自分の onAdd はHUD生成前に処理済みなので、ここで名札を補う
     this.attachSelfTagIfNeeded();
+    this.startIntro();
     this.game.events.emit(EV_JOINED);
   }
 
@@ -501,8 +588,11 @@ export class WorldScene extends Phaser.Scene {
       this.me = new Character(this, p.x, p.y, "human", p.hair);
       this.flipX = p.flipX;
       this.me.setFlip(this.flipX);
-      this.cameras.main.startFollow(this.me, true, 0.2, 0.2);
-      this.cameras.main.centerOn(p.x, p.y);
+      // 入室の降下演出中は、演出が終わった時点で追従を始める（ここで寄せるとマップ全体の映像が崩れる）
+      if (!this.intro) {
+        this.cameras.main.startFollow(this.me, true, 0.2, 0.2);
+        this.cameras.main.centerOn(p.x, p.y);
+      }
       this.hud?.addTag(id, p.name, "self");
       return;
     }
@@ -659,7 +749,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     for (const e of this.keyItemEntries) this.placeKeyItem(e, this.time.now);
-    if (this.me && this.hud && !this.warping) this.updateLocal(dt, delta);
+    if (this.me && this.hud && !this.warping && !this.intro) this.updateLocal(dt, delta);
   }
 
   private updateLocal(dt: number, deltaMs: number): void {
