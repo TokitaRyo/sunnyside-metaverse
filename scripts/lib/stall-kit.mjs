@@ -148,6 +148,16 @@ export function makeKit(map, grass) {
       return obj;
     },
 
+    /**
+     * 見えない当たり判定（幅w × 高さh px。下端が foot）。hit は1つの絵に四角1つしか付けられないので、
+     * 形のある大きな物（舞台・L字の壁など）は、見える絵には hit を付けず、これを並べて通れない所を作る。
+     * エディタでは透明なので、`--hit` を付けた preview で位置を確かめる。
+     */
+    blocker(dx, foot, w, h) {
+      map.sprites.stall_blocker ??= { file: "../brand/stall/blocker.png", fw: 16, fh: 16, frames: 1, fps: 10, ox: 8, oy: 16, catalog: true };
+      return kit.put("stall_blocker", dx, foot, { hit: [w, h], sort: "floor", by: foot });
+    },
+
     /** 人物（足元に影つき・当たり判定つき）。npc を渡すと話しかけられる。flip=true で左向き */
     person(name, dx, foot, npc, flip = false) {
       const o = kit.put(name, dx, foot, { hit: [12, 8], flip, npc });
