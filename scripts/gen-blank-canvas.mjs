@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 「0から」編集するための空っぽのキャンバスを client/src/config/map.json に書き出す。
  *   node scripts/gen-blank-canvas.mjs [--out client/src/config/map.json] [--w 86] [--h 48]
  *
@@ -38,7 +38,6 @@ const map = {
   tilesets: src.tilesets,
   sprites: src.sprites,
   objects: [],
-  warps: [],
   groups: [],
   tileLayers: src.tileLayers.map((l) => {
     const ts = src.tilesets[l.tileset];

@@ -29,7 +29,6 @@ const TOOLS: [Tool, string, string][] = [
   ["prefab", "パーツ", "G"],
   ["rect", "範囲選択", "B"],
   ["erase", "消す", "E"],
-  ["warp", "ワープ", "R"],
   ["item", "キーアイテム", "K"],
   ["collision", "衝突", "C"],
   ["tile", "タイル", "T"],
@@ -217,23 +216,6 @@ export class EditorPanel {
       ),
     );
 
-    const warpToX = h("input", { type: "number", value: ed.warpTo.x, min: 0, max: map.width - 1, onchange: (e: Event) => (ed.warpTo.x = Number((e.target as HTMLInputElement).value)) });
-    const warpToY = h("input", { type: "number", value: ed.warpTo.y, min: 0, max: map.height - 1, onchange: (e: Event) => (ed.warpTo.y = Number((e.target as HTMLInputElement).value)) });
-    this.sections.set(
-      "warp",
-      h(
-        "div",
-        {},
-        h("label", {}, "移動先（マス座標）"),
-        h("div", { class: "ed-grid" }, h("label", { class: "ed-field" }, h("span", {}, "先X"), warpToX), h("label", { class: "ed-field" }, h("span", {}, "先Y"), warpToY)),
-        h(
-          "div",
-          { class: "ed-hint" },
-          "左ドラッグ: 塗ったマスに、上の「移動先」でワープを設定します（紫＝ワープ元、水色＝今の移動先）。\n右ドラッグ: そのマスのワープを消します。\nそのマスに足元が乗ると、画面が一瞬暗転して移動先へ瞬間移動します。",
-        ),
-      ),
-    );
-
     this.keyItemBox = h("div", {});
     this.sections.set(
       "item",
@@ -390,7 +372,7 @@ export class EditorPanel {
     );
     const blocked = g.collision.filter((c) => c.v === 1).length;
     return [
-      h("div", { class: "ed-sel" }, h("b", {}, g.label), h("small", {}, `${g.w}×${g.h}マス ／ タイル${g.tiles.length}・判定${blocked}マス${g.warps?.length ? `・ワープ${g.warps.length}` : ""}`)),
+      h("div", { class: "ed-sel" }, h("b", {}, g.label), h("small", {}, `${g.w}×${g.h}マス ／ タイル${g.tiles.length}・判定${blocked}マス`)),
       h("div", { class: "ed-grid" }, num("x", g.x, (v) => ed.moveGroupTo(g, v, g.y)), num("y", g.y, (v) => ed.moveGroupTo(g, g.x, v))),
       h("label", { class: "ed-field" }, h("span", {}, "当たり判定"), mode),
       h("div", { class: "ed-hint" }, "ドラッグ／矢印キー(Shiftで4マス)で、タイル・当たり判定・付属の物をまとめて動かせます。"),

@@ -1,4 +1,4 @@
-﻿# ハンドメイド（夜のクラゲ）の専用ドット絵を作る。
+﻿# クラゲファクトリー（夜の海の底の、光るクラゲを作る工房）の専用ドット絵を作る。
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stalls/handmade.ps1
 # 出力: client/public/brand/stall/handmade_*.png （配置は scripts/stalls/handmade.mjs）
 # 夜の海の底のような濃紺・紫の地面に、青緑・水色・紫・ピンクの蛍光色のクラゲが光る手作り雑貨のお店。
@@ -189,40 +189,143 @@ Sheet 'handmade_sparkle.png' 192 128 4 {
   }
 }
 
+# ---- ロゴ文字の飾り（MS Gothic 以外の太いフォントで、グラデーション・二重のふち・光のにじみ・影を付ける）----
+# 文字のマスク（点の集合）を作る。$font に太い日本語フォントを渡す
+function TextMask($text, $px, $font, $bold) {
+  $style = if ($font -like 'BIZ*') { [System.Drawing.FontStyle]::Bold } else { [System.Drawing.FontStyle]::Regular }
+  $f = New-Object System.Drawing.Font($font, $px, $style, [System.Drawing.GraphicsUnit]::Pixel)
+  $tmp = NewBmp ($px * ($text.Length + 2)) ($px * 2)
+  $g = [System.Drawing.Graphics]::FromImage($tmp)
+  $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::SingleBitPerPixelGridFit
+  $fmt = [System.Drawing.StringFormat]::GenericTypographic
+  $g.DrawString($text, $f, [System.Drawing.Brushes]::White, 0, 0, $fmt)
+  $g.Dispose()
+  $pts = New-Object System.Collections.ArrayList
+  $x0 = 9999; $y0 = 9999; $x1 = -1; $y1 = -1
+  for ($j = 0; $j -lt $tmp.Height; $j++) { for ($i = 0; $i -lt $tmp.Width; $i++) {
+    if ($tmp.GetPixel($i, $j).A -ge 128) { [void]$pts.Add(@($i, $j)); $x0 = [math]::Min($x0, $i); $x1 = [math]::Max($x1, $i); $y0 = [math]::Min($y0, $j); $y1 = [math]::Max($y1, $j) }
+  } }
+  $tmp.Dispose(); $f.Dispose()
+  # 左上を (0,0) に詰めて、点を整数キー（(y+20)*4000+(x+20)）の集合にする
+  $set = New-Object 'System.Collections.Generic.HashSet[int]'
+  foreach ($p in $pts) { [void]$set.Add(($p[1] - $y0 + 20) * 4000 + ($p[0] - $x0 + 20)); if ($bold) { [void]$set.Add(($p[1] - $y0 + 20) * 4000 + ($p[0] - $x0 + 21)) } }
+  return @{ set = $set; w = $x1 - $x0 + 1 + $(if ($bold) { 1 } else { 0 }); h = $y1 - $y0 + 1 }
+}
+# 縦棒（「ー」を縦書き用に）
+function VBarMask($w, $h) {
+  $set = New-Object 'System.Collections.Generic.HashSet[int]'
+  for ($j = 0; $j -lt $h; $j++) { for ($i = 0; $i -lt $w; $i++) { [void]$set.Add(($j + 20) * 4000 + ($i + 20)) } }
+  return @{ set = $set; w = $w; h = $h }
+}
+function Dil($set, $r, $diamond) {
+  $o = New-Object 'System.Collections.Generic.HashSet[int]'
+  foreach ($k in $set) {
+    for ($dy = -$r; $dy -le $r; $dy++) { for ($dx = -$r; $dx -le $r; $dx++) {
+      if ($diamond -and ([math]::Abs($dx) + [math]::Abs($dy)) -gt $r) { continue }
+      [void]$o.Add($k + $dy * 4000 + $dx)
+    } }
+  }
+  return $o
+}
+# ロゴ文字を描く。$ring が $null でなければネオンの外ぶち（太い縁取り）、内側にこい紺のふち。$shine は光が走る位置（なければ -100）
+function FxText($b, $m, $x, $y, $topHex, $midHex, $botHex, $ring, $glowHex, $glowA, $shine) {
+  $set = $m.set; $H = $m.h
+  $d1 = Dil $set 1 $false
+  $d2 = Dil $set 2 $true
+  $dark = C '#060a26'
+  $glow = Dil $set 3 $true
+  foreach ($k in $glow) { $px = ($k % 4000) - 20; $py = [int][math]::Floor($k / 4000) - 20; PxO $b ($x + $px) ($y + $py) (CA $glowHex $glowA) }
+  # 影（右下へ）
+  $base = if ($ring) { $d2 } else { $d1 }
+  foreach ($k in $base) { $px = ($k % 4000) - 20 + 1; $py = [int][math]::Floor($k / 4000) - 20 + 2; PxO $b ($x + $px) ($y + $py) (CA '#02041a' 235) }
+  if ($ring) { foreach ($k in $d2) { $px = ($k % 4000) - 20; $py = [int][math]::Floor($k / 4000) - 20; PxO $b ($x + $px) ($y + $py) (CC $ring 255) } }
+  foreach ($k in $d1) { $px = ($k % 4000) - 20; $py = [int][math]::Floor($k / 4000) - 20; PxO $b ($x + $px) ($y + $py) (CC $dark 255) }
+  $ct = C $topHex; $cm = C $midHex; $cb = C $botHex
+  foreach ($k in $set) {
+    $px = ($k % 4000) - 20; $py = [int][math]::Floor($k / 4000) - 20 - 20 + 20
+    $py = [int][math]::Floor($k / 4000) - 20
+    $t = if ($H -le 1) { 0.0 } else { $py / [double]($H - 1) }
+    $col = if ($t -lt 0.5) { Mix $ct $cm ($t * 2) } else { Mix $cm $cb (($t - 0.5) * 2) }
+    if ($py -eq 0) { $col = Mix $col (C '#ffffff') 0.35 }
+    if ([math]::Abs(($px + $py * 0.7) - $shine) -lt 2.5) { $col = Mix $col (C '#ffffff') 0.7 }
+    PxO $b ($x + $px) ($y + $py) $col
+  }
+}
+
+# 歯車。中心($cx,$cy)・外半径$r・歯の数$teeth・回転角$ang(ラジアン)
+function Gear($b, $cx, $cy, $r, $teeth, $ang, $main, $dk, $hi, $holeCol) {
+  $rin = $r - 2.2
+  for ($y = [math]::Floor($cy - $r - 1); $y -le [math]::Ceiling($cy + $r + 1); $y++) {
+    for ($x = [math]::Floor($cx - $r - 1); $x -le [math]::Ceiling($cx + $r + 1); $x++) {
+      $dx = $x + 0.5 - $cx; $dy = $y + 0.5 - $cy
+      $dist = [math]::Sqrt($dx * $dx + $dy * $dy)
+      $a = [math]::Atan2($dy, $dx)
+      $tooth = if ([math]::Cos($teeth * ($a - $ang)) -gt -0.15) { 2.2 } else { 0.0 }
+      $lim = $rin + $tooth
+      if ($dist -gt $lim) { continue }
+      if ($dist -lt $r * 0.34) { PxO $b $x $y $holeCol; continue }
+      $col = $main
+      if ($dist -gt $lim - 1.0) { $col = $dk }
+      elseif (($dx + $dy) -lt -$r * 0.5) { $col = $hi }
+      elseif (($dx + $dy) -gt $r * 0.55) { $col = $dk }
+      PxO $b $x $y $col
+    }
+  }
+}
+
 # =====================================================================
-# 看板（ハンドメイド / 夜のクラゲ）128x28 4コマ。ふちのライトが色を追いかける
+# 看板「クラゲファクトリー」156x38 8コマ。歯車が回り、ネオンのふちが走り、光が文字をなでて、クラゲの触手が垂れる
 # =====================================================================
 $neon4 = @((C '#3df5ff'), (C '#ff6fcf'), (C '#a688ff'), (C '#4dffc4'))
-$w1 = TextWidth 'ハンドメイド' 12
-$w2 = TextWidth '夜のクラゲ' 11
-Sheet 'handmade_sign.png' 128 28 4 {
+$FONT = 'BIZ UDPGothic'
+$mA = TextMask 'クラゲ' 15 $FONT $true
+$mB = TextMask 'ファクトリー' 11 $FONT $true
+$brass = C '#c8962c'; $brassD = C '#6a4a14'; $brassH = C '#ffe08a'
+Sheet 'handmade_sign.png' 164 38 8 {
   param($b, $ox, $f)
-  Rect $b $ox 0 128 28 $n0
-  Rect $b ($ox + 1) 1 126 26 (C '#0b1240')
-  for ($y = 2; $y -lt 26; $y++) { Rect $b ($ox + 2) $y 124 1 (Mix (C '#0e1752') (C '#1a1068') (($y - 2) / 24.0)) }
-  for ($x = 1; $x -lt 127; $x++) {
-    $col = $neon4[([int][math]::Floor($x / 8) + $f) % 4]
-    Px $b ($ox + $x) 1 $col; Px $b ($ox + $x) 26 $col
-    Px $b ($ox + $x) 2 (Mix $col (C '#0b1240') 0.62); Px $b ($ox + $x) 25 (Mix $col (C '#0b1240') 0.62)
+  # 板（鉄のわく＋リベット）。下の10pxは触手用に透明のまま
+  Rect $b $ox 0 164 28 $n0
+  Rect $b ($ox + 1) 1 162 26 (C '#46537e')
+  Rect $b ($ox + 1) 1 162 1 (C '#8a9ad0')
+  Rect $b ($ox + 2) 2 160 24 (C '#0a0f3a')
+  for ($y = 3; $y -lt 25; $y++) { Rect $b ($ox + 3) $y 158 1 (Mix (C '#0e1656') (C '#1c1070') (($y - 3) / 22.0)) }
+  # ネオンのふち（色が走る）
+  for ($x = 3; $x -lt 161; $x++) {
+    $col = $neon4[([int][math]::Floor($x / 9) + $f) % 4]
+    Px $b ($ox + $x) 3 $col; Px $b ($ox + $x) 24 $col
+    Px $b ($ox + $x) 4 (Mix $col (C '#0a0f3a') 0.65); Px $b ($ox + $x) 23 (Mix $col (C '#0a0f3a') 0.65)
   }
-  for ($y = 1; $y -lt 27; $y++) {
-    $col = $neon4[([int][math]::Floor($y / 6) + $f + 1) % 4]
-    Px $b ($ox + 1) $y $col; Px $b ($ox + 126) $y $col
-    Px $b ($ox + 2) $y (Mix $col (C '#0b1240') 0.62); Px $b ($ox + 125) $y (Mix $col (C '#0b1240') 0.62)
+  for ($y = 3; $y -lt 25; $y++) {
+    $col = $neon4[([int][math]::Floor($y / 5) + $f + 2) % 4]
+    Px $b ($ox + 3) $y $col; Px $b ($ox + 160) $y $col
+    Px $b ($ox + 4) $y (Mix $col (C '#0a0f3a') 0.65); Px $b ($ox + 159) $y (Mix $col (C '#0a0f3a') 0.65)
   }
-  # 左のクラゲ
-  Halo $b ($ox + 15) 12 11 10 '#27d8ff' 22
-  Jelly $b ($ox + 15) 5 14 9 $PCy 1.2 9 ($f * 1.57) 2.0
-  # 文字（影つき）
-  $x1 = 32 + [math]::Floor((92 - $w1) / 2); $x2 = 32 + [math]::Floor((92 - $w2) / 2)
-  [void](TextPx $b 'ハンドメイド' ($ox + $x1 + 1) 4 12 $n0 $true)
-  [void](TextPx $b 'ハンドメイド' ($ox + $x1) 3 12 $crm $true)
-  [void](TextPx $b '夜のクラゲ' ($ox + $x2 + 1) 16 11 $n0 $true)
-  [void](TextPx $b '夜のクラゲ' ($ox + $x2) 15 11 (@($cy, (C '#9ff8ff'), $cy, (C '#d0fcff'))[$f]) $true)
-  # すみのきらり
-  $s = $neon4[($f + 2) % 4]
-  foreach ($px in 5, 122) { Px $b ($ox + $px) 22 $s; Px $b ($ox + $px - 1) 23 $s; Px $b ($ox + $px + 1) 23 $s; Px $b ($ox + $px) 24 $s }
-  foreach ($p in @(@(0, 0), @(127, 0), @(0, 27), @(127, 27))) { Clear $b ($ox + $p[0]) $p[1] }
+  # リベット（ボルト）
+  foreach ($p in @(@(2, 2), @(160, 2), @(2, 24), @(160, 24))) { Rect $b ($ox + $p[0]) $p[1] 2 2 (C '#c8d0f0'); Px $b ($ox + $p[0]) $p[1] (C '#ffffff'); Px $b ($ox + $p[0] + 1) ($p[1] + 1) (C '#5a6a9a') }
+  # 歯車（左右で逆回転。8コマで歯1つぶん回って元に戻る）
+  $ang = $f * ([math]::PI / 4.0) / 8.0
+  Gear $b ($ox + 14) 14 8.5 8 $ang $brass $brassD $brassH (C '#0a0f3a')
+  Gear $b ($ox + 149) 14 8.5 8 (0.39 - $ang) $brass $brassD $brassH (C '#0a0f3a')
+  # 文字: 大きな「クラゲ」＋小さな「ファクトリー」（グラデーション・こい紺のふち・影・光のにじみ）
+  $tx = [math]::Floor(82 - ($mA.w + 4 + $mB.w) / 2)
+  $shine = -12 + $f * 18
+  FxText $b $mA ($ox + $tx) 6 '#9ff8ff' '#c0b0ff' '#ff7fd8' $null '#27d8ff' 40 $shine
+  FxText $b $mB ($ox + $tx + $mA.w + 4) (6 + $mA.h - $mB.h) '#ffe0f8' '#ffa8e4' '#c890ff' $null '#ff4fd0' 36 ($shine - $mA.w)
+  # 触手（下に垂れる）
+  $xs = 8, 21, 34, 47, 60, 73, 86, 99, 112, 125, 138, 150, 156
+  $i = 0
+  foreach ($x0 in $xs) {
+    $L = 5 + (($i * 7) % 5)
+    $col = @('#3df5ff', '#ff6fcf', '#a688ff', '#4dffc4')[$i % 4]
+    for ($j = 0; $j -lt $L; $j++) {
+      $sx = 1.6 * [math]::Sin(($f / 8.0) * 2 * [math]::PI - $j * 0.55 + $i) * ($j / [double]$L)
+      PxO $b ($ox + $x0 + [int][math]::Round($sx)) (28 + $j) (CA $col ([int](235 - 150 * $j / $L)))
+    }
+    $sx = 1.6 * [math]::Sin(($f / 8.0) * 2 * [math]::PI - $L * 0.55 + $i)
+    PxO $b ($ox + $x0 + [int][math]::Round($sx)) (28 + $L) (CA '#ffffff' 200)
+    $i++
+  }
+  foreach ($p in @(@(0, 0), @(163, 0), @(0, 27), @(163, 27))) { Clear $b ($ox + $p[0]) $p[1] }
 }
 
 # =====================================================================
@@ -629,38 +732,80 @@ Sheet 'handmade_rack.png' 30 46 4 {
 }
 
 # =====================================================================
-# 月と星の街灯 22x60 4コマ（ほのかにまたたく）
+# クラゲ培養管（ガラス管・配管・圧力計）24x58 8コマ
 # =====================================================================
-Sheet 'handmade_moonlamp.png' 22 60 4 {
+Sheet 'handmade_tube.png' 24 58 8 {
   param($b, $ox, $f)
-  $ha = @(24, 30, 36, 30)[$f]
-  Halo $b ($ox + 10) 14 13 14 '#ffd36a' $ha
-  # ポール
-  Rect $b ($ox + 9) 22 3 36 $wd2; Rect $b ($ox + 9) 22 1 36 $wd3; Rect $b ($ox + 11) 22 1 36 $wd0
-  for ($y = 40; $y -lt 46; $y += 2) { Rect $b ($ox + 9) $y 3 1 (C '#d8c498') }
-  Rect $b ($ox + 6) 57 10 2 $wd1; Rect $b ($ox + 6) 57 10 1 $wd2; Rect $b ($ox + 7) 59 8 1 $wd0
-  # 三日月
-  $mx = 10; $my = 12
-  for ($y = -9; $y -le 9; $y++) { for ($x = -9; $x -le 9; $x++) {
-    $in1 = ($x * $x + $y * $y) -le 72
-    $in2 = (($x - 4) * ($x - 4) + ($y + 1) * ($y + 1)) -le 58
-    if ($in1 -and -not $in2) {
-      $e = ($x * $x + $y * $y) -gt 56
-      Px $b ($ox + $mx + $x) ($my + $y) $(if ($e) { C '#ffd36a' } else { C '#ffeeb0' })
-    }
-  } }
-  Px $b ($ox + 5) 9 (C '#ffffff'); Px $b ($ox + 4) 11 (C '#fff8d8')
-  # 星のまたたき
-  $st = @(@(18, 6), @(17, 19), @(3, 20))
-  for ($i = 0; $i -lt 3; $i++) {
-    $on = (($f + $i) % 4)
-    $x = $ox + $st[$i][0]; $y = $st[$i][1]
-    if ($on -eq 0) { Px $b $x $y (C '#ffffff'); Px $b ($x - 1) $y (C '#ffe9a0'); Px $b ($x + 1) $y (C '#ffe9a0'); Px $b $x ($y - 1) (C '#ffe9a0'); Px $b $x ($y + 1) (C '#ffe9a0') }
-    elseif ($on -eq 1 -or $on -eq 3) { Px $b $x $y (C '#ffe9a0') }
+  $t = $f / 8.0 * 2 * [math]::PI
+  # 台座
+  Rect $b ($ox + 1) 50 22 8 (C '#3a4468'); Rect $b ($ox + 1) 50 22 2 (C '#8a9ad0'); Rect $b ($ox + 1) 56 22 2 (C '#1c2240')
+  Px $b ($ox + 3) 54 (C '#c8d0f0'); Px $b ($ox + 20) 54 (C '#c8d0f0')
+  # 管の中の光る液体
+  for ($y = 10; $y -lt 49; $y++) { Rect $b ($ox + 4) $y 13 1 (Mix (C '#0e7a9a') (C '#0a2a78') (($y - 10) / 38.0)) }
+  Halo $b ($ox + 10) 30 12 22 '#27d8ff' 14
+  # 中のクラゲ（ゆっくり上下）
+  $jy = 24 + [int][math]::Round(7 * [math]::Sin($t - 0.5))
+  $p = [math]::Sin($t * 2)
+  Jelly $b ($ox + 10) $jy ([int][math]::Round(10 * (1 - 0.12 * $p))) 6 $PCy 1.1 10 ($t * 2) 1.6
+  # 泡
+  foreach ($bq in @(@(6, 0), @(14, 3), @(9, 5))) {
+    $by = 46 - ((($f + $bq[1]) % 8) * 5)
+    if ($by -gt 11) { Px $b ($ox + $bq[0]) $by (CA '#d8f8ff' 230); Px $b ($ox + $bq[0]) ($by + 1) (CA '#7fe8ff' 180) }
   }
-  # 小さなクラゲ飾り（ぶら下がり）
-  Line $b ($ox + 10) 21 ($ox + 10) 24 (C '#c8c8e0')
+  # ガラスのふちとつや
+  Rect $b ($ox + 3) 10 1 39 (C '#a8d8ff'); Rect $b ($ox + 17) 10 1 39 (C '#5a78c0')
+  Rect $b ($ox + 5) 12 1 14 (CA '#ffffff' 170)
+  # 真鍮のキャップ
+  Rect $b ($ox + 2) 6 16 4 (C '#c8962c'); Rect $b ($ox + 2) 6 16 1 (C '#ffe08a'); Rect $b ($ox + 2) 9 16 1 (C '#6a4a14')
+  Rect $b ($ox + 2) 48 16 3 (C '#c8962c'); Rect $b ($ox + 2) 48 16 1 (C '#ffe08a'); Rect $b ($ox + 2) 50 16 1 (C '#6a4a14')
+  Px $b ($ox + 4) 7 (C '#fff3c0'); Px $b ($ox + 15) 7 (C '#6a4a14')
+  # 配管（右）
+  Rect $b ($ox + 18) 7 5 2 (C '#7a88b8'); Rect $b ($ox + 18) 7 5 1 (C '#c8d0f0')
+  Rect $b ($ox + 20) 7 3 44 (C '#5a6898'); Rect $b ($ox + 20) 7 1 44 (C '#c8d0f0'); Rect $b ($ox + 22) 9 1 42 (C '#2a3258')
+  Rect $b ($ox + 19) 26 5 2 (C '#c8962c'); Rect $b ($ox + 19) 40 5 2 (C '#c8962c')
+  # 圧力計（針がゆれる）
+  Ellipse $b ($ox + 21) 17 3.4 3.4 (C '#c8962c')
+  Ellipse $b ($ox + 21) 17 2.6 2.6 (C '#e8f0ff')
+  $na = -1.6 + 1.2 * [math]::Sin($t)
+  Line $b ($ox + 21) 17 ($ox + 21 + [int][math]::Round(2 * [math]::Cos($na))) (17 + [int][math]::Round(2 * [math]::Sin($na))) (C '#e0243a')
+  Px $b ($ox + 21) 17 (C '#2a3258')
+  # バルブ
+  Rect $b ($ox + 15) 52 4 2 (C '#e0243a'); Px $b ($ox + 16) 51 (C '#e0243a'); Px $b ($ox + 17) 51 (C '#e0243a')
+  foreach ($p in @(@(0, 50), @(23, 50))) { Clear $b ($ox + $p[0]) $p[1] }
 }
+
+# フラスコ（光る液体がぷくぷく）10x16 4コマ
+Sheet 'handmade_flask.png' 10 16 4 {
+  param($b, $ox, $f)
+  Halo $b ($ox + 5) 10 6 7 '#4dffc4' 22
+  Rect $b ($ox + 3) 0 4 2 (C '#a8744a'); Rect $b ($ox + 3) 0 4 1 (C '#d8a070')
+  for ($y = 2; $y -lt 15; $y++) {
+    $hw = if ($y -lt 6) { 1.6 } else { 1.6 + ($y - 5) * 0.45 }
+    $xl = [int][math]::Round(5 - $hw); $xr = [int][math]::Round(5 + $hw) - 1
+    for ($x = $xl; $x -le $xr; $x++) {
+      $edge = ($x -le $xl) -or ($x -ge $xr) -or ($y -ge 14)
+      if ($edge) { PxO $b ($ox + $x) $y (CA '#a8e0ff' 240) }
+      elseif ($y -ge 8) { PxO $b ($ox + $x) $y (CA '#2affc0' 235) }
+      else { PxO $b ($ox + $x) $y (CA '#0a1a50' 200) }
+    }
+  }
+  Rect $b ($ox + 2) 8 6 1 (C '#b8ffe8')
+  Px $b ($ox + 3) 11 (C '#e8ffff'); Px $b ($ox + 2) 10 (C '#e8f6ff')
+  $by = 13 - ($f * 3) % 12; $bx = 4 + ($f % 2) * 2
+  Px $b ($ox + $bx) $by (CA '#ffffff' 240)
+  $by2 = 13 - (($f + 2) * 3) % 12; Px $b ($ox + 9 - $bx) $by2 (CA '#d8ffff' 220)
+  Rect $b ($ox + 2) 15 6 1 (C '#3a4468')
+}
+
+# 歯車とガラス管のトレイ 18x9
+$gt = NewBmp 18 9
+Rect $gt 0 5 18 4 (C '#3a4468'); Rect $gt 0 5 18 1 (C '#8a9ad0'); Rect $gt 0 8 18 1 (C '#1c2240')
+$script:CX0 = 0; $script:CX1 = 100
+Gear $gt 5 3.5 4.2 6 0.3 $brass $brassD $brassH (C '#3a4468')
+Gear $gt 12 4 3.4 6 0.1 (C '#c8d0f0') (C '#5a6898') (C '#ffffff') (C '#3a4468')
+Rect $gt 15 3 2 1 (C '#c8d0f0'); Px $gt 16 2 (C '#c8d0f0')
+Px $gt 9 7 (C '#ffe08a'); Px $gt 10 7 (C '#ffe08a')
+Save $gt 'handmade_gears.png'
 
 # =====================================================================
 # 提灯の柱（暖色の灯り）16x58 4コマ（ゆらぎ）
@@ -692,17 +837,23 @@ Sheet 'handmade_lantern.png' 16 58 4 {
 }
 
 # =====================================================================
-# のぼり旗「夜のクラゲ」16x82
+# のぼり旗「クラゲファクトリー」26x86（2列の縦書き。下のふちはクラゲの触手）
 # =====================================================================
-$nb = NewBmp 16 82
-Rect $nb 0 2 16 2 $wd2; Rect $nb 0 2 2 80 $wd3; Rect $nb 0 1 2 81 (C '#b8909e')
-Rect $nb 2 4 13 74 (C '#10185c')
-Rect $nb 2 4 13 1 (C '#3df5ff'); Rect $nb 2 4 1 74 (C '#3df5ff'); Rect $nb 14 4 1 74 (C '#a688ff')
-for ($i = 0; $i -lt 13; $i++) { if ($i % 2 -eq 0) { Rect $nb (2 + $i) 78 1 3 (C '#10185c') } }
-# クラゲの絵（上）
+$nb = NewBmp 26 90
 $script:CX0 = 0; $script:CX1 = 100
-Halo $nb 8 11 6 5 '#27d8ff' 40
-Jelly $nb 8 7 9 6 $PCy 1.3 5 0.8 1.0
-$chars = '夜', 'の', 'ク', 'ラ', 'ゲ'
-for ($i = 0; $i -lt 5; $i++) { [void](TextPx $nb $chars[$i] 3 (19 + 11 * $i) 11 (@((C '#fff3d6'), (C '#fff3d6'), (C '#9ff8ff'), (C '#9ff8ff'), (C '#9ff8ff'))[$i]) $false) }
+Rect $nb 0 2 26 2 $wd2; Rect $nb 0 2 2 88 $wd3; Rect $nb 0 1 2 89 (C '#b8909e')
+for ($y = 5; $y -lt 80; $y++) { Rect $nb 2 $y 23 1 (Mix (C '#0e1656') (C '#1c1070') (($y - 5) / 74.0)) }
+Rect $nb 2 4 23 1 (C '#3df5ff'); Rect $nb 2 4 1 76 (C '#3df5ff'); Rect $nb 24 4 1 76 (C '#a688ff')
+for ($i = 0; $i -lt 6; $i++) { Px $nb (4 + $i * 4) 6 (C '#ffd36a') }
+# 縦書き: 右の列が「クラゲ」、左の列が「ファクトリー」
+$cols1 = @('ク', 'ラ', 'ゲ')
+for ($i = 0; $i -lt 3; $i++) { $m = TextMask $cols1[$i] 11 $FONT; FxText $nb $m 14 (22 + $i * 12) '#8ff6ff' '#a8c8ff' '#e8a8ff' $null '#27d8ff' 18 -100 }
+$cols2 = @('フ', 'ァ', 'ク', 'ト', 'リ', 'ー')
+for ($i = 0; $i -lt 6; $i++) {
+  if ($cols2[$i] -eq 'ー') { $m = VBarMask 2 7; FxText $nb $m 9 (22 + $i * 9 + 1) '#ffb0e8' '#ff8fdc' '#ff6fcf' $null '#ff4fd0' 18 -100 }
+  else { $m = TextMask $cols2[$i] 10 $FONT; FxText $nb $m 4 (22 + $i * 9) '#ffc0ee' '#ff9ae0' '#c890ff' $null '#ff4fd0' 18 -100 }
+}
+# 下に垂れるクラゲ（旗のふち）
+Halo $nb 13 79 9 6 '#27d8ff' 36
+Jelly $nb 13 74 16 7 $PCy 1.3 9 0.8 1.6
 Save $nb 'handmade_nobori.png'

@@ -7,7 +7,7 @@
  *     幅と高さを変えて何個も作る。草の面は歩ける、崖は通れない。木も数本立てる。
  *  3. 雲: Clouds 01/02 のオートタイルで、角を落とした長方形の雲を空の部分にだけ置く。
  *  4. 当たり判定: 地面(land/paths)が無いマス＝空は通れなくする（既に塞いである所はそのまま）。
- * 既存の地面・建物・配置物・ワープは消さない（空のマスに足すだけ）。
+ * 既存の地面・建物・配置物は消さない（空のマスに足すだけ）。
  */
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -19,8 +19,10 @@ const outPath = opt("out", inPath);
 const GRID = opt("grid", null);
 const IM = Number(opt("m", 10)), IK = Number(opt("k", 6));
 const GAPX = Number(opt("gapx", 5)), GAPY = Number(opt("gapy", 4)), MARGIN = Number(opt("margin", 3));
-const NO_TREES = args.includes("--no-trees") || !!GRID;
-const PAD_VISIBLE = args.includes("--pad-tiles");
+// --single 84x32: 大きな島を1つだけ、マップの中央に置く（m x k。草の面は (m+2)x(k+2) マス）。--label でグループ名
+const SINGLE = opt("single", null);
+const LABEL = opt("label", null);
+const NO_TREES = args.includes("--no-trees") || !!GRID || !!SINGLE;
 
 const map = JSON.parse(readFileSync(inPath, "utf8"));
 const W = map.width, H = map.height, TS = 16;
@@ -60,8 +62,6 @@ const ISLAND = {
 };
 const SHADOW_ROW = 76; // 崖の下の影(海の上)
 let islandSeq = 0;
-// ワープ地点の足元に敷く目印(Path 03 の黄色い土)
-const PAD_TILE = JSON.parse(readFileSync("client/src/config/tileset.json", "utf8")).autotileGroups["Path 03"].fill;
 
 /** 島を ox,oy に置く。中央 m 列・草の面の高さ k 行。置けない(既存の地面と重なる)なら false */
 function placeIsland(ox, oy, m, k) {
@@ -98,7 +98,7 @@ function placeIsland(ox, oy, m, k) {
       shadows.data[sy][ox + i] = SHADOW_ROW;
       gTiles.push({ layer: "shadows", dx: i, dy: k + 4, id: SHADOW_ROW, prev: -1 });
     }
-  const group = { id: gid, label: `浮島 ${islandSeq}`, x: ox, y: oy, w, h, tiles: gTiles, collision: gColl, warps: [] };
+  const group = { id: gid, label: LABEL ?? `浮島 ${islandSeq}`, x: ox, y: oy, w, h, tiles: gTiles, collision: gColl };
   (map.groups ??= []).push(group);
 
   // 木を数本（スプライトは 32x34、原点は左上。足元は y+34）
@@ -146,34 +146,19 @@ if (GRID) {
       if (c === spawnCol && r === spawnRow) map.spawn = { x: ox + 2 + Math.floor(IM / 2), y: oy + 1 + Math.floor(IK / 2) };
     }
   console.log(`浮島 ${made}/${C * R}（${iw}x${ih}マス・平地）、スポーン (${map.spawn.x},${map.spawn.y})`);
-
-  // 隣り合う島を、縁の近くの「黄色い足場」でつなぐ。足場は島の4辺に3マスずつ、上下左右の隣の島の
-  // 反対側の足場の2マス内側に飛ぶ（着地点は足場ではないので、すぐ戻されることはない）
-  const addPad = (isl, cells, dests) => {
-    cells.forEach(([x, y], i) => {
-      // 見える目印(黄色い足場)は --pad-tiles を付けたときだけ。既定ではワープだけで、地面には何も敷かない
-      if (PAD_VISIBLE) {
-        paths.data[y][x] = PAD_TILE;
-        isl.g.tiles.push({ layer: "paths", dx: x - isl.ox, dy: y - isl.oy, id: PAD_TILE, prev: -1 });
-      }
-      isl.g.warps.push({ dx: x - isl.ox, dy: y - isl.oy, toX: dests[i][0], toY: dests[i][1] });
-      (map.warps ??= []).push({ x, y, toX: dests[i][0], toY: dests[i][1] });
-    });
-  };
-  const three = (v) => [v - 1, v, v + 1];
-  let pads = 0;
-  for (let r = 0; r < R; r++)
-    for (let c = 0; c < C; c++) {
-      const a = grid[r][c];
-      if (!a) continue;
-      const cx = a.ox + 2 + Math.floor(IM / 2), cy = a.oy + 1 + Math.floor(IK / 2);
-      const E = grid[r][c + 1], Wst = grid[r][c - 1], N = grid[r - 1]?.[c], S = grid[r + 1]?.[c];
-      if (E) { const ys = three(cy); addPad(a, ys.map((y) => [a.ox + iw - 3, y]), ys.map((y) => [E.ox + 4, y])); pads++; }
-      if (Wst) { const ys = three(cy); addPad(a, ys.map((y) => [a.ox + 2, y]), ys.map((y) => [Wst.ox + iw - 5, y])); pads++; }
-      if (N) { const xs = three(cx); addPad(a, xs.map((x) => [x, a.oy + 1]), xs.map((x) => [x, N.oy + IK - 2])); pads++; }
-      if (S) { const xs = three(cx); addPad(a, xs.map((x) => [x, a.oy + IK]), xs.map((x) => [x, S.oy + 3])); pads++; }
-    }
-  console.log(`ワープの足場 ${pads} か所（${map.warps.length}マス）`);
+} else if (SINGLE) {
+  // 大きな島を1つだけ、マップの中央に置く（出店をたくさん並べる用）。草の面は (m+2)x(k+2) マス
+  const [sm, sk] = SINGLE.split("x").map(Number);
+  const w = sm + 4, h = sk + 5;
+  const ox = Math.floor((W - w) / 2), oy = Math.floor((H - h) / 2);
+  const g = placeIsland(ox, oy, sm, sk);
+  if (!g) {
+    console.error(`島 ${w}x${h} をマップ ${W}x${H} に置けませんでした`);
+    process.exit(1);
+  }
+  made++;
+  map.spawn = { x: ox + 2 + Math.floor(sm / 2), y: oy + 1 + Math.floor(sk / 2) };
+  console.log(`大きな島 ${w}x${h}マス（草の面 ${sm + 2}x${sk + 2}）を (${ox},${oy}) に置きました。スポーン (${map.spawn.x},${map.spawn.y})`);
 } else {
   // スポーン地点が空の上だと動けなくなるので、スポーン(map.spawn)を中心にした大きめの島を最初に置く
   {

@@ -5,7 +5,7 @@
 | ファイル | 役目 |
 |---|---|
 | `scripts/stalls/<id>.ps1` | 専用ドット絵(PNG)を描く。出力は `client/public/brand/stall/<id>_*.png`（ファイル名は必ず `<id>_` で始める） |
-| `scripts/stalls/<id>.mjs` | 配置。`export const meta = { id, label, island }` と `export default function layout(k)` |
+| `scripts/stalls/<id>.mjs` | 配置。`export const meta = { id, label }` と `export default function layout(k)`（場所は書かない。`scripts/build-stalls.mjs` の `SLOTS` が区画を決める） |
 
 ## 道具
 
@@ -17,7 +17,7 @@
   - 座標: `dx` = 草地の中心Xからのずれ(-96..96)、`foot` = 草地の上端Yから足元までの距離(0..128)、`by` = 前後の判定（大きいほど手前）
 - 確かめる（map.json に書かない）: `node scripts/preview-stall.mjs <id> --scale=4 [--hit] [--grid]` → `reference/stall-previews/<id>.png`
 - 素材を調べる: `node scripts/stall-assets.mjs sprites "plate|mug"` / `items x0 y0 x1 y1` / `crop x y w h 6`
-- 島に組み立てる: `node scripts/build-stalls.mjs --only=<id> [--replace] [--dry]`（map.json を書き換える。バックアップは reference/map-backups/）
+- 島に組み立てる: `node scripts/build-stalls.mjs --only=<id> [--replace] [--dry]`（map.json を書き換える。バックアップは reference/map-backups/）。島は「文化祭島」1つで、草地を 6列×3行 の区画(192×128px)に分けて並べる（区画は build-stalls.mjs の `SLOTS`）。各出店のスタンプ（星）も区画の右どなりの通路に自動で置く\r\n- マップを白紙から作り直す: `node scripts/rebuild-festival.mjs`（空・雲・大きな島・出店・広場・スタンプまで一括）
 
 ## これまでの出店から分かった落とし穴
 
@@ -34,7 +34,7 @@
 
 ## 守ること
 
-- 島の草地は **192×128px**。物はその範囲に収める（看板・のぼりなど背の高い物が少し上にはみ出るのは可）。
+- 区画は **192×128px**（隣の出店とは左右 32px の通路を挟む）。物はその範囲（幅 ±96px）に収める（看板・のぼりなど背の高い物が少し上にはみ出るのは可）。
 - 人物のスプライトは 96×64 だが体は約 16px 四方で、体は `foot-16 .. foot` に出る。カウンターの奥に立たせるなら足元をカウンター上面の線に合わせる。
 - 台の上に置く物は `by` を台より大きくして手前に描く。床に敷く物は `sort:"floor"`。
 - 通れない物（カウンター・柱・大きな物）には `hit:[幅,高さ]` を付ける。入口や客が歩く所は空ける。

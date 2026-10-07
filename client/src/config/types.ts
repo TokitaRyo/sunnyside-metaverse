@@ -128,17 +128,9 @@ export interface ObjectDef {
   group?: string;
 }
 
-/** このマス(x,y)に足元が乗ったら (toX,toY) へワープする（ブラックアウト演出つき） */
-export interface WarpDef {
-  x: number;
-  y: number;
-  toX: number;
-  toY: number;
-}
-
 /**
  * タイルとして貼り付けたもの（家・島・コピーした範囲など）を「1つの物」として扱うための記録。
- * エディタ専用で、ゲーム本体は読まない。x,y は左上のマス。tiles/collision/warps は左上からの相対位置。
+ * エディタ専用で、ゲーム本体は読まない。x,y は左上のマス。tiles/collision は左上からの相対位置。
  * prev は「置く前の値」で、移動・削除のとき元に戻すのに使う。
  */
 /** スタンプラリーのキーアイテム。足元がこの近くに来ると取得でき、スタンプカードの枠が1つ埋まる */
@@ -162,7 +154,6 @@ export interface GroupDef {
   tiles: { layer: string; dx: number; dy: number; id: number; prev: number }[];
   /** v=グループが入れる当たり判定の値(1=塞ぐ/0=歩ける)、prev=置く前の値 */
   collision: { dx: number; dy: number; v: number; prev: number }[];
-  warps?: { dx: number; dy: number; toX: number; toY: number }[];
 }
 
 export interface MapJson {
@@ -185,7 +176,6 @@ export interface MapJson {
   tileLayers?: TileLayerDef[];
   sprites?: Record<string, MapSpriteDef>;
   objects?: ObjectDef[];
-  warps?: WarpDef[];
   groups?: GroupDef[];
   keyItems?: KeyItemDef[];
 }

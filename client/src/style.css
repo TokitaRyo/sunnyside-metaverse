@@ -27,30 +27,6 @@ html, body {
 
 /* ---------- 名前ラベルと吹き出し（ワールド座標に追従するDOM） ---------- */
 #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
-/* ---------- ワープ中のロード画面（WorldScene.playWarp が .on を付け外しする） ---------- */
-#warp-fade {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 50% 40%, #16385c 0%, #0a1b2e 70%);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 60;
-  transition: opacity 0.3s ease;
-}
-#warp-fade.on { opacity: 1; }
-.wl-box { width: min(320px, 78vw); text-align: center; color: #fff; }
-.wl-title { font-size: 22px; font-weight: 800; letter-spacing: 0.04em; margin-bottom: 18px; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4); }
-.wl-bar { height: 12px; border: 2px solid rgba(255, 255, 255, 0.55); border-radius: 8px; overflow: hidden; background: rgba(0, 0, 0, 0.35); }
-.wl-bar i { display: block; width: 0; height: 100%; background: linear-gradient(90deg, #ff3b3b, #ff9a1f, #ffe14a, #3be05a, #33d6ff, #4a6bff, #c24bff); }
-#warp-fade.on .wl-bar i { animation: wl-fill var(--wl-ms, 1100ms) cubic-bezier(0.3, 0.6, 0.4, 1) 0.3s forwards; }
-@keyframes wl-fill { to { width: 100%; } }
-.wl-text { margin-top: 12px; font-size: 14px; font-weight: 700; opacity: 0.9; }
-.wl-dots::after { content: ""; animation: wl-dots 1.2s steps(1) infinite; }
-@keyframes wl-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
-.wl-tip { margin-top: 22px; min-height: 1.4em; font-size: 12px; opacity: 0.65; }
 .tag {
   position: absolute;
   left: 0;

@@ -57,11 +57,6 @@ export function validateMap(map: MapJson, sprites: SpritesJson, tileset: Tileset
     }
   });
 
-  (map.warps ?? []).forEach((w, i) => {
-    if (w.x < 0 || w.y < 0 || w.x >= width || w.y >= height) errors.push(`warps[${i}] (${w.x},${w.y}) がマップ外です`);
-    if (w.toX < 0 || w.toY < 0 || w.toX >= width || w.toY >= height) errors.push(`warps[${i}] の移動先 (${w.toX},${w.toY}) がマップ外です`);
-  });
-
   const seenKeyIds = new Set<string>();
   (map.keyItems ?? []).forEach((k, i) => {
     if (!k.id || seenKeyIds.has(k.id)) errors.push(`keyItems[${i}].id "${k.id}" が空か重複しています`);
