@@ -140,8 +140,10 @@ export interface KeyItemDef {
   /** 中心（px。マスの中央に置く） */
   x: number;
   y: number;
-  /** カードに出す名前（島の名前など。省略可） */
+  /** カードに出す名前（出店の名前など。省略可） */
   name?: string;
+  /** スタンプの絵柄の id（client/src/game/stampIcons.ts の STAMP_ICON_IDS）。省略・不明なら星 */
+  icon?: string;
 }
 
 export interface GroupDef {

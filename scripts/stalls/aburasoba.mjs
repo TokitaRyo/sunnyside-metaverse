@@ -36,8 +36,8 @@ export default function layout(k) {
     lines: [
       "いらっしゃい！ 油そば、やっています！",
       "油そばは、スープのない「汁なし」のめん料理だよ。ふといめんを、おおきな寸胴でぐらぐらゆでるんだ。",
-      "どんぶりの底のたれと、あついめんを、下からよーくまぜてね。チャーシュー、メンマ、ねぎ、のり、たまごの黄身ものせるよ。",
-      "さいごに、お酢とラー油をぐるっとまわしかけると、味がしまっておいしいよ。おろしにんにくや七味もあるから、すきにためしてみてね！",
+      "どんぶりの底のたれと、あついめんを、下からよーくまぜてね。",
+      "よくまぜてから食べると、おいしいよ。あつあつを、ずるずるっとどうぞ！",
     ],
   }, true);
   put("expression_chat", -12, 41, { by: 90 });
@@ -51,7 +51,7 @@ export default function layout(k) {
   put("aburasoba_bowls", 52, 64, { by: ON_COUNTER });
 
   // 前のお客さん（マットのところで注文）
-  person("human_shorthair_idle", 8, 104, { name: "おきゃくさん", lines: ["ここの油そば、やみつきになる味なんだ。", "さいしょはそのまま、つぎはお酢とラー油をたして、さいごににんにくも！ 味が変わるのがたのしいよ。"] }, false);
+  person("human_shorthair_idle", 8, 104, { name: "おきゃくさん", lines: ["ここの油そば、いいにおい！", "よーくまぜて食べるのが、コツなんだって。"] }, false);
   put("happiness_01", 8, 80, { by: 120 });
 
   // カウンター席（右手前）: 長いバーに、どんぶりと卓上の調味料。赤い丸椅子が3つ
@@ -61,7 +61,7 @@ export default function layout(k) {
   put("aburasoba_stool", 40, 122);
   put("aburasoba_stool", 58, 122);
   put("aburasoba_stool", 76, 122, { by: 117 }); // こどもが座る椅子（こどもを手前に描く）
-  person("human_spikeyhair_idle", 76, 119, { name: "こども", lines: ["ぼくはね、黄身をくずしてまぜるのがすき！", "ずるずるっていっぱい食べると、おなかいっぱいになるよ。"] }, true);
+  person("human_spikeyhair_idle", 76, 119, { name: "こども", lines: ["ぼくはね、よーくまぜるのがすき！", "ずるずるっていっぱい食べると、おなかいっぱいになるよ。"] }, true);
 
   // 左手前: 食券機と、メニューの黒板
   put("aburasoba_ticket", -87, 100, { hit: [16, 6] });

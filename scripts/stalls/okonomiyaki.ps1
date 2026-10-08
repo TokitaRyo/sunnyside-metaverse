@@ -100,12 +100,14 @@ $b = NewBmp 54 50
 Rect $b 0 0 54 44 $ol; Rect $b 1 1 52 42 $w2; Rect $b 3 3 48 38 $board
 Rect $b 6 44 3 6 $w3; Rect $b 45 44 3 6 $w3
 Rect $b 6 44 1 6 $w2; Rect $b 45 44 1 6 $w2
-$items = 'ミックス', 'ぶた玉', 'いか玉'
-for ($i = 0; $i -lt 3; $i++) {
-  $col = if ($i -eq 0) { C '#ffe14a' } else { $chalk }
-  $w = TextWidth $items[$i] 12
-  [void](TextPx $b $items[$i] ([math]::Floor((54 - $w) / 2)) (5 + 12 * $i) 12 $col $false)
-}
+# 品書きの中身(味・種類)は書かない。文字は「メニュー」だけ。何の店かは大きな皿の絵で伝える
+$w = TextWidth 'メニュー' 11
+[void](TextPx $b 'メニュー' ([math]::Floor((54 - $w) / 2)) 4 11 (C '#ffe14a') $true)
+Ellipse $b 27 31 20 9 (C '#aeb4c8'); Ellipse $b 27 30 20 8.6 $white
+Ellipse $b 27 29 16 7 $sauce; Ellipse $b 27 28 15 6 $dough; Ellipse $b 27 28 14 5.4 $sauce2
+for ($i = -11; $i -le 11; $i++) { Px $b (27 + $i) (25 + (($i + 11) % 2) * 2) $mayo; Px $b (27 + $i) (28 + (($i + 11) % 2) * 2) $mayo }
+foreach ($d in @(@(-9, 27), @(-4, 30), @(2, 26), @(7, 29), @(10, 27), @(-1, 32), @(5, 32), @(-7, 31))) { Px $b (27 + $d[0]) $d[1] $nori; Px $b (28 + $d[0]) $d[1] $nori }
+foreach ($d in @(@(-5, 26), @(4, 28), @(0, 29), @(8, 31))) { Px $b (27 + $d[0]) $d[1] $bonito }
 Save $b 'okonomi_menu.png'
 
 # ---- 鉄板（焼きたてのお好み焼き2枚とコテ）52x34。足元が原点

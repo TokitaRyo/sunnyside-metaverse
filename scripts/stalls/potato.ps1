@@ -455,14 +455,17 @@ $b = NewBmp 62 46
 Rect $b 0 0 62 40 $ol; Rect $b 1 1 60 38 $pr1; Rect $b 3 3 56 34 $paper
 Rect $b 3 3 56 1 $paper2
 Rect $b 6 40 3 6 $w3; Rect $b 53 40 3 6 $w3; Rect $b 6 40 1 6 $w2; Rect $b 53 40 1 6 $w2
-$items = @(@('しお', $salt, $st1), @('のりしお', $nori2, $nori), @('コンソメ', $cons2, $cons))
-for ($i = 0; $i -lt 3; $i++) {
-  $y = 4 + $i * 11
-  Ellipse $b 8.5 ($y + 5.5) 3.2 3.2 $ol
-  Ellipse $b 8.5 ($y + 5.5) 2.4 2.4 $items[$i][1]
-  Px $b 8 ($y + 4) $white
-  [void](TextPx $b $items[$i][0] 14 $y 11 $pr0 $true)
-}
+# 品書きの中身(味・種類)は書かない。文字は「メニュー」だけ。何の店かはポテトの絵で伝える
+$w = TextWidth 'メニュー' 11
+[void](TextPx $b 'メニュー' ([math]::Floor((62 - $w) / 2)) 4 11 $pr0 $true)
+$cup = FryCup 12 10 7 1 $null
+Blit $b $cup 16 14
+$cup.Dispose()
+$tl = NewBmp 10 24
+Tornado $tl 5 6 14 $null
+$o = OutlineBmp $tl $ol
+Blit $b $o 34 13
+$o.Dispose()
 Save $b 'potato_menu.png'
 
 # ---- ポテくん（フライドポテトのマスコット。台つき）22x30

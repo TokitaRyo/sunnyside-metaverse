@@ -428,13 +428,13 @@ $b = NewBmp 60 52
 Rect $b 0 0 60 46 $k0; Rect $b 1 1 58 44 $rd; Rect $b 1 1 58 1 $rd3; Rect $b 3 3 54 40 $k1
 Rect $b 3 3 54 1 $k0
 Rect $b 7 46 4 6 $wd1; Rect $b 49 46 4 6 $wd1; Rect $b 7 46 1 6 $wd2; Rect $b 49 46 1 6 $wd2
-$t = TextWidth '油そば' 13
-[void](TextPx $b '油そば' ([int]((60 - $t) / 2)) 5 13 $ye $true)
+# 品書きの中身(種類・味付け)は書かない。文字は「メニュー」だけ。何の店かは大きなどんぶりの絵で伝える
+$t = TextWidth 'メニュー' 13
+[void](TextPx $b 'メニュー' ([int]((60 - $t) / 2)) 5 13 $ye $true)
 Rect $b 8 19 44 1 $ye2
-$t = TextWidth 'まぜまぜ' 11
-[void](TextPx $b 'まぜまぜ' ([int]((60 - $t) / 2)) 22 11 $white $true)
-$t = TextWidth '酢ラー油' 11
-[void](TextPx $b '酢ラー油' ([int]((60 - $t) / 2)) 32 11 (C '#ff9a82') $true)
+$bw1 = BowlSprite 10 4 5 0 1
+Blit $b $bw1 ([int]((60 - $bw1.Width) / 2)) 21
+$bw1.Dispose()
 Save $b 'aburasoba_menu.png'
 
 # ---- 店の奥の壁 118x32（黒い板壁）。足元が原点

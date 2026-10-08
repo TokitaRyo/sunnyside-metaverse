@@ -94,13 +94,12 @@ $b = NewBmp 64 50
 Rect $b 0 0 64 44 $ol; Rect $b 1 1 62 42 $w2; Rect $b 3 3 58 38 $board
 Rect $b 8 44 3 6 $w3; Rect $b 53 44 3 6 $w3
 Rect $b 8 44 1 6 $w2; Rect $b 53 44 1 6 $w2
-$items = 'あんこ', 'クリーム', 'チョコ'
-for ($i = 0; $i -lt 3; $i++) {
-  $col = if ($i -eq 0) { C '#ffe14a' } else { $chalk }
-  $sz = 12
-  $w = TextWidth $items[$i] $sz
-  [void](TextPx $b $items[$i] ([math]::Floor((64 - $w) / 2)) (5 + 12 * $i) $sz $col $false)
-}
+# 品書きの中身(味・種類)は書かない。文字は「メニュー」だけ。何の店かは大きなたい焼きの絵で伝える
+$w = TextWidth 'メニュー' 11
+[void](TextPx $b 'メニュー' ([math]::Floor((64 - $w) / 2)) 4 11 (C '#ffe14a') $true)
+$f = NewBmp 18 10; Fish $f 0 0 $true
+for ($j = 0; $j -lt 10; $j++) { for ($i = 0; $i -lt 18; $i++) { $c = $f.GetPixel($i, $j); if ($c.A -ge 128) { Rect $b (14 + $i * 2) (19 + $j * 2) 2 2 $c } } }
+$f.Dispose()
 Save $b 'taiyaki_menu.png'
 
 # ---- 焼き台 52x24（たい焼き器。4つの型と木の持ち手、下は炎が見える火口）。足元が原点

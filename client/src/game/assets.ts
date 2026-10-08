@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { EMOTES, LOCOMOTION } from "@metaverse/shared";
 import { map, sprites } from "../config";
+import { queueStampIcons } from "./stampIcons";
 
 export const ASSET_BASE = `${import.meta.env.BASE_URL}assets/`;
 export const TILES_KEY = "tiles";
@@ -47,6 +48,8 @@ export function queueAssets(load: Phaser.Loader.LoaderPlugin): void {
       if (sp.catalog && !used.has(name) && !editing) continue;
       load.spritesheet(objectKey(name), sp.file, { frameWidth: sp.fw, frameHeight: sp.fh });
     }
+    // 出店ごとのスタンプの絵柄（1枚のシート）。キーアイテムが使うときだけ読む
+    if ((map.keyItems ?? []).some((k) => k.icon)) queueStampIcons(load);
   } else {
     load.image(TILES_KEY, "tilesets/sunnyside_16.png");
   }

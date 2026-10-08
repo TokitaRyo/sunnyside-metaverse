@@ -1,6 +1,7 @@
 import { map } from "../config";
 import { stamps } from "../game/stamps";
 import { starDataUrl } from "../game/starIcon";
+import { loadStampSheet, stampFrame, stampIconUrl } from "../game/stampIcons";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -41,6 +42,15 @@ export class StampCard {
     this.card.hidden = true;
     this.toastEl.hidden = true;
     this.refresh();
+    // 出店ごとの絵柄のシートが読み込めたら、枠を描き直す
+    void loadStampSheet().then((img) => img && this.refresh());
+  }
+
+  /** その出店のスタンプの絵（取得済みは色つき、未取得はうす暗い影絵）。絵柄が無いときは星 */
+  private iconUrl(icon: string | undefined, got: boolean): string {
+    const f = stampFrame(icon);
+    const u = f >= 0 ? stampIconUrl(f, 3, !got) : "";
+    return u || (got ? this.lit : this.dim);
   }
 
   get isOpen(): boolean {
@@ -61,7 +71,7 @@ export class StampCard {
         const slot = document.createElement("div");
         slot.className = `stamp-slot${got ? " got" : ""}`;
         const img = new Image();
-        img.src = got ? this.lit : this.dim;
+        img.src = this.iconUrl(k.icon, got);
         img.alt = "";
         const no = document.createElement("b");
         no.textContent = String(i + 1);
@@ -88,11 +98,11 @@ export class StampCard {
   }
 
   /** 新しく取得したときの通知＋カード更新 */
-  collected(name: string | undefined): void {
+  collected(name: string | undefined, icon?: string): void {
     this.refresh();
     const left = stamps.total - stamps.count;
     this.toastEl.replaceChildren(
-      Object.assign(new Image(), { src: this.lit, alt: "" }),
+      Object.assign(new Image(), { src: this.iconUrl(icon, true), alt: "" }),
       Object.assign(document.createElement("div"), {
         textContent: left === 0 ? "コンプリート！ スタンプカードを見てみよう" : `スタンプ GET！${name ? "（" + name + "）" : ""}　あと ${left} 個`,
       }),

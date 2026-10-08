@@ -23,7 +23,8 @@ const app = config({
   },
   initializeExpress: (expressApp) => {
     if (serveClient) {
-      expressApp.use("/playground", playground());
+      // 本番では Playground を出さない（開発用の道具。外から部屋に自由に入れてしまうため）。確認したいときだけ ENABLE_PLAYGROUND=1
+      if (process.env.ENABLE_PLAYGROUND === "1") expressApp.use("/playground", playground());
       expressApp.use(express.static(clientDist));
     } else {
       // 開発時は http://localhost:2567 で Playground が開く

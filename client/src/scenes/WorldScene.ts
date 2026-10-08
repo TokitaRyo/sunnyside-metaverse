@@ -14,8 +14,10 @@ import {
 } from "@metaverse/shared";
 import { map, sprites, type KeyItemDef, type ObjectDef, type TileLayerDef } from "../config";
 import { INTRO_HOLD_MS, INTRO_ZOOM_MS } from "../ui/intro";
+import { dayState, isLightSprite } from "../game/dayCycle";
 import { ensureStarTexture, STAR_TEX } from "../game/starIcon";
 import { stamps } from "../game/stamps";
+import { STAMP_TEX, stampFrame } from "../game/stampIcons";
 import { StampCard } from "../ui/StampCard";
 import { TILES_KEY, elementKey, objectKey, tilesetKey } from "../game/assets";
 import { Character } from "../game/Character";
@@ -56,6 +58,9 @@ const DEPTH_GROUND = -2;
 const DEPTH_DECO = -1;
 /** キャラや木(depth=y)より必ず手前に出す */
 const DEPTH_OVERHEAD = 100000;
+/** 朝・昼・夜の色合いを乗算で重ねる層。これより上に出すのは、夜でも明るいままの光る物（看板・提灯・ネオン・スタンプ）だけ */
+const DEPTH_TINT = 150000;
+const DEPTH_LIGHT = 200000;
 /** tileLayers 用: 床タイル群は最背面から順に、床の上に敷く影などはその上、キャラ(depth=y>=0)より下 */
 const DEPTH_FLOOR_TILES = -20000;
 const DEPTH_FLOOR_OBJECTS = -5000;
@@ -107,6 +112,10 @@ export class WorldScene extends Phaser.Scene {
   private hud!: Hud;
   private talk?: Talk;
   private stampCard?: StampCard;
+  /** 朝・昼・夜の色合いを乗せる四角（updateDayCycle が毎フレーム整える） */
+  private tintRect?: Phaser.GameObjects.Rectangle;
+  private tintLast = -1;
+  private todSec = -1;
   /** 入室の降下演出中（この間は自分の操作を受け付けない） */
   private intro = false;
   private introCleanup?: () => void;
@@ -147,6 +156,9 @@ export class WorldScene extends Phaser.Scene {
     this.lost = false;
     this.talk = undefined;
     this.stampCard = undefined;
+    this.tintRect = undefined;
+    this.tintLast = -1;
+    this.todSec = -1;
     this.intro = false;
     this.introCleanup = undefined;
     this.keyItemEntries = [];
@@ -223,9 +235,41 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  /** 配置物の前後関係。床に敷くものは最背面、それ以外は足元Y */
+  /** 配置物の前後関係。床に敷くものは最背面、それ以外は足元Y。夜に光る物は色合いの層より上（夜でも暗くならない） */
   protected objectDepth(o: ObjectDef): number {
-    return o.sort === "floor" ? DEPTH_FLOOR_OBJECTS : o.by;
+    if (o.sort === "floor") return DEPTH_FLOOR_OBJECTS;
+    if (this.dayCycleEnabled() && isLightSprite(o.sprite)) return DEPTH_LIGHT + o.by;
+    return o.by;
+  }
+
+  /** 朝・昼・夜の色合いの変化を使うか（マップエディタでは使わない） */
+  protected dayCycleEnabled(): boolean {
+    return true;
+  }
+
+  /** 世界の色合い（朝・昼・夜）を毎フレーム反映し、時間帯の表示を更新する */
+  private updateDayCycle(): void {
+    if (!this.dayCycleEnabled()) return;
+    const st = dayState();
+    const cam = this.cameras.main;
+    if (!this.tintRect) {
+      this.tintRect = this.add.rectangle(0, 0, 10, 10, 0xffffff).setScrollFactor(0).setDepth(DEPTH_TINT).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    }
+    // scrollFactor 0 の物はズームの中心(画面の中央)を基準に拡大縮小されるので、画面全体を覆う大きさ = 画面 / ズーム
+    const z = cam.zoom;
+    this.tintRect.setPosition(cam.width / 2, cam.height / 2).setSize(cam.width / z + 8, cam.height / z + 8);
+    if (st.tint !== this.tintLast) {
+      this.tintLast = st.tint;
+      this.tintRect.setFillStyle(st.tint, 1);
+      this.tintRect.setVisible(st.tint !== 0xffffff);
+    }
+    // 時間帯の表示（HUD）。1秒ごとに更新
+    const sec = Math.floor(st.remainingMs / 1000);
+    if (sec !== this.todSec) {
+      this.todSec = sec;
+      const el = document.getElementById("tod-badge");
+      if (el) el.textContent = `${st.phase.icon} ${st.phase.label}  あと ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+    }
   }
 
   /** 配置物を1個つくる（スプライト生成・原点・拡大率・回転・アニメ）。当たり判定は obstacles に加える */
@@ -296,11 +340,21 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /** キーアイテムの深度。夜でも暗くならないよう、色合いの層より上（編集中は普通の足元Y） */
+  private keyDepth(y: number): number {
+    return this.dayCycleEnabled() ? DEPTH_LIGHT + y : y;
+  }
+
   protected spawnKeyItem(d: KeyItemDef): KeyItemEntry {
     ensureStarTexture(this.textures);
     const shade = this.add.ellipse(d.x, d.y + 3, 11, 4, 0x000000, 0.28).setDepth(DEPTH_FLOOR_OBJECTS);
-    const glow = this.add.circle(d.x, d.y, 9, 0xfff08a, 0.3).setDepth(d.y - 1);
-    const star = this.add.image(d.x, d.y - KEY_ITEM_LIFT, STAR_TEX).setDepth(d.y);
+    const glow = this.add.circle(d.x, d.y, 9, 0xfff08a, 0.3).setDepth(this.keyDepth(d.y) - 1);
+    // その出店にちなんだ絵柄（無い・読み込めていないときは星）
+    const frame = stampFrame(d.icon);
+    const star =
+      frame >= 0 && this.textures.exists(STAMP_TEX)
+        ? this.add.image(d.x, d.y - KEY_ITEM_LIFT, STAMP_TEX, frame).setDepth(this.keyDepth(d.y))
+        : this.add.image(d.x, d.y - KEY_ITEM_LIFT, STAR_TEX).setDepth(this.keyDepth(d.y));
     const e: KeyItemEntry = { d, star, glow, shade };
     this.placeKeyItem(e, 0);
     return e;
@@ -315,8 +369,8 @@ export class WorldScene extends Phaser.Scene {
   /** 位置・上下のゆれ・光の脈動（データの位置を毎フレーム反映するので、エディタで動かしても追従する） */
   private placeKeyItem(e: KeyItemEntry, time: number): void {
     const bob = Math.sin(time / 260 + e.d.x) * 2;
-    e.star.setPosition(e.d.x, e.d.y - KEY_ITEM_LIFT + bob).setDepth(e.d.y);
-    e.glow.setPosition(e.d.x, e.d.y - KEY_ITEM_LIFT / 2).setDepth(e.d.y - 1).setScale(1 + Math.sin(time / 400 + e.d.y) * 0.18);
+    e.star.setPosition(e.d.x, e.d.y - KEY_ITEM_LIFT + bob).setDepth(this.keyDepth(e.d.y));
+    e.glow.setPosition(e.d.x, e.d.y - KEY_ITEM_LIFT / 2).setDepth(this.keyDepth(e.d.y) - 1).setScale(1 + Math.sin(time / 400 + e.d.y) * 0.18);
     e.shade.setPosition(e.d.x, e.d.y + 3).setScale(1 - bob * 0.04);
   }
 
@@ -327,7 +381,7 @@ export class WorldScene extends Phaser.Scene {
     for (const e of [...this.keyItemEntries]) {
       if (Math.hypot(me.x - e.d.x, me.y - e.d.y) > KEY_ITEM_RANGE) continue;
       this.keyItemEntries.splice(this.keyItemEntries.indexOf(e), 1);
-      if (stamps.add(e.d.id)) this.stampCard?.collected(e.d.name);
+      if (stamps.add(e.d.id)) this.stampCard?.collected(e.d.name, e.d.icon);
       // 取ったら星がぽんと跳ねて消える
       e.glow.destroy();
       e.shade.destroy();
@@ -702,6 +756,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     for (const e of this.keyItemEntries) this.placeKeyItem(e, this.time.now);
+    this.updateDayCycle();
     if (this.me && this.hud && !this.intro) this.updateLocal(dt, delta);
   }
 

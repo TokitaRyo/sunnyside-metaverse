@@ -17,13 +17,14 @@
       <form id="chat-form" autocomplete="off">
         <input id="chat-input" type="text" maxlength="140" placeholder="Enter でチャット / Esc で戻る" enterkeyhint="send" />
       </form>
+      <div id="tod-badge" title="10分ごとに、朝・昼・夜が変わります"></div>
       <button id="stamp-btn" type="button" title="スタンプカード" hidden></button>
       <div id="stamp-toast" hidden></div>
       <div id="stamp-card" hidden role="dialog" aria-label="スタンプカード">
         <div class="sc-head"><b>スタンプカード</b><span id="stamp-count"></span><button id="stamp-close" type="button" aria-label="とじる">✕</button></div>
         <div id="stamp-done" hidden>🎉 コンプリート！ おめでとう！</div>
         <div id="stamp-grid"></div>
-        <div class="sc-foot">各島にある星のアイテムの前に行くと、スタンプが押されます。<button id="stamp-reset" type="button">はじめから</button></div>
+        <div class="sc-foot">各出店のそばにあるスタンプの前に行くと、押されます。<button id="stamp-reset" type="button">はじめから</button></div>
       </div>
       <button id="talk-prompt" type="button" hidden></button>
       <div id="talk-box" hidden>
@@ -80,6 +81,8 @@
         <div class="bar"><i id="load-bar"></i></div>
         <p id="join-error" class="error" hidden></p>
         <p class="hint">移動: WASD / 矢印キー ・ 走る: Shift ・ チャット: Enter ・ エモート: 1〜6 ・ 話す: E</p>
+        <p class="credit">チャットは参加者全員に見えます。本名・連絡先などの個人情報は書かないでね。</p>
+        <p class="credit">ドット絵素材: Sunnyside World Asset Pack（danieldiggle）／オリジナルのドット絵・ロゴ: AMPLIFIRE／描画: Phaser・通信: Colyseus</p>
       </form>
     </div>
 

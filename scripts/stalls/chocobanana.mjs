@@ -32,7 +32,7 @@ export default function layout(k) {
     lines: [
       "いらっしゃい！ チョコバナナ、やっています！",
       "バナナにチョコをとろ〜りかけて、カラースプレーやアラザンでかざるよ。",
-      "ミルク、いちご、ホワイトのチョコがあるよ。どれにしようかな？",
+      "かざりつけは、ひとつずつ ていねいに。カラフルで、見ているだけでたのしいでしょ？",
       "きらきらでかわいいのが、じまんなんだ。ぜひ見ていってね！",
     ],
   });
@@ -52,9 +52,9 @@ export default function layout(k) {
   put("chocobanana_sparkle", 44, 43, { by: 95, frame: 3 });
 
   // 前のお客さん
-  person("human_curlyhair_idle", 20, 100, { name: "おきゃくさん", lines: ["いちごのチョコバナナ、ピンクでかわいい！", "カラースプレーがきらきらしてるね。"] }, true);
+  person("human_curlyhair_idle", 20, 100, { name: "おきゃくさん", lines: ["チョコバナナ、かわいい！", "カラースプレーがきらきらしてるね。"] }, true);
   put("happiness_01", 20, 76, { by: 120 });
-  person("human_mophair_waiting", -40, 108, { name: "こども", lines: ["ぼく、ホワイトチョコがすき！", "ぜんぶのせてほしいなあ。"] });
+  person("human_mophair_waiting", -40, 108, { name: "こども", lines: ["はやく食べたいなあ。","きらきらを いっぱいのせてほしいなあ。"] });
 
   // テーブル席: テーブルにトレイ、丸椅子
   put(TABLE, -66, 118, { hit: [18, 8] });

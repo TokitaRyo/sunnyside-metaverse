@@ -25,7 +25,7 @@ export default function layout(k) {
     name: "カフェのてんいんさん",
     lines: [
       "いらっしゃいませ！ カフェへようこそ。",
-      "コーヒーやこうちゃ、ケーキ、パフェを用意しているよ。",
+      "のみものや おかしを 用意して、おまちしているよ。",
       "ゆっくりすわって、ひとやすみしていってね。",
       "テラスのテーブルも、じゆうにつかってね！",
     ],
@@ -71,8 +71,8 @@ export default function layout(k) {
   put(DAISY_B, 90, 124);
 
   // 客
-  person("human_curlyhair_idle", 20, 96, { name: "おきゃくさん", lines: ["ここのケーキ、ふわふわでおいしいの。", "コーヒーのいいにおいがするね。"] }, true);
+  person("human_curlyhair_idle", 20, 96, { name: "おきゃくさん", lines: ["ここのカフェ、おちついていて すてき。", "いいにおいがするね。"] }, true);
   put("happiness_01", 20, 78, { by: 120 });
-  person("human_bowlhair_idle", 22, 122, { name: "おきゃくさん", lines: ["テラスせきは、おひさまがきもちいいよ。", "パフェをのんびり食べるのが、すきなんだ。"] }, true);
+  person("human_bowlhair_idle", 22, 122, { name: "おきゃくさん", lines: ["テラスせきは、おひさまがきもちいいよ。", "のんびりすごすのが、すきなんだ。"] }, true);
   put("spr_deco_bird_01", -80, 130, { by: 129 }); // デッキを歩くはと
 }

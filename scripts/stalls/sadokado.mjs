@@ -67,7 +67,7 @@ export default function layout(k) {
   put("sadokado_nerikiri", -54, 88, { by: 108 });
   person("human_curlyhair_idle", -84, 83, {
     name: "おきゃくさん",
-    lines: ["あかいかさの したは ほっとするね。", "おだんご、もちもち！ おちゃは すこし にがいけど、おかしと いっしょなら ちょうどいいんだ。"],
+    lines: ["あかいかさの したは ほっとするね。", "おちゃは すこし にがいけど、おかしと いっしょなら ちょうどいいんだ。"],
   });
   person("human_bowlhair_idle", -24, 116, {
     name: "おきゃくさん",

@@ -281,13 +281,16 @@ Rect $b 0 0 60 48 $k; Rect $b 1 1 58 46 $wd1; Rect $b 1 1 58 1 $wd0; Rect $b 3 3
 Rect $b 3 3 54 1 $slate2; Frame $b 4 4 52 40 $slate2
 Rect $b 9 48 3 8 $wd3; Rect $b 48 48 3 8 $wd3; Rect $b 9 48 1 8 $wd2; Rect $b 48 48 1 8 $wd2
 Rect $b 8 45 44 3 $wd2
-$rows = @(@('コーヒー', $yel), @('ケーキ', $chalk), @('パフェ', $chalk))
-for ($i = 0; $i -lt 3; $i++) {
-  [void](TextPx $b $rows[$i][0] 6 (5 + 12 * $i) 12 $rows[$i][1] $false)
-}
-# チョークの落書き: ハート（ケーキ・パフェの横）
-Px $b 47 20 $rose; Px $b 49 20 $rose; Rect $b 46 21 5 1 $rose; Rect $b 47 22 3 1 $rose; Px $b 48 23 $rose
-Px $b 47 32 $rose; Px $b 49 32 $rose; Rect $b 46 33 5 1 $rose; Rect $b 47 34 3 1 $rose; Px $b 48 35 $rose
+# 品書きの中身(飲み物・お菓子の名前)は書かない。文字は「メニュー」だけ。何の店かは大きなカップの絵で伝える
+[void](TextPx $b 'メニュー' 6 5 12 $yel $true)
+# カップとソーサー、立ちのぼる湯気（チョークの絵）
+Rect $b 20 28 18 9 $cr0; Rect $b 20 28 1 9 $cr1; Rect $b 37 28 1 9 $cr2; Rect $b 21 28 16 2 $latte
+Rect $b 22 37 14 1 $cr2
+Rect $b 38 30 4 1 $cr0; Rect $b 41 31 1 4 $cr0; Rect $b 38 35 4 1 $cr0
+Rect $b 16 38 26 2 $m1; Rect $b 18 40 22 1 $m2
+foreach ($sx in @(25, 31)) { Px $b $sx 20 $chalk; Px $b ($sx + 1) 21 $chalk; Px $b $sx 22 $chalk; Px $b ($sx + 1) 23 $chalk; Px $b $sx 24 $chalk; Px $b ($sx + 1) 25 $chalk }
+# ハート
+Px $b 45 22 $rose; Px $b 47 22 $rose; Rect $b 44 23 5 1 $rose; Rect $b 45 24 3 1 $rose; Px $b 46 25 $rose
 Save $b 'cafe_board.png'
 
 # ---- 立て看板（柱から吊るカフェ看板）50x66。柱の根元が原点 (x=7, y=66)

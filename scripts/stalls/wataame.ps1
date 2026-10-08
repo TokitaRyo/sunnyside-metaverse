@@ -340,13 +340,12 @@ Rect $b 0 0 54 42 $ol2; Rect $b 1 1 52 40 $skyL; Rect $b 3 3 48 36 $white
 Rect $b 3 3 48 3 $pink
 for ($x = 3; $x -lt 51; $x += 6) { Ellipse $b ($x + 3) 6 3 2 $pink }
 Rect $b 8 42 3 6 $wd3; Rect $b 43 42 3 6 $wd3; Rect $b 8 42 1 6 $wd2; Rect $b 43 42 1 6 $wd2
-$rows = @('ふわふわ', 'あまあま', 'くるくる')
-$rcol = @($pinkD, $skyD, $lilD)
-for ($i = 0; $i -lt 3; $i++) {
-  $cy = 10 + 10 * $i
-  [void](TextPx $b $rows[$i] 4 $cy 11 $rcol[$i] $false)
-  Star $b 47 ($cy + 3) $yel
-}
+# 品書きの中身は書かない。文字は「メニュー」だけ。何の店かは大きなわたあめの絵で伝える
+$w = TextWidth 'メニュー' 11
+[void](TextPx $b 'メニュー' ([math]::Floor((54 - $w) / 2)) 8 11 $pinkD $true)
+Candy $b 9 19 $pPink 0 3
+Candy $b 29 19 $pBlue 1 3
+Star $b 4 24 $yel; Star $b 45 22 $yel
 Corners $b 0 0 54 42
 Save $b 'wataame_menu.png'
 

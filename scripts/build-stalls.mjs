@@ -91,7 +91,8 @@ for (const id of ids) {
     map.keyItems = map.keyItems.filter((k) => k.id !== kid);
     const kx = Math.floor((plot.x0 + plot.w + GAP_X / 2) / T) * T + T / 2;
     const ky = Math.floor((plot.y0 + 104) / T) * T + T / 2;
-    map.keyItems.push({ id: kid, x: kx, y: ky, name: meta.label });
+    // icon: その出店にちなんだスタンプの絵柄（client/src/game/stampIcons.ts の id。出店の id と同じ）
+    map.keyItems.push({ id: kid, x: kx, y: ky, name: meta.label, icon: id });
   }
   console.log(`- ${meta.label}（列${slot[0]} 行${slot[1]}）: ${map.objects.length - before} 個を配置`);
   built++;

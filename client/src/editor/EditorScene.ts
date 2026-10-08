@@ -317,6 +317,11 @@ export class EditorScene extends WorldScene {
     return true;
   }
 
+  /** 編集中は色合いを変えない（朝・昼・夜で見え方が変わると編集しづらい） */
+  protected dayCycleEnabled(): boolean {
+    return false;
+  }
+
   keyItemAt(cx: number, cy: number): KeyItemDef | null {
     return (map.keyItems ?? []).find((k) => Math.floor(k.x / TS) === cx && Math.floor(k.y / TS) === cy) ?? null;
   }

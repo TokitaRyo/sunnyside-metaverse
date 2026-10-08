@@ -225,15 +225,18 @@ foreach ($p in @(@(0, 10), @(25, 10), @(0, 21), @(25, 21))) { Clear $b $p[0] $p[
 Save $b 'chocobanana_crate.png'
 
 # ---- 紙トレイにのったチョコバナナ（横向き）20x10
+function DrawTray($b) {
+  Rect $b 0 4 20 6 $ol; Rect $b 1 5 18 4 $white; Rect $b 1 5 18 1 $pinkLL; Rect $b 1 8 18 1 $pinkL
+  for ($x = 1; $x -lt 19; $x += 2) { Px $b $x 7 $pinkL }
+  foreach ($p in @(@(0, 4), @(19, 4), @(0, 9), @(19, 9))) { Clear $b $p[0] $p[1] }
+  Rect $b 2 0 14 6 $ol; Rect $b 3 1 12 4 $mil; Rect $b 3 1 12 1 $milhi; Rect $b 3 4 12 1 $milsh
+  Rect $b 16 2 4 1 $wood; Rect $b 16 3 4 1 $wood2
+  $rnd = New-Object System.Random(5)
+  for ($x = 4; $x -lt 15; $x++) { for ($y = 1; $y -lt 5; $y++) { if ($rnd.NextDouble() -lt 0.28) { Px $b $x $y $rainbow[$rnd.Next($rainbow.Count)] } } }
+  foreach ($p in @(@(2, 0), @(2, 5), @(15, 0), @(15, 5))) { Clear $b $p[0] $p[1] }
+}
 $b = NewBmp 20 10
-Rect $b 0 4 20 6 $ol; Rect $b 1 5 18 4 $white; Rect $b 1 5 18 1 $pinkLL; Rect $b 1 8 18 1 $pinkL
-for ($x = 1; $x -lt 19; $x += 2) { Px $b $x 7 $pinkL }
-foreach ($p in @(@(0, 4), @(19, 4), @(0, 9), @(19, 9))) { Clear $b $p[0] $p[1] }
-Rect $b 2 0 14 6 $ol; Rect $b 3 1 12 4 $mil; Rect $b 3 1 12 1 $milhi; Rect $b 3 4 12 1 $milsh
-Rect $b 16 2 4 1 $wood; Rect $b 16 3 4 1 $wood2
-$rnd = New-Object System.Random(5)
-for ($x = 4; $x -lt 15; $x++) { for ($y = 1; $y -lt 5; $y++) { if ($rnd.NextDouble() -lt 0.28) { Px $b $x $y $rainbow[$rnd.Next($rainbow.Count)] } } }
-foreach ($p in @(@(2, 0), @(2, 5), @(15, 0), @(15, 5))) { Clear $b $p[0] $p[1] }
+DrawTray $b
 Save $b 'chocobanana_tray.png'
 
 # ---- メニュー（立て看板）62x50。足元が原点
@@ -241,13 +244,13 @@ $b = NewBmp 62 50
 Rect $b 0 0 62 44 $ol; Rect $b 1 1 60 42 $pinkL; Rect $b 3 3 56 38 $cream
 Rect $b 3 3 56 3 $pink
 Rect $b 8 44 3 6 $w3; Rect $b 51 44 3 6 $w3; Rect $b 8 44 1 6 $w2; Rect $b 51 44 1 6 $w2
-$rows = @(@('ミルク', $mil), @('いちご', $strw), @('ホワイト', $whc))
-for ($i = 0; $i -lt 3; $i++) {
-  $cy = 8 + 11 * $i
-  Ellipse $b 9 ($cy + 5) 3.6 3.6 $ol; Ellipse $b 9 ($cy + 5) 2.6 2.6 $rows[$i][1]
-  Px $b 8 ($cy + 4) $white
-  [void](TextPx $b $rows[$i][0] 15 $cy 11 $chocD $false)
-}
+# 品書きの中身(味・種類)は書かない。文字は「メニュー」だけ。何の店かは大きなチョコバナナの絵で伝える
+$w = TextWidth 'メニュー' 11
+[void](TextPx $b 'メニュー' ([math]::Floor((62 - $w) / 2)) 8 11 $chocD $true)
+$t = NewBmp 20 10
+DrawTray $t
+for ($j = 0; $j -lt 10; $j++) { for ($i = 0; $i -lt 20; $i++) { $c = $t.GetPixel($i, $j); if ($c.A -ge 128) { Rect $b (11 + $i * 2) (20 + $j * 2) 2 2 $c } } }
+$t.Dispose()
 foreach ($p in @(@(0, 0), @(61, 0), @(0, 43), @(61, 43))) { Clear $b $p[0] $p[1] }
 Save $b 'chocobanana_menu.png'
 # ---- ピンクのマット 44x24
