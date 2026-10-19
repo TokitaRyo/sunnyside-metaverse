@@ -1,9 +1,9 @@
-/** 図書委員会。専用ドット絵は scripts/stalls/library.ps1（library_*.png）。奥は本棚の壁と窓、まんなかに貸出カウンター、左に低い本棚と読書スペース、手前におすすめの平積み台、右に返却ボックス・ブックトラック・脚立 */
+/** 図書委員会。専用ドット絵は scripts/stalls/library.ps1（library_*.png）。奥は本棚の壁と窓、まんなかにゆずりわたしカウンター、左に低い本棚と読書スペース、手前にご自由にどうぞの平積み台、右に本の箱・ブックトラック・脚立 */
 export const meta = { id: "library", label: "図書委員会" };
 
 export default function layout(k) {
   // 静止
-  for (const n of ["floor", "wall", "sign", "counter", "reader", "stamp", "cards", "stand", "bookmarks", "lowshelf", "chair_back", "chair_front", "rug", "zabuton", "rtable", "lamp", "pile", "truck", "return", "ladder", "plant", "nobori"]) k.custom(`library_${n}`);
+  for (const n of ["floor", "wall", "sign", "counter", "stand", "bookmarks", "lowshelf", "chair_back", "chair_front", "rug", "zabuton", "rtable", "lamp", "pile", "truck", "return", "ladder", "plant", "nobori"]) k.custom(`library_${n}`);
   // アニメ（横一列のシート）
   k.custom("library_cat", undefined, undefined, { frames: 4, fps: 2 });
   k.custom("library_book", undefined, undefined, { frames: 6, fps: 3 });
@@ -18,23 +18,20 @@ export default function layout(k) {
   put("library_sign", 0, 10, { by: 55 });
   put("library_nobori", -87, 62, { by: 62 });
 
-  // ---- 貸出カウンターと図書委員
+  // ---- ゆずりわたしカウンターと図書委員
   put("library_counter", 0, 84, { hit: [90, 10] });
   person("human_longhair_doing", 4, 57, {
     name: "としょいいんかい",
     lines: [
       "いらっしゃい！ ここは としょいいんかいの ほんの コーナーだよ。",
-      "かりたい ほんが きまったら、ここの カウンターへ もってきてね。",
-      "まんなかの だいには、いいんの みんなが えらんだ「おすすめの いっさつ」が ならんでいるよ。ポップも てがきなんだ。",
-      "ほんは そっと ひらこうね。よみおわったら へんきゃくボックスへ。また あそびにきてね！",
+      "ここの ほんは ぜんぶ むりょうで ゆずっているよ。きに いった ほんが あったら、ごじゆうに もっていってね。",
+      "てまえの だいの ほんも ぜんぶ「ご自由に どうぞ」。ポップは いいんの みんなの てがきなんだ。",
+      "ほんは そっと ひらこうね。もって かえる ほんが きまったら、ここで おしえてね。また あそびにきてね！",
     ],
   });
   put("library_cat", -32, 64, { by: ON_COUNTER });
   put("library_stand", -14, 64, { by: ON_COUNTER });
   put("library_bookmarks", 14, 64, { by: ON_COUNTER });
-  put("library_reader", 24, 64, { by: ON_COUNTER });
-  put("library_stamp", 34, 64, { by: ON_COUNTER });
-  put("library_cards", 42, 64, { by: ON_COUNTER });
 
   // ---- 左: 絵本の低い本棚
   put("library_lowshelf", -68, 86, { hit: [38, 8] });
@@ -64,10 +61,10 @@ export default function layout(k) {
   put("library_zabuton", -56, 127);
   put("library_zabuton", -24, 128);
 
-  // ---- 手前: おすすめの平積み台
+  // ---- 手前: ご自由にどうぞの平積み台
   put("library_pile", 16, 128, { hit: [58, 8] });
 
-  // ---- 右: 返却ボックス・脚立・ブックトラック・植木
+  // ---- 右: 本の箱・脚立・ブックトラック・植木
   put("library_plant", 87, 98, { hit: [14, 6] });
   put("library_return", 62, 88, { hit: [26, 8] });
   put("library_ladder", 86, 62, { by: 62 });
@@ -85,7 +82,7 @@ export default function layout(k) {
   person("human_spikeyhair_idle", 8, 128, {
     name: "おきゃくさん",
     lines: [
-      "この おすすめポップ、いいんの ひとが かいたんだって。",
+      "この ポップ、いいんの ひとが かいたんだって。",
       "ポップを よむと、ほんが よみたくなるよ。",
     ],
   }, true);

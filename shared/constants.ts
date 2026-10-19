@@ -43,16 +43,19 @@ export type Hair = (typeof HAIRS)[number];
 
 export const LOCOMOTION = ["idle", "walk", "run"] as const;
 
-/** エモートID → 再生するキャラアクション。waiting のみトグル(ループ) */
+/** エモートID → 再生するキャラアクション。waiting のみトグル(ループ)。キーボードの 1〜6 は、この並び順 */
 export const EMOTES = {
   jump: { action: "jump", label: "ジャンプ", loop: false },
   roll: { action: "roll", label: "転がる", loop: false },
   wave: { action: "doing", label: "手を振る", loop: false },
   sit: { action: "waiting", label: "座る", loop: true },
-  attack: { action: "attack", label: "攻撃", loop: false },
-  hurt: { action: "hurt", label: "やられる", loop: false },
+  // 絵文字(bubble)が頭の上に出る前向きなエモート（学校行事の場なので、攻撃・やられるは入れない）
+  heart: { action: "jump", label: "ハート", loop: false, bubble: "💖" },
+  cheer: { action: "doing", label: "やったー", loop: false, bubble: "🎉" },
 } as const;
 export type EmoteId = keyof typeof EMOTES;
+/** そのエモートで頭の上に出す絵文字（無ければ undefined） */
+export const emoteBubble = (id: EmoteId): string | undefined => (EMOTES[id] as { bubble?: string }).bubble;
 export const EMOTE_IDS = Object.keys(EMOTES) as EmoteId[];
 
 /** Player.action に入りうる値 */

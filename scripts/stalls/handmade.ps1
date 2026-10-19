@@ -1,10 +1,15 @@
-﻿# クラゲファクトリー（夜の海の底の、光るクラゲを作る工房）の専用ドット絵を作る。
-#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stalls/handmade.ps1
+﻿# くらげファクトリー（夜の海の底のような工房で、5つの体験ができる）の専用ドット絵を作る。
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stalls/handmade.ps1   （リポジトリのルートで実行）
+#   一部だけ作り直す: $env:HM_ONLY='sign|bench|pool'; powershell ...（ファイル名の正規表現。全部だと10分以上かかる）
 # 出力: client/public/brand/stall/handmade_*.png （配置は scripts/stalls/handmade.mjs）
-# 夜の海の底のような濃紺・紫の地面に、青緑・水色・紫・ピンクの蛍光色のクラゲが光る手作り雑貨のお店。
+# 体験: ラテキャンドル作り / キャンドルすくい / ぷるぷる石鹸作り / オイルキーホルダー / スライムキーホルダー
+# 夜の海の底のような濃紺・紫の地面に、光るクラゲを飾りにして、5つの体験コーナー（作業台・プール）を並べる。
 # アニメは「フレームを横一列に並べたPNG」で、handmade.mjs の k.custom(name, ox, oy, {frames, fps}) で再生する。
-# 絵はすべてこのスクリプトで描いたオリジナル（素材パックの絵は使わない）。
+# 絵はすべてこのスクリプトで描いたオリジナル（素材パックの絵は使わない）。日本語の文字は MS Gothic を1bitでドットにして貼る。
 . "$PSScriptRoot\..\lib\pixel.ps1"
+
+# 確認用: HM_ONLY（正規表現）に合う絵だけ作り直す
+function Want($n) { return ((-not $env:HM_ONLY) -or ($n -match $env:HM_ONLY)) }
 
 function CA($h, $a) { $c = C $h; [System.Drawing.Color]::FromArgb($a, $c.R, $c.G, $c.B) }
 function CC($c, $a) { [System.Drawing.Color]::FromArgb($a, $c.R, $c.G, $c.B) }
@@ -45,6 +50,7 @@ function Halo($b, $cx, $cy, $rx, $ry, $hex, $a) {
 
 # フレームを横に並べたシートを作る。$draw には ($b, $ox, $f) が渡る
 function Sheet($name, $w, $h, $n, $draw) {
+  if (-not (Want $name)) { return }
   $bm = NewBmp ($w * $n) $h
   for ($f = 0; $f -lt $n; $f++) { $script:CX0 = $f * $w; $script:CX1 = $f * $w + $w - 1; & $draw $bm ($f * $w) $f }
   $script:CX0 = 0; $script:CX1 = 100000
@@ -127,6 +133,7 @@ function Jelly($b, $cx, $ty, $bw, $bh, $pal, $am, $tl, $ph, $sw) {
 # =====================================================================
 # 床: 夜の海の底。草地全体(192x128)を覆う暗い絵＋ゆらぐ波の筋＋まん中の道
 # =====================================================================
+if (Want 'handmade_floor') {
 $rnd = New-Object System.Random 7
 $fl = NewBmp 192 128
 for ($y = 0; $y -lt 128; $y++) {
@@ -162,18 +169,21 @@ for ($i = 0; $i -lt 70; $i++) {
   Px $fl $x $y (CA $c 255)
 }
 Save $fl 'handmade_floor.png'
+}
 
 # =====================================================================
-# 光だまり（床の上に重ねる半透明の光）192x128。ランタン・水槽・カウンター・テーブルの下
+# 光だまり（床の上に重ねる半透明の光）192x128。プール・作業台の下
 # =====================================================================
+if (Want 'handmade_pools') {
 $pl = NewBmp 192 128
-Halo $pl 74 120 26 9 '#ff9a3d' 30
-Halo $pl 118 120 26 9 '#ff9a3d' 30
-Halo $pl 154 116 28 9 '#27d8ff' 30
-Halo $pl 48 114 30 9 '#b070ff' 30
-Halo $pl 96 84 66 9 '#4a6cff' 22
-Halo $pl 96 108 22 14 '#3dd8ff' 14
+Halo $pl 36 112 40 15 '#27d8ff' 30     # キャンドルすくいのプール
+Halo $pl 150 114 34 13 '#a688ff' 30    # オイルキーホルダー
+Halo $pl 96 80 26 8 '#ffb347' 26       # ラテキャンドル（温かい色）
+Halo $pl 38 82 28 8 '#ff9ae0' 24       # 石鹸
+Halo $pl 154 82 28 8 '#4dffc4' 24      # スライム
+Halo $pl 96 108 20 14 '#3dd8ff' 14
 Save $pl 'handmade_pools.png'
+}
 
 # 床で光る小さなきらめき（プランクトン）192x128 4コマ
 $sp = @(@(14, 20, 0), @(40, 34, 2), @(70, 18, 1), @(150, 24, 3), @(176, 40, 1), @(22, 70, 3), @(60, 98, 0), @(130, 92, 2), @(174, 86, 0), @(12, 112, 1), @(100, 76, 3), @(120, 12, 0), @(52, 54, 2), @(168, 64, 3), @(86, 120, 2), @(140, 122, 1))
@@ -274,11 +284,11 @@ function Gear($b, $cx, $cy, $r, $teeth, $ang, $main, $dk, $hi, $holeCol) {
 }
 
 # =====================================================================
-# 看板「クラゲファクトリー」156x38 8コマ。歯車が回り、ネオンのふちが走り、光が文字をなでて、クラゲの触手が垂れる
+# 看板「くらげファクトリー」156x38 8コマ。歯車が回り、ネオンのふちが走り、光が文字をなでて、クラゲの触手が垂れる
 # =====================================================================
 $neon4 = @((C '#3df5ff'), (C '#ff6fcf'), (C '#a688ff'), (C '#4dffc4'))
 $FONT = 'BIZ UDPGothic'
-$mA = TextMask 'クラゲ' 15 $FONT $true
+$mA = TextMask 'くらげ' 15 $FONT $true
 $mB = TextMask 'ファクトリー' 11 $FONT $true
 $brass = C '#c8962c'; $brassD = C '#6a4a14'; $brassH = C '#ffe08a'
 Sheet 'handmade_sign.png' 164 38 8 {
@@ -306,7 +316,7 @@ Sheet 'handmade_sign.png' 164 38 8 {
   $ang = $f * ([math]::PI / 4.0) / 8.0
   Gear $b ($ox + 14) 14 8.5 8 $ang $brass $brassD $brassH (C '#0a0f3a')
   Gear $b ($ox + 149) 14 8.5 8 (0.39 - $ang) $brass $brassD $brassH (C '#0a0f3a')
-  # 文字: 大きな「クラゲ」＋小さな「ファクトリー」（グラデーション・こい紺のふち・影・光のにじみ）
+  # 文字: 大きな「くらげ」＋小さな「ファクトリー」（グラデーション・こい紺のふち・影・光のにじみ）
   $tx = [math]::Floor(82 - ($mA.w + 4 + $mB.w) / 2)
   $shine = -12 + $f * 18
   FxText $b $mA ($ox + $tx) 6 '#9ff8ff' '#c0b0ff' '#ff7fd8' $null '#27d8ff' 40 $shine
@@ -331,6 +341,7 @@ Sheet 'handmade_sign.png' 164 38 8 {
 # =====================================================================
 # 天幕（夜空の縞に星）140x26。ふちはほのかに光る
 # =====================================================================
+if (Want 'handmade_awning') {
 $aw = NewBmp 140 26
 for ($i = 0; $i -lt 14; $i++) {
   $x0 = $i * 10
@@ -354,6 +365,7 @@ for ($i = 0; $i -lt 14; $i++) {
 }
 Rect $aw 0 0 140 1 $n0
 Save $aw 'handmade_awning.png'
+}
 
 # 天幕のふちに吊るした豆電球 140x12 4コマ（またたく）
 $bc = @('#ffd36a', '#3df5ff', '#ff6fcf', '#4dffc4')
@@ -377,99 +389,6 @@ Sheet 'handmade_garland.png' 140 12 4 {
     }
   }
 }
-
-# =====================================================================
-# 奥の壁（カーテン・柱・棚の小瓶・三日月）136x50
-# =====================================================================
-$wl = NewBmp 136 50
-Rect $wl 6 0 124 50 (C '#0c1244')
-for ($x = 6; $x -lt 130; $x++) {
-  $m = $x % 9
-  if ($m -lt 2) { Rect $wl $x 0 1 49 (C '#141c5c') } elseif ($m -eq 5 -or $m -eq 6) { Rect $wl $x 0 1 49 (C '#080c30') }
-}
-Rect $wl 6 49 124 1 $n0
-$rs = New-Object System.Random 11
-for ($i = 0; $i -lt 26; $i++) {
-  $x = $rs.Next(8, 128); $y = $rs.Next(27, 47)
-  Px $wl $x $y (@((C '#cfe0ff'), (C '#ffd36a'), (C '#8fb0ff'))[$rs.Next(0, 3)])
-}
-# 柱
-foreach ($px in 0, 130) {
-  Rect $wl $px 0 6 50 (C '#5a3a50')
-  Rect $wl ($px + 1) 0 1 50 (C '#8e6a8a'); Rect $wl ($px + 5) 0 1 50 $wd0; Rect $wl $px 0 1 50 $wd1
-  for ($y = 30; $y -lt 36; $y += 2) { Rect $wl $px $y 6 1 (C '#d8c498'); Rect $wl ($px + 1) ($y + 1) 5 1 (C '#a89068') }
-  Rect $wl ($px - 0) 49 6 1 $wd0
-}
-# 棚と小瓶（左右）
-function Shelf($b, $x0, $w) {
-  Rect $b $x0 41 $w 2 (C '#6a4a6e'); Rect $b $x0 41 $w 1 (C '#8e6a8a'); Rect $b $x0 43 $w 1 $wd0
-  $cols = @('#27d8ff', '#ff6fcf', '#a688ff', '#4dffc4', '#ffd36a', '#27d8ff')
-  $i = 0
-  for ($x = $x0 + 2; $x -lt $x0 + $w - 4; $x += 6) {
-    $h = 5 + ($i % 3)
-    $c = C $cols[$i % 6]
-    Rect $b $x (41 - $h) 4 $h (Mix $c $n1 0.45)
-    Rect $b $x (41 - $h) 1 $h $c
-    Rect $b ($x + 1) (41 - $h + 1) 2 2 (Mix $c (C '#ffffff') 0.55)
-    Rect $b ($x + 1) (41 - $h - 1) 2 1 (C '#c8a070')
-    $i++
-  }
-}
-Shelf $wl 9 30
-Shelf $wl 97 30
-# 三日月（左寄り）
-$mx = 55; $my = 36
-EllO $wl $mx $my 11 11 (CA '#ffd36a' 28)
-EllO $wl $mx $my 8 8 (CA '#ffd36a' 28)
-for ($y = -7; $y -le 7; $y++) { for ($x = -7; $x -le 7; $x++) {
-  $in1 = ($x * $x + $y * $y) -le 49
-  $in2 = (($x - 3) * ($x - 3) + ($y + 1) * ($y + 1)) -le 40
-  if ($in1 -and -not $in2) { Px $wl ($mx + $x) ($my + $y) (C '#ffe9a0') }
-  elseif ($in1 -and $in2 -and (($x - 3) * ($x - 3) + ($y + 1) * ($y + 1)) -gt 33 -and $x -lt 0) { Px $wl ($mx + $x) ($my + $y) (C '#ffd36a') }
-} }
-Px $wl ($mx + 7) ($my - 6) (C '#ffffff'); Px $wl ($mx + 8) ($my - 5) (C '#ffe9a0'); Px $wl ($mx + 6) ($my - 5) (C '#ffe9a0'); Px $wl ($mx + 7) ($my - 4) (C '#ffe9a0')
-Px $wl ($mx + 11) ($my + 4) (C '#ffffff')
-# ペナント（小さな三角の旗）
-for ($x = 10; $x -lt 128; $x++) { $yy = 28 + [int][math]::Round(2 * [math]::Sin(($x - 10) / 118.0 * [math]::PI)); Px $wl $x $yy (C '#3a2a50') }
-$pc = @('#27d8ff', '#ff6fcf', '#a688ff', '#4dffc4', '#ffd36a')
-for ($i = 0; $i -lt 10; $i++) {
-  $x = 14 + $i * 11
-  if ($x -gt 40 -and $x -lt 100) { continue }
-  $yy = 28 + [int][math]::Round(2 * [math]::Sin(($x - 10) / 118.0 * [math]::PI))
-  $c = C $pc[$i % 5]
-  Rect $wl ($x - 2) ($yy + 1) 5 1 $c; Rect $wl ($x - 1) ($yy + 2) 3 1 $c; Px $wl $x ($yy + 3) $c
-}
-Save $wl 'handmade_wall.png'
-
-# =====================================================================
-# カウンター（紺のクロス・刺しゅうの帯・金のふさ）124x24
-# =====================================================================
-$ct = NewBmp 124 24
-Rect $ct 0 0 124 9 (C '#2c3ca4')
-Rect $ct 0 0 124 1 (C '#7a90f0'); Rect $ct 0 1 124 1 (C '#4a60d0')
-for ($x = 0; $x -lt 124; $x += 6) { Px $ct $x 4 (C '#3a4ec0'); Px $ct ($x + 3) 6 (C '#243494') }
-# レースのふち
-for ($x = 0; $x -lt 124; $x++) { Px $ct $x 9 (C '#e8ecff'); if ($x % 4 -lt 2) { Px $ct $x 10 (C '#c0c8f0') } }
-Rect $ct 0 11 124 11 (C '#1a2268')
-for ($x = 0; $x -lt 124; $x++) {
-  $m = $x % 12
-  if ($m -lt 2) { Rect $ct $x 11 1 11 (C '#232e84') } elseif ($m -eq 8 -or $m -eq 9) { Rect $ct $x 11 1 11 (C '#101656') }
-}
-# 刺しゅうの帯: 星とクラゲ
-Rect $ct 0 14 124 1 (C '#ffd36a')
-Rect $ct 0 19 124 1 (C '#ffd36a')
-for ($i = 0; $i -lt 10; $i++) {
-  $x = 6 + $i * 12
-  if ($i % 2 -eq 0) {
-    Px $ct $x 16 (C '#ffe9a0'); Px $ct ($x - 1) 17 (C '#ffd36a'); Px $ct ($x + 1) 17 (C '#ffd36a'); Px $ct $x 17 (C '#ffe9a0'); Px $ct $x 18 (C '#ffd36a')
-  } else {
-    Rect $ct ($x - 2) 15 5 1 (C '#ff9ae0'); Rect $ct ($x - 2) 16 5 1 (C '#ff6fcf'); Px $ct ($x - 1) 17 (C '#ff9ae0'); Px $ct ($x + 1) 18 (C '#ff9ae0'); Px $ct ($x - 1) 18 (C '#ff9ae0'); Px $ct $x 17 (C '#ff9ae0')
-  }
-}
-# 金のふさ
-for ($x = 0; $x -lt 124; $x += 2) { Px $ct $x 20 (C '#c8962c'); Px $ct $x 21 (C '#ffd36a'); Px $ct $x 22 (C '#c8962c'); if ($x % 4 -eq 0) { Px $ct $x 23 (C '#8a6418') } }
-foreach ($p in @(@(0, 0), @(123, 0), @(0, 23), @(123, 23))) { Clear $ct $p[0] $p[1] }
-Save $ct 'handmade_counter.png'
 
 # =====================================================================
 # 吊るしクラゲ 20x34 6コマ（天幕から糸で吊る。脈打つ）3色
@@ -529,324 +448,17 @@ Sheet 'handmade_bubbles.png' 20 44 8 {
 }
 
 # =====================================================================
-# 作品: ガラスドームのクラゲランプ 14x22 4コマ（脈打つ）、小瓶のクラゲ 10x18、ろうそく 10x12
+# のぼり旗「くらげファクトリー」26x86（2列の縦書き。下のふちはクラゲの触手）
 # =====================================================================
-function DomeLamp($name, $pal, $phase) {
-  Sheet $name 14 22 4 {
-    param($b, $ox, $f)
-    $t = (($f + $phase) % 4) / 4.0 * 2 * [math]::PI
-    $p = [math]::Sin($t)
-    Halo $b ($ox + 7) 10 8 9 $pal.glow 22
-    # 木の台
-    Rect $b ($ox + 2) 18 10 3 $wd2; Rect $b ($ox + 2) 18 10 1 $wd3; Rect $b ($ox + 2) 20 10 1 $wd0; Rect $b ($ox + 3) 21 8 1 $wd0
-    # ガラスのドーム
-    for ($y = 1; $y -lt 18; $y++) {
-      $hw = 6.0
-      if ($y -lt 7) { $hw = 6.0 * [math]::Sqrt([math]::Max(0.0, 1 - [math]::Pow((7 - $y - 0.5) / 7.0, 2))) }
-      $xl = [int][math]::Round(7 - $hw); $xr = [int][math]::Round(7 + $hw) - 1
-      for ($x = $xl; $x -le $xr; $x++) {
-        $edge = ($x -le $xl) -or ($x -ge $xr) -or ($y -le 1)
-        if ($edge) { PxO $b ($ox + $x) $y (CA '#a8e0ff' 230) } else { PxO $b ($ox + $x) $y (CA '#0a1a50' 200) }
-      }
-    }
-    Rect $b ($ox + 3) 3 1 5 (C '#e8f6ff'); Px $b ($ox + 3) 9 (C '#bfe0ff')
-    Jelly $b ($ox + 7) (5 + [int][math]::Round(0.6 * $p)) ([int][math]::Round(8 * (1 - 0.12 * $p))) 5 $pal 1.35 7 ($t * 1.0) 1.5
-  }
-}
-DomeLamp 'handmade_lamp_c.png' $PCy 0
-DomeLamp 'handmade_lamp_v.png' $PVi 2
-
-function Bottle($name, $pal, $phase) {
-  Sheet $name 10 18 4 {
-    param($b, $ox, $f)
-    $t = (($f + $phase) % 4) / 4.0 * 2 * [math]::PI
-    Halo $b ($ox + 5) 11 6 7 $pal.glow 22
-    Rect $b ($ox + 3) 0 4 3 (C '#a8744a'); Rect $b ($ox + 3) 0 4 1 (C '#d8a070'); Rect $b ($ox + 3) 2 4 1 (C '#7a4a2a')
-    Rect $b ($ox + 3) 3 4 3 (CA '#a8e0ff' 190); Rect $b ($ox + 4) 3 2 3 (CA '#0a1a50' 220)
-    Rect $b ($ox + 3) 4 4 1 (C '#ff6fcf')
-    for ($y = 6; $y -lt 18; $y++) {
-      $hw = 5.0
-      if ($y -lt 9) { $hw = 3.0 + ($y - 6) * 0.7 }
-      if ($y -ge 16) { $hw = 4.4 }
-      $xl = [int][math]::Round(5 - $hw); $xr = [int][math]::Round(5 + $hw) - 1
-      for ($x = $xl; $x -le $xr; $x++) {
-        $edge = ($x -le $xl) -or ($x -ge $xr) -or ($y -ge 17)
-        if ($edge) { PxO $b ($ox + $x) $y (CA '#a8e0ff' 235) } else { PxO $b ($ox + $x) $y (CA '#0a1a50' 215) }
-      }
-    }
-    Rect $b ($ox + 2) 9 1 5 (C '#e8f6ff')
-    Px $b ($ox + 4) 16 (C '#e8d8a0'); Px $b ($ox + 6) 16 (C '#c8b080'); Px $b ($ox + 5) 15 (C '#e8d8a0')
-    Jelly $b ($ox + 5) (8 + [int][math]::Round(0.7 * [math]::Sin($t))) 6 4 $pal 1.4 5 ($t * 1.0) 1.2
-  }
-}
-Bottle 'handmade_bottle_p.png' $PPk 0
-Bottle 'handmade_bottle_c.png' $PMt 2
-
-Sheet 'handmade_candle.png' 10 12 4 {
-  param($b, $ox, $f)
-  $fx = @(0, 1, 0, -1)[$f]; $fh = @(3, 4, 3, 4)[$f]
-  Halo $b ($ox + 5) 4 7 7 '#ffb347' 26
-  Rect $b ($ox + 1) 5 8 7 (CA '#c87a3a' 255); Rect $b ($ox + 1) 5 8 1 (C '#e8a860'); Rect $b ($ox + 2) 6 6 1 (C '#fff3d6')
-  Rect $b ($ox + 1) 7 8 5 (CA '#6a3a2a' 255); Rect $b ($ox + 2) 8 1 3 (C '#b87850'); Rect $b ($ox + 1) 11 8 1 (C '#3a1c18')
-  Rect $b ($ox + 2) 7 6 3 (C '#ffe0b0')
-  Px $b ($ox + 5) 5 (C '#3a2a2a'); Px $b ($ox + 5) 4 (C '#3a2a2a')
-  Px $b ($ox + 5 + $fx) (4 - $fh + 3) (C '#ff8a3d')
-  Rect $b ($ox + 4 + $fx) (5 - $fh) 2 ($fh - 1) (C '#ffb347')
-  Px $b ($ox + 5 + $fx) (5 - $fh + 1) (C '#fff0a0'); Px $b ($ox + 5 + $fx) (5 - $fh + 2) (C '#fff0a0')
-}
-
-# ガラス玉のお皿 16x9
-$bd = NewBmp 16 9
-Rect $bd 1 5 14 4 (C '#6a4a6e'); Rect $bd 0 4 16 2 (C '#8e6a8a'); Rect $bd 0 4 16 1 (C '#b8909e'); Rect $bd 2 8 12 1 $wd0
-$bc2 = @('#27d8ff', '#ff6fcf', '#a688ff', '#4dffc4', '#ffd36a', '#27d8ff', '#ff6fcf', '#a688ff')
-$pos = @(@(2, 3), @(5, 2), @(8, 3), @(11, 2), @(4, 1), @(7, 0), @(10, 1), @(13, 3), @(6, 3), @(9, 1))
-$i = 0
-foreach ($q in $pos) { $c = C $bc2[$i % 8]; Rect $bd $q[0] $q[1] 3 2 $c; Px $bd $q[0] $q[1] (Mix $c (C '#ffffff') 0.75); $i++ }
-Save $bd 'handmade_beads.png'
-
-# 貝・ヒトデ・星のチャームのトレイ 18x9
-$sh = NewBmp 18 9
-Rect $sh 0 5 18 4 $n3; Rect $sh 0 5 18 1 $n5; Rect $sh 0 8 18 1 $n1
-# ホタテ
-Ascii $sh 1 1 @('..ppp..', '.pqpqp.', 'pqpqpqp', '.ppppp.', '..ccc..') @{ p = (C '#ffb8d8'); q = (C '#ff8ac0'); c = (C '#e8d8c0') }
-# 巻貝
-Ascii $sh 8 2 @('..cc..', '.cdcc.', 'cccdcc', '.cdcc.', '..cc..') @{ c = (C '#f4e8d0'); d = (C '#c8a888') }
-# ヒトデ
-Ascii $sh 13 0 @('..o..', '..o..', 'ooooo', '.ooo.', '.o.o.') @{ o = (C '#ff9a4a') }
-Px $sh 15 2 (C '#ffd0a0')
-# 星チャーム
-Px $sh 17 4 $gld
-Save $sh 'handmade_shells.png'
-
-# 刺しゅうのフープ（クラゲ）14x18
-$hp = NewBmp 14 18
-Line $hp 4 17 7 13 $wd2; Line $hp 10 17 7 13 $wd2; Rect $hp 3 17 8 1 $wd1
-Ellipse $hp 7 7 7 7 (C '#8a5a3a')
-Ellipse $hp 7 7 6 6 (C '#c8905a')
-Ellipse $hp 7 7 5 5 (C '#1a2268')
-Px $hp 3 3 (C '#e8b080')
-# 刺しゅうのクラゲ
-Rect $hp 5 3 5 1 (C '#ff9ae0'); Rect $hp 4 4 7 2 (C '#ff6fcf'); Px $hp 5 4 (C '#ffd0f0')
-for ($y = 6; $y -lt 11; $y++) { Px $hp (5 + ($y % 2)) $y (C '#cfe0ff'); Px $hp 7 $y (C '#ff9ae0'); Px $hp (9 - ($y % 2)) $y (C '#cfe0ff') }
-Px $hp 3 9 (C '#ffd36a'); Px $hp 11 5 (C '#ffd36a')
-Save $hp 'handmade_hoop.png'
-
-# =====================================================================
-# 前のテーブル（紺のクロス）52x22
-# =====================================================================
-$tb = NewBmp 52 22
-Rect $tb 0 0 52 8 (C '#34408c'); Rect $tb 0 0 52 1 (C '#7a90f0'); Rect $tb 0 1 52 1 (C '#5068d0')
-for ($x = 0; $x -lt 52; $x += 5) { Px $tb $x 4 (C '#4658b8'); Px $tb ($x + 2) 6 (C '#2c3a80') }
-for ($x = 0; $x -lt 52; $x++) { Px $tb $x 8 (C '#e8ecff'); if ($x % 4 -lt 2) { Px $tb $x 9 (C '#c0c8f0') } }
-Rect $tb 0 10 52 10 (C '#1e2874')
-for ($x = 0; $x -lt 52; $x++) { $m = $x % 10; if ($m -lt 2) { Rect $tb $x 10 1 10 (C '#28368c') } elseif ($m -eq 7 -or $m -eq 8) { Rect $tb $x 10 1 10 (C '#121a5a') } }
-Rect $tb 0 12 52 1 $gld
-for ($i = 0; $i -lt 8; $i++) { $x = 4 + $i * 6; Px $tb $x 15 (C '#ffe9a0'); Px $tb ($x - 1) 16 (C '#ffd36a'); Px $tb ($x + 1) 16 (C '#ffd36a'); Px $tb $x 17 (C '#ffd36a') }
-for ($x = 0; $x -lt 52; $x += 2) { Px $tb $x 19 (C '#c8962c'); Px $tb $x 20 (C '#ffd36a') }
-for ($x = 1; $x -lt 52; $x += 4) { Px $tb $x 21 (C '#8a6418') }
-foreach ($p in @(@(0, 0), @(51, 0))) { Clear $tb $p[0] $p[1] }
-Save $tb 'handmade_table.png'
-
-# =====================================================================
-# 水槽（クラゲが泳ぐ）36x44 6コマ
-# =====================================================================
-Sheet 'handmade_tank.png' 36 44 6 {
-  param($b, $ox, $f)
-  $t = $f / 6.0 * 2 * [math]::PI
-  # 台
-  Rect $b ($ox + 1) 30 34 14 $wd1; Rect $b ($ox + 1) 30 34 2 $wd3; Rect $b ($ox + 1) 32 34 1 $wd0
-  Rect $b ($ox + 3) 34 14 8 $wd2; Rect $b ($ox + 3) 34 14 1 $wd3; Rect $b ($ox + 19) 34 14 8 $wd2; Rect $b ($ox + 19) 34 14 1 $wd3
-  Px $b ($ox + 14) 38 $gld; Px $b ($ox + 19) 38 $gld
-  Rect $b ($ox + 1) 43 34 1 $wd0
-  # 水
-  for ($y = 5; $y -lt 30; $y++) { Rect $b ($ox + 3) $y 30 1 (Mix (C '#0e5aa0') (C '#0a1860') (($y - 5) / 24.0)) }
-  # 砂と貝
-  Rect $b ($ox + 3) 26 30 4 (C '#c9b58a'); Rect $b ($ox + 3) 26 30 1 (C '#e8d8a8'); Rect $b ($ox + 3) 29 30 1 (C '#8a7448')
-  foreach ($sx in 6, 15, 27) { Px $b ($ox + $sx) 26 (C '#ffb8d8'); Px $b ($ox + $sx + 1) 26 (C '#ff8ac0') }
-  Px $b ($ox + 22) 25 (C '#fff3d6'); Px $b ($ox + 23) 25 (C '#fff3d6')
-  # 水草の光る海藻
-  for ($y = 18; $y -lt 26; $y++) { Px $b ($ox + 31 + [int][math]::Round([math]::Sin($y * 0.7 + $t))) $y (C '#2ad8a0') }
-  # 光のすじ（ゆらぐ）
-  for ($y = 5; $y -lt 24; $y++) { PxO $b ($ox + 8 + [int](($y * 0.45 + $f * 0.6) % 4)) $y (CA '#7ff0ff' 48) }
-  # クラゲ2匹
-  $y1 = 7 + [int][math]::Round(1.6 * [math]::Sin($t - 0.8))
-  $p1 = [math]::Sin($t)
-  Halo $b ($ox + 15) ($y1 + 5) 11 9 '#27d8ff' 20
-  Jelly $b ($ox + 15) $y1 ([int][math]::Round(14 * (1 - 0.12 * $p1))) ([int][math]::Round(8 * (1 + 0.18 * $p1))) $PCy 1.1 9 ($t * 1.0) 2.4
-  $y2 = 14 + [int][math]::Round(1.2 * [math]::Sin($t + 2.0))
-  $p2 = [math]::Sin($t + 2.4)
-  Jelly $b ($ox + 27) $y2 ([int][math]::Round(7 * (1 - 0.12 * $p2))) 4 $PPk 1.2 6 ($t * 1.0 + 1.0) 1.4
-  # 泡
-  foreach ($bq in @(@(7, 0), @(24, 3), @(19, 5))) {
-    $by = 25 - (($f + $bq[1]) % 6) * 4
-    if ($by -gt 5) { Px $b ($ox + $bq[0] + (($f + $bq[1]) % 2)) $by (CA '#cff6ff' 220) }
-  }
-  # ガラスの枠
-  Rect $b ($ox + 2) 3 32 2 (C '#2a3a70'); Rect $b ($ox + 2) 3 32 1 (C '#8aa8e8')
-  for ($x = 3; $x -lt 33; $x++) { Px $b ($ox + $x) 4 (CA '#d8f4ff' 255) }
-  Rect $b ($ox + 2) 3 1 27 (C '#8aa8e8'); Rect $b ($ox + 33) 3 1 27 (C '#5a78c0')
-  Rect $b ($ox + 2) 29 32 1 (C '#5a78c0')
-  Rect $b ($ox + 4) 6 1 10 (CA '#ffffff' 150); Px $b ($ox + 4) 18 (CA '#ffffff' 120)
-  # 照明のすじ（上）
-  Rect $b ($ox + 4) 4 28 1 (@((C '#ffffff'), (C '#e8fcff'), (C '#d0f8ff'), (C '#e8fcff'), (C '#ffffff'), (C '#e8fcff'))[$f])
-  foreach ($p in @(@(0, 30), @(35, 30))) { Clear $b ($ox + $p[0]) $p[1] }
-}
-
-# =====================================================================
-# アクセサリー台（星・月・クラゲのチャーム）30x46 4コマ（きらり）
-# =====================================================================
-Sheet 'handmade_rack.png' 30 46 4 {
-  param($b, $ox, $f)
-  # 骨組み
-  Rect $b ($ox + 3) 4 2 42 $wd2; Rect $b ($ox + 3) 4 1 42 $wd3; Rect $b ($ox + 24) 4 2 42 $wd2; Rect $b ($ox + 24) 4 1 42 $wd3
-  Rect $b ($ox + 2) 3 26 2 $wd2; Rect $b ($ox + 2) 3 26 1 $wd3
-  Rect $b ($ox + 2) 26 26 2 $wd2; Rect $b ($ox + 2) 26 26 1 $wd3
-  Rect $b ($ox + 1) 45 6 1 $wd0; Rect $b ($ox + 23) 45 6 1 $wd0
-  Rect $b ($ox + 5) 5 20 20 (CA '#0a1033' 255)
-  for ($y = 6; $y -lt 25; $y += 5) { for ($x = 6; $x -lt 24; $x += 6) { Px $b ($ox + $x + ($y % 2) * 2) $y (C '#2a3ca0') } }
-  # 上段: ぶらさがるチャーム
-  $ch = @(@(8, 'star'), @(14, 'jelly'), @(20, 'moon'))
-  foreach ($c in $ch) {
-    $x = $ox + $c[0]
-    Line $b $x 5 $x 10 (C '#c8c8e0')
-    switch ($c[1]) {
-      'star' { Px $b $x 11 $gld; Rect $b ($x - 1) 12 3 1 $gld; Px $b ($x - 2) 12 (C '#ffe9a0'); Px $b ($x + 2) 12 (C '#ffe9a0'); Rect $b ($x - 1) 13 3 1 $gld; Px $b ($x - 1) 14 $gld; Px $b ($x + 1) 14 $gld; Px $b $x 12 (C '#ffffff') }
-      'jelly' { Rect $b ($x - 2) 11 5 2 $cy; Px $b ($x - 2) 11 (C '#d8feff'); Px $b $x 13 (C '#8ae8ff'); Px $b ($x - 1) 14 (C '#8ae8ff'); Px $b ($x + 1) 14 (C '#8ae8ff'); Px $b $x 15 (C '#8ae8ff') }
-      'moon' { Px $b ($x - 1) 11 (C '#ffe9a0'); Px $b $x 11 (C '#ffe9a0'); Px $b ($x - 2) 12 (C '#ffe9a0'); Px $b ($x - 2) 13 (C '#ffe9a0'); Px $b ($x - 2) 14 (C '#ffd36a'); Px $b ($x - 1) 15 (C '#ffd36a'); Px $b $x 15 (C '#ffd36a'); Px $b ($x - 1) 14 (C '#ffe9a0') }
-    }
-  }
-  # 下段: ネックレス（ビーズ）
-  foreach ($c in @(@(9, '#ff6fcf'), @(16, '#27d8ff'), @(22, '#a688ff'))) {
-    $x = $ox + $c[0]
-    Line $b $x 19 $x 22 (C '#c8c8e0')
-    Rect $b ($x - 1) 23 3 3 (C $c[1]); Px $b ($x - 1) 23 (C '#ffffff')
-  }
-  # きらり
-  $sx = @(8, 20, 14, 22)[$f]; $sy = @(12, 14, 12, 23)[$f]
-  Px $b ($ox + $sx) ($sy - 2) (C '#ffffff'); Px $b ($ox + $sx) ($sy + 2) (C '#ffffff'); Px $b ($ox + $sx - 2) $sy (C '#ffffff'); Px $b ($ox + $sx + 2) $sy (C '#ffffff')
-  # 足元の小物台（ボックス）
-  Rect $b ($ox + 6) 30 18 15 (C '#1e2874'); Rect $b ($ox + 6) 30 18 1 (C '#5068d0')
-  for ($x = 7; $x -lt 24; $x += 3) { Rect $b ($ox + $x) 32 2 2 (@('#27d8ff', '#ff6fcf', '#a688ff', '#4dffc4', '#ffd36a', '#27d8ff')[($x / 3) % 6]) }
-  Rect $b ($ox + 6) 36 18 1 (C '#ffd36a')
-  for ($x = 8; $x -lt 24; $x += 4) { Px $b ($ox + $x) 39 (C '#ffe9a0'); Px $b ($ox + $x - 1) 40 (C '#ffd36a'); Px $b ($ox + $x + 1) 40 (C '#ffd36a'); Px $b ($ox + $x) 41 (C '#ffd36a') }
-}
-
-# =====================================================================
-# クラゲ培養管（ガラス管・配管・圧力計）24x58 8コマ
-# =====================================================================
-Sheet 'handmade_tube.png' 24 58 8 {
-  param($b, $ox, $f)
-  $t = $f / 8.0 * 2 * [math]::PI
-  # 台座
-  Rect $b ($ox + 1) 50 22 8 (C '#3a4468'); Rect $b ($ox + 1) 50 22 2 (C '#8a9ad0'); Rect $b ($ox + 1) 56 22 2 (C '#1c2240')
-  Px $b ($ox + 3) 54 (C '#c8d0f0'); Px $b ($ox + 20) 54 (C '#c8d0f0')
-  # 管の中の光る液体
-  for ($y = 10; $y -lt 49; $y++) { Rect $b ($ox + 4) $y 13 1 (Mix (C '#0e7a9a') (C '#0a2a78') (($y - 10) / 38.0)) }
-  Halo $b ($ox + 10) 30 12 22 '#27d8ff' 14
-  # 中のクラゲ（ゆっくり上下）
-  $jy = 24 + [int][math]::Round(7 * [math]::Sin($t - 0.5))
-  $p = [math]::Sin($t * 2)
-  Jelly $b ($ox + 10) $jy ([int][math]::Round(10 * (1 - 0.12 * $p))) 6 $PCy 1.1 10 ($t * 2) 1.6
-  # 泡
-  foreach ($bq in @(@(6, 0), @(14, 3), @(9, 5))) {
-    $by = 46 - ((($f + $bq[1]) % 8) * 5)
-    if ($by -gt 11) { Px $b ($ox + $bq[0]) $by (CA '#d8f8ff' 230); Px $b ($ox + $bq[0]) ($by + 1) (CA '#7fe8ff' 180) }
-  }
-  # ガラスのふちとつや
-  Rect $b ($ox + 3) 10 1 39 (C '#a8d8ff'); Rect $b ($ox + 17) 10 1 39 (C '#5a78c0')
-  Rect $b ($ox + 5) 12 1 14 (CA '#ffffff' 170)
-  # 真鍮のキャップ
-  Rect $b ($ox + 2) 6 16 4 (C '#c8962c'); Rect $b ($ox + 2) 6 16 1 (C '#ffe08a'); Rect $b ($ox + 2) 9 16 1 (C '#6a4a14')
-  Rect $b ($ox + 2) 48 16 3 (C '#c8962c'); Rect $b ($ox + 2) 48 16 1 (C '#ffe08a'); Rect $b ($ox + 2) 50 16 1 (C '#6a4a14')
-  Px $b ($ox + 4) 7 (C '#fff3c0'); Px $b ($ox + 15) 7 (C '#6a4a14')
-  # 配管（右）
-  Rect $b ($ox + 18) 7 5 2 (C '#7a88b8'); Rect $b ($ox + 18) 7 5 1 (C '#c8d0f0')
-  Rect $b ($ox + 20) 7 3 44 (C '#5a6898'); Rect $b ($ox + 20) 7 1 44 (C '#c8d0f0'); Rect $b ($ox + 22) 9 1 42 (C '#2a3258')
-  Rect $b ($ox + 19) 26 5 2 (C '#c8962c'); Rect $b ($ox + 19) 40 5 2 (C '#c8962c')
-  # 圧力計（針がゆれる）
-  Ellipse $b ($ox + 21) 17 3.4 3.4 (C '#c8962c')
-  Ellipse $b ($ox + 21) 17 2.6 2.6 (C '#e8f0ff')
-  $na = -1.6 + 1.2 * [math]::Sin($t)
-  Line $b ($ox + 21) 17 ($ox + 21 + [int][math]::Round(2 * [math]::Cos($na))) (17 + [int][math]::Round(2 * [math]::Sin($na))) (C '#e0243a')
-  Px $b ($ox + 21) 17 (C '#2a3258')
-  # バルブ
-  Rect $b ($ox + 15) 52 4 2 (C '#e0243a'); Px $b ($ox + 16) 51 (C '#e0243a'); Px $b ($ox + 17) 51 (C '#e0243a')
-  foreach ($p in @(@(0, 50), @(23, 50))) { Clear $b ($ox + $p[0]) $p[1] }
-}
-
-# フラスコ（光る液体がぷくぷく）10x16 4コマ
-Sheet 'handmade_flask.png' 10 16 4 {
-  param($b, $ox, $f)
-  Halo $b ($ox + 5) 10 6 7 '#4dffc4' 22
-  Rect $b ($ox + 3) 0 4 2 (C '#a8744a'); Rect $b ($ox + 3) 0 4 1 (C '#d8a070')
-  for ($y = 2; $y -lt 15; $y++) {
-    $hw = if ($y -lt 6) { 1.6 } else { 1.6 + ($y - 5) * 0.45 }
-    $xl = [int][math]::Round(5 - $hw); $xr = [int][math]::Round(5 + $hw) - 1
-    for ($x = $xl; $x -le $xr; $x++) {
-      $edge = ($x -le $xl) -or ($x -ge $xr) -or ($y -ge 14)
-      if ($edge) { PxO $b ($ox + $x) $y (CA '#a8e0ff' 240) }
-      elseif ($y -ge 8) { PxO $b ($ox + $x) $y (CA '#2affc0' 235) }
-      else { PxO $b ($ox + $x) $y (CA '#0a1a50' 200) }
-    }
-  }
-  Rect $b ($ox + 2) 8 6 1 (C '#b8ffe8')
-  Px $b ($ox + 3) 11 (C '#e8ffff'); Px $b ($ox + 2) 10 (C '#e8f6ff')
-  $by = 13 - ($f * 3) % 12; $bx = 4 + ($f % 2) * 2
-  Px $b ($ox + $bx) $by (CA '#ffffff' 240)
-  $by2 = 13 - (($f + 2) * 3) % 12; Px $b ($ox + 9 - $bx) $by2 (CA '#d8ffff' 220)
-  Rect $b ($ox + 2) 15 6 1 (C '#3a4468')
-}
-
-# 歯車とガラス管のトレイ 18x9
-$gt = NewBmp 18 9
-Rect $gt 0 5 18 4 (C '#3a4468'); Rect $gt 0 5 18 1 (C '#8a9ad0'); Rect $gt 0 8 18 1 (C '#1c2240')
-$script:CX0 = 0; $script:CX1 = 100
-Gear $gt 5 3.5 4.2 6 0.3 $brass $brassD $brassH (C '#3a4468')
-Gear $gt 12 4 3.4 6 0.1 (C '#c8d0f0') (C '#5a6898') (C '#ffffff') (C '#3a4468')
-Rect $gt 15 3 2 1 (C '#c8d0f0'); Px $gt 16 2 (C '#c8d0f0')
-Px $gt 9 7 (C '#ffe08a'); Px $gt 10 7 (C '#ffe08a')
-Save $gt 'handmade_gears.png'
-
-# =====================================================================
-# 提灯の柱（暖色の灯り）16x58 4コマ（ゆらぎ）
-# =====================================================================
-Sheet 'handmade_lantern.png' 16 58 4 {
-  param($b, $ox, $f)
-  $gl = @(34, 40, 30, 38)[$f]
-  Halo $b ($ox + 8) 14 12 13 '#ff9a3d' $gl
-  Rect $b ($ox + 7) 4 2 52 $wd2; Rect $b ($ox + 7) 4 1 52 $wd3; Rect $b ($ox + 8) 4 1 52 $wd0
-  Rect $b ($ox + 4) 55 8 2 $wd1; Rect $b ($ox + 4) 55 8 1 $wd2; Rect $b ($ox + 5) 57 6 1 $wd0
-  # 提灯
-  $c1 = @('#ff8a3d', '#ffa04d', '#ff8030', '#ff9644')[$f]
-  Rect $b ($ox + 4) 8 8 2 (C '#2a1c1c')
-  for ($y = 10; $y -lt 20; $y++) {
-    $hw = 4.0 - [math]::Pow(([math]::Abs($y - 14.5) / 5.5), 2) * 0.0
-    $dd = [math]::Abs($y - 14.5) / 5.0
-    $hw = 3.2 + 1.6 * (1 - $dd * $dd)
-    $xl = [int][math]::Round(8 - $hw); $xr = [int][math]::Round(8 + $hw) - 1
-    for ($x = $xl; $x -le $xr; $x++) {
-      $col = C $c1
-      if ($x -le $xl) { $col = C '#b9421f' } elseif ($x -ge $xr) { $col = C '#c94e24' } elseif ([math]::Abs($x - 7.5) -lt 1.6) { $col = C '#ffd88a' }
-      if ($y -eq 13 -or $y -eq 16) { $col = C '#8a2a14' }
-      Px $b ($ox + $x) $y $col
-    }
-  }
-  Rect $b ($ox + 5) 20 6 2 (C '#2a1c1c')
-  Px $b ($ox + 7) 22 (C '#ffd36a'); Px $b ($ox + 7) 23 (C '#ff9a3d'); Px $b ($ox + 8) 22 (C '#ffd36a')
-  Px $b ($ox + 8) 6 (C '#2a1c1c'); Px $b ($ox + 8) 7 (C '#2a1c1c')
-}
-
-# =====================================================================
-# のぼり旗「クラゲファクトリー」26x86（2列の縦書き。下のふちはクラゲの触手）
-# =====================================================================
+if (Want 'handmade_nobori') {
 $nb = NewBmp 26 90
 $script:CX0 = 0; $script:CX1 = 100
 Rect $nb 0 2 26 2 $wd2; Rect $nb 0 2 2 88 $wd3; Rect $nb 0 1 2 89 (C '#b8909e')
 for ($y = 5; $y -lt 80; $y++) { Rect $nb 2 $y 23 1 (Mix (C '#0e1656') (C '#1c1070') (($y - 5) / 74.0)) }
 Rect $nb 2 4 23 1 (C '#3df5ff'); Rect $nb 2 4 1 76 (C '#3df5ff'); Rect $nb 24 4 1 76 (C '#a688ff')
 for ($i = 0; $i -lt 6; $i++) { Px $nb (4 + $i * 4) 6 (C '#ffd36a') }
-# 縦書き: 右の列が「クラゲ」、左の列が「ファクトリー」
-$cols1 = @('ク', 'ラ', 'ゲ')
+# 縦書き: 右の列が「くらげ」、左の列が「ファクトリー」
+$cols1 = @('く', 'ら', 'げ')
 for ($i = 0; $i -lt 3; $i++) { $m = TextMask $cols1[$i] 11 $FONT; FxText $nb $m 14 (22 + $i * 12) '#8ff6ff' '#a8c8ff' '#e8a8ff' $null '#27d8ff' 18 -100 }
 $cols2 = @('フ', 'ァ', 'ク', 'ト', 'リ', 'ー')
 for ($i = 0; $i -lt 6; $i++) {
@@ -857,3 +469,450 @@ for ($i = 0; $i -lt 6; $i++) {
 Halo $nb 13 79 9 6 '#27d8ff' 36
 Jelly $nb 13 74 16 7 $PCy 1.3 9 0.8 1.6
 Save $nb 'handmade_nobori.png'
+}
+
+# =====================================================================
+# 奥の壁（カーテン・柱・星・ペナント）186x50。体験コーナーの後ろに回る
+# =====================================================================
+if (Want 'handmade_wall') {
+$wl = NewBmp 186 50
+Rect $wl 6 0 174 50 (C '#0c1244')
+for ($x = 6; $x -lt 180; $x++) {
+  $m = $x % 9
+  if ($m -lt 2) { Rect $wl $x 0 1 49 (C '#141c5c') } elseif ($m -eq 5 -or $m -eq 6) { Rect $wl $x 0 1 49 (C '#080c30') }
+}
+Rect $wl 6 49 174 1 $n0
+$rs = New-Object System.Random 11
+for ($i = 0; $i -lt 40; $i++) {
+  $x = $rs.Next(8, 178); $y = $rs.Next(24, 47)
+  Px $wl $x $y (@((C '#cfe0ff'), (C '#ffd36a'), (C '#8fb0ff'))[$rs.Next(0, 3)])
+}
+# 柱
+foreach ($px in 0, 180) {
+  Rect $wl $px 0 6 50 (C '#5a3a50')
+  Rect $wl ($px + 1) 0 1 50 (C '#8e6a8a'); Rect $wl ($px + 5) 0 1 50 $wd0; Rect $wl $px 0 1 50 $wd1
+  for ($y = 30; $y -lt 36; $y += 2) { Rect $wl $px $y 6 1 (C '#d8c498'); Rect $wl ($px + 1) ($y + 1) 5 1 (C '#a89068') }
+  Rect $wl $px 49 6 1 $wd0
+}
+# ペナント（小さな三角の旗）
+for ($x = 8; $x -lt 178; $x++) { $yy = 40 + [int][math]::Round(2 * [math]::Sin(($x - 8) / 170.0 * [math]::PI * 3)); Px $wl $x $yy (C '#3a2a50') }
+$pc = @('#27d8ff', '#ff6fcf', '#a688ff', '#4dffc4', '#ffd36a')
+for ($i = 0; $i -lt 15; $i++) {
+  $x = 14 + $i * 11
+  $yy = 40 + [int][math]::Round(2 * [math]::Sin(($x - 8) / 170.0 * [math]::PI * 3))
+  $c = C $pc[$i % 5]
+  Rect $wl ($x - 2) ($yy + 1) 5 1 $c; Rect $wl ($x - 1) ($yy + 2) 3 1 $c; Px $wl $x ($yy + 3) $c
+}
+Save $wl 'handmade_wall.png'
+}
+
+# =====================================================================
+# 体験コーナーの作業台 w x 30。上の面(7行) → レースのふち → 体験名の札(2行) → 金のふさ
+# =====================================================================
+function BoardText($b, $ox, $bw, $text, $y, $px, $col, $bold) {
+  $tw = TextWidth $text $px
+  $x = $ox + [int][math]::Floor(($bw - $tw - $(if ($bold) { 1 } else { 0 })) / 2)
+  [void](TextPx $b $text $x $y $px $col $bold)
+}
+# $acc=札の線の色 $top=上の面の布の色 $bd1,$bd2=札の上と下の色
+function Bench($name, $bw, $acc, $top, $top2, $bd1, $bd2, $l1, $y1, $p1, $c1, $l2, $y2, $p2, $c2) {
+  Sheet $name $bw 35 1 {
+    param($b, $ox, $f)
+    $A = C $acc
+    Rect $b $ox 0 $bw 7 (C $top)
+    Rect $b $ox 0 $bw 1 (Mix (C $top) (C '#ffffff') 0.5)
+    Rect $b $ox 1 $bw 1 (Mix (C $top) (C '#ffffff') 0.22)
+    for ($x = 0; $x -lt $bw; $x += 6) { Px $b ($ox + $x) 3 (C $top2); Px $b ($ox + $x + 3) 5 (C $top2) }
+    Rect $b $ox 6 $bw 1 (Mix (C $top) $n1 0.4)
+    for ($x = 0; $x -lt $bw; $x++) { Px $b ($ox + $x) 7 (C '#e8ecff'); if ($x % 4 -lt 2) { Px $b ($ox + $x) 8 (C '#c0c8f0') } }
+    for ($y = 9; $y -lt 33; $y++) { Rect $b $ox $y $bw 1 (Mix (C $bd1) (C $bd2) (($y - 9) / 23.0)) }
+    Rect $b $ox 9 $bw 1 $A
+    Rect $b $ox 10 $bw 1 (Mix $A (C $bd1) 0.65)
+    for ($x = 0; $x -lt $bw; $x++) { $m = $x % 12; if ($m -lt 1) { Rect $b ($ox + $x) 11 1 22 (Mix (C $bd1) $A 0.12) } }
+    Rect $b $ox 33 $bw 1 (Mix $A (C $bd2) 0.55)
+    for ($x = 0; $x -lt $bw; $x += 2) { Px $b ($ox + $x) 34 (C '#c8962c'); Px $b ($ox + $x + 1) 34 (C '#ffd36a') }
+    BoardText $b $ox $bw $l1 $y1 $p1 (C $c1) $true
+    BoardText $b $ox $bw $l2 $y2 $p2 (C $c2) $true
+    foreach ($p in @(@(0, 0), @(($bw - 1), 0))) { Clear $b ($ox + $p[0]) $p[1] }
+  }
+}
+Bench 'handmade_bench_latte.png' 66 '#ffd9a0' '#7a5236' '#5a3a28' '#2a1a24' '#150c14' 'ラテ' 11 12 '#fff3d6' 'キャンドル作り' 23 9 '#ffd9a0'
+Bench 'handmade_bench_soap.png' 56 '#6fe8ff' '#3a5cc4' '#2a44a0' '#141c5c' '#0a0f3a' 'ぷるぷる' 11 12 '#bff6ff' '石鹸作り' 22 10 '#ffc8ee'
+Bench 'handmade_bench_slime.png' 56 '#7dffb0' '#2a8a7a' '#1c6a5c' '#10305a' '#0a1a3a' 'スライム' 11 12 '#c8ffd8' 'キーホルダー' 23 9 '#fff3a0'
+Bench 'handmade_bench_oil.png' 56 '#a688ff' '#5a3ab0' '#46308f' '#1c1560' '#0e0a3a' 'オイル' 11 12 '#e0d4ff' 'キーホルダー' 23 9 '#9ff8ff'
+
+# =====================================================================
+# 形の部品（星・貝・ハート・丸いキャンドル）
+# =====================================================================
+# 星（外半径$ro、横の伸び$sx・縦の伸び$sy、$c0=本体 $c1=ハイライト $c2=ふち、$al=濃さ）
+function StarShape($b, $cx, $cy, $ro, $sx, $sy, $c0, $c1, $c2, $al) {
+  $ri = $ro * 0.52; $seg = 2 * [math]::PI / 5
+  for ($y = [math]::Floor($cy - $ro * $sy - 1); $y -le [math]::Ceiling($cy + $ro * $sy + 1); $y++) {
+    for ($x = [math]::Floor($cx - $ro * $sx - 1); $x -le [math]::Ceiling($cx + $ro * $sx + 1); $x++) {
+      $dx = ($x + 0.5 - $cx) / $sx; $dy = ($y + 0.5 - $cy) / $sy
+      $d = [math]::Sqrt($dx * $dx + $dy * $dy)
+      $a = [math]::Atan2($dy, $dx) + [math]::PI / 2 + 4 * [math]::PI
+      $m = $a % $seg
+      $kk = [math]::Abs($m - $seg / 2) / ($seg / 2)
+      $rad = $ri + ($ro - $ri) * $kk
+      if ($d -le $rad) {
+        $col = $c0
+        if ($d -gt $rad - 0.9) { $col = $c2 } elseif ((($dx + $dy) -lt (-0.35 * $ro)) -and ($d -gt $ro * 0.15)) { $col = $c1 }
+        PxO $b $x $y (CC $col $al)
+      }
+    }
+  }
+}
+# 貝（ホタテ形の扇。下の中心$cx,$by、半径$r）
+function ShellShape($b, $cx, $by, $r, $sx, $sy, $c0, $c1, $c2, $al) {
+  for ($y = [math]::Floor($by - $r * $sy - 1); $y -le $by; $y++) {
+    for ($x = [math]::Floor($cx - $r * $sx - 1); $x -le [math]::Ceiling($cx + $r * $sx + 1); $x++) {
+      $dx = ($x + 0.5 - $cx) / $sx; $dy = ($by - ($y + 0.5)) / $sy
+      if ($dy -lt 0) { continue }
+      $d = [math]::Sqrt($dx * $dx + $dy * $dy)
+      if ($d -gt $r) { continue }
+      $ang = [math]::Atan2($dy, $dx)
+      $rib = [int][math]::Floor($ang / ([math]::PI / 6)) % 2
+      $col = if ($rib -eq 0) { $c0 } else { Mix $c0 $c2 0.45 }
+      if ($d -gt $r - 0.9) { $col = $c2 } elseif ($d -lt $r * 0.3) { $col = $c1 }
+      PxO $b $x $y (CC $col $al)
+    }
+  }
+}
+# 水に浮かぶキャンドル（丸・ハート・星・クラゲ）。中心($cx,$cy)。炎はちらちら
+function Cand($b, $cx, $cy, $type, $hex, $f, $ph) {
+  $c0 = C $hex; $hi = Mix $c0 (C '#ffffff') 0.55; $dk = Mix $c0 $n1 0.42
+  $cx = [int]$cx; $cy = [int]$cy
+  EllO $b $cx ($cy + 3) 4.4 1.5 (CA '#06103a' 90)
+  $pal = @{ a = $c0; b = $hi; c = $dk }
+  $top = 3
+  switch ($type) {
+    'round' {
+      Ellipse $b $cx $cy 3.6 2.6 $c0
+      Ellipse $b $cx ($cy + 1) 3.2 1.6 $dk
+      Ellipse $b $cx ($cy - 0.4) 3.2 1.9 $c0
+      Px $b ($cx - 2) ($cy - 1) $hi; Px $b ($cx - 1) ($cy - 2) $hi
+      $top = 3
+    }
+    'heart' { Ascii $b ($cx - 3) ($cy - 3) @('.aa.aa.', 'abaaaaa', 'aaaaaaa', '.aaaaac', '..aaac.', '...c...') $pal; $top = 3 }
+    'star' { Ascii $b ($cx - 3) ($cy - 3) @('...a...', '..aba..', 'aaabaaa', '.aaaaac', '..aaac.', '.aac.ac', '.ac..ac') $pal; $top = 3 }
+    'jelly' { Ascii $b ($cx - 3) ($cy - 3) @('..aaa..', '.abaaa.', 'aaaaaac', 'aaaaaac', 'c.a.a.c', '..c.c..') $pal; $top = 3 }
+  }
+  # 炎
+  $fx = @(0, 1, 0, -1)[($f + $ph) % 4]
+  $fy = $cy - $top - 1
+  PxO $b ($cx + $fx) ($fy - 1) (CA '#fff6c0' 255)
+  Px $b ($cx + $fx) $fy (C '#ffb347')
+  EllO $b ($cx + $fx) ($fy - 0.5) 3 2.4 (CA '#ffb347' 42)
+}
+
+# =====================================================================
+# ラテキャンドル作り: ろうの鍋（ゆげ）とピックのカップ 20x17 4コマ、見本のマグ 26x14
+# =====================================================================
+Sheet 'handmade_latte_pot.png' 20 17 4 {
+  param($b, $ox, $f)
+  $t = $f / 4.0 * 2 * [math]::PI
+  # 温め台
+  Rect $b ($ox + 0) 13 12 4 (C '#3a4468'); Rect $b ($ox + 0) 13 12 1 (C '#8a9ad0'); Rect $b ($ox + 1) 16 10 1 (C '#1c2240')
+  $fc = @('#ffb347', '#ff8a3d', '#ffd36a', '#ff9a3d')[$f]
+  Px $b ($ox + 3) 14 (C $fc); Px $b ($ox + 6) 14 (C '#ffe9a0'); Px $b ($ox + 8) 14 (C $fc)
+  # 鍋
+  Rect $b ($ox + 1) 6 10 7 (C '#c87a3a'); Rect $b ($ox + 2) 7 1 5 (C '#e8a860'); Rect $b ($ox + 9) 7 2 5 (C '#8a4a28'); Rect $b ($ox + 1) 12 10 1 (C '#6a3a1a')
+  Ellipse $b ($ox + 6) 6 5.4 2.4 (C '#e8a860')
+  Ellipse $b ($ox + 6) 6 4.4 1.7 (C '#fff3d6')
+  Px $b ($ox + 4) 6 (C '#a8744a'); Px $b ($ox + 5) 5 (C '#a8744a'); Px $b ($ox + 6) 6 (C '#a8744a'); Px $b ($ox + 7) 5 (C '#c8a070'); Px $b ($ox + 8) 6 (C '#a8744a')
+  # 持ち手
+  Rect $b ($ox + 11) 8 3 1 (C '#5a3a28'); Rect $b ($ox + 13) 8 1 3 (C '#5a3a28'); Rect $b ($ox + 11) 10 3 1 (C '#5a3a28')
+  # ゆげ
+  for ($k = 0; $k -lt 3; $k++) {
+    for ($y = 0; $y -lt 4; $y++) {
+      $x = 3 + $k * 3 + [int][math]::Round(1.3 * [math]::Sin($t + $k * 1.9 + $y * 0.9))
+      PxO $b ($ox + $x) $y (CA '#ffffff' (150 - $y * 28))
+    }
+  }
+  # ピックのカップ
+  Rect $b ($ox + 14) 11 6 6 (C '#f4ede0'); Rect $b ($ox + 18) 11 2 6 (C '#c8bca8'); Rect $b ($ox + 14) 16 6 1 (C '#a89c88'); Rect $b ($ox + 14) 13 6 1 (C '#ff9ae0')
+  Rect $b ($ox + 15) 4 1 8 (C '#d8b88a'); Px $b ($ox + 15) 3 (C '#7a4a2a')
+  Rect $b ($ox + 17) 6 1 6 (C '#e8cfa0'); Px $b ($ox + 17) 5 (C '#fff3d6')
+  Rect $b ($ox + 19) 5 1 7 (C '#d8b88a'); Px $b ($ox + 19) 4 (C '#7a4a2a')
+}
+
+if (Want 'handmade_latte_mugs') {
+$mg = NewBmp 26 14
+function Mug($b, $ox, $band, $art) {
+  # 本体
+  Rect $b ($ox + 1) 6 9 7 (C '#f8f2e6'); Rect $b ($ox + 8) 6 2 7 (C '#c8bca8'); Rect $b ($ox + 1) 12 9 1 (C '#a89c88')
+  Rect $b ($ox + 1) 9 9 1 (C $band)
+  Ellipse $b ($ox + 5.5) 6 5.4 2.6 (C '#f8f2e6')
+  Ellipse $b ($ox + 5.5) 6 4.5 1.9 (C '#7a4a2a')
+  # ハンドル
+  Rect $b ($ox + 10) 7 2 1 (C '#f8f2e6'); Rect $b ($ox + 11) 8 1 3 (C '#f8f2e6'); Rect $b ($ox + 10) 11 2 1 (C '#c8bca8')
+  $cm = C '#fff3d6'; $co = C '#a8744a'
+  if ($art -eq 'heart') {
+    Px $b ($ox + 3) 4 $cm; Px $b ($ox + 4) 4 $cm; Px $b ($ox + 7) 4 $cm; Px $b ($ox + 8) 4 $cm
+    Rect $b ($ox + 3) 5 6 1 $cm; Rect $b ($ox + 4) 6 4 1 $cm; Rect $b ($ox + 5) 7 2 1 $cm
+  } else {
+    Rect $b ($ox + 4) 4 4 1 $cm; Rect $b ($ox + 3) 5 6 1 $cm; Rect $b ($ox + 3) 6 6 1 $cm; Rect $b ($ox + 4) 7 4 1 $cm
+    Rect $b ($ox + 5) 4 1 4 $co; Px $b ($ox + 4) 5 $co; Px $b ($ox + 7) 5 $co; Px $b ($ox + 4) 6 $co; Px $b ($ox + 7) 6 $co
+  }
+  # しん
+  Px $b ($ox + 6) 5 (C '#3a2a2a'); Px $b ($ox + 6) 4 (C '#3a2a2a'); Px $b ($ox + 6) 3 (C '#3a2a2a'); Px $b ($ox + 6) 2 (C '#3a2a2a')
+}
+Mug $mg 0 '#ff9ae0' 'heart'
+Mug $mg 13 '#4dffc4' 'leaf'
+Save $mg 'handmade_latte_mugs.png'
+}
+
+# =====================================================================
+# ぷるぷる石鹸作り: ぷるぷる石鹸（クラゲ・星・貝）24x17 4コマ、混ぜるボウル 16x13 4コマ
+# =====================================================================
+Sheet 'handmade_soap_jelly.png' 24 17 4 {
+  param($b, $ox, $f)
+  $t = $f / 4.0 * 2 * [math]::PI
+  # ガラスの皿
+  EllO $b ($ox + 12) 14.5 11.6 2.3 (CA '#d8ecff' 235)
+  EllO $b ($ox + 12) 14 10.4 1.6 (CA '#8ab8f0' 200)
+  # クラゲの石鹸（ぷるんと伸び縮み）
+  $p1 = [math]::Sin($t)
+  $bw = [int][math]::Round(9 * (1 - 0.1 * $p1)); $bh = [int][math]::Round(6 * (1 + 0.16 * $p1))
+  Jelly $b ($ox + 6) (13 - $bh - 3) $bw $bh $PCy 1.3 3 ($t * 1.0) 0.6
+  # 星の石鹸
+  $p2 = [math]::Sin($t + 1.6)
+  $sy = 1 + 0.14 * $p2; $sx = 1 - 0.08 * $p2
+  StarShape $b ($ox + 14) (13 - 5.0 * $sy * 0.8) 5.0 $sx $sy (C '#ff8fd8') (C '#ffd8f4') (C '#d855b8') 235
+  # 貝の石鹸
+  $p3 = [math]::Sin($t + 3.2)
+  ShellShape $b ($ox + 20) 13.5 4.8 (1 - 0.08 * $p3) (1 + 0.15 * $p3) (C '#b79cff') (C '#e4d8ff') (C '#7a56d8') 235
+  Px $b ($ox + 19) 9 (CA '#ffffff' 255); Px $b ($ox + 13) 9 (CA '#ffffff' 255); Px $b ($ox + 5) 9 (CA '#ffffff' 255)
+}
+
+Sheet 'handmade_soap_bowl.png' 16 13 4 {
+  param($b, $ox, $f)
+  $t = $f / 4.0 * 2 * [math]::PI
+  # 本体
+  for ($y = 6; $y -lt 12; $y++) {
+    $hw = 7.0 - ($y - 6) * 0.55
+    $xl = [int][math]::Round(8 - $hw); $xr = [int][math]::Round(8 + $hw) - 1
+    Rect $b ($ox + $xl) $y ($xr - $xl + 1) 1 (C '#e8eaff')
+    Px $b ($ox + $xr) $y (C '#a8aee0'); Px $b ($ox + $xr - 1) $y (C '#b8bee8')
+  }
+  Rect $b ($ox + 4) 11 8 1 (C '#8a90c8')
+  Rect $b ($ox + 2) 9 11 1 (C '#ff9ae0')
+  Ellipse $b ($ox + 8) 6 7.2 2.4 (C '#f4f6ff')
+  Ellipse $b ($ox + 8) 6 6.0 1.8 (C '#ffb8e8')
+  # さざなみ
+  $r = 1.2 + ($f % 4) * 1.1
+  for ($a = 0; $a -lt 16; $a++) { $an = $a / 16.0 * 2 * [math]::PI; PxO $b ($ox + 8 + [int][math]::Round($r * 1.6 * [math]::Cos($an))) (6 + [int][math]::Round($r * 0.55 * [math]::Sin($an))) (CA '#fff0fa' 200) }
+  Px $b ($ox + 5) 5 (C '#ffe8f8'); Px $b ($ox + 11) 6 (C '#ffe8f8')
+  # 泡立て器
+  $wx = 12 + [int][math]::Round(1.2 * [math]::Cos($t)); $wy = 6 + [int][math]::Round(0.6 * [math]::Sin($t))
+  Line $b ($ox + 13) 0 ($ox + $wx - 1) ($wy - 1) (C '#c8a070')
+  Line $b ($ox + 14) 0 ($ox + $wx) ($wy - 1) (C '#e8c898')
+  Px $b ($ox + $wx - 1) $wy (C '#e8f0ff'); Px $b ($ox + $wx) $wy (C '#c8d0f0'); Px $b ($ox + $wx - 2) ($wy) (C '#e8f0ff')
+}
+
+# =====================================================================
+# スライムキーホルダー: スライムのボウル 18x14 6コマ、色の素のボトルと瓶の棚 22x20 4コマ
+# =====================================================================
+Sheet 'handmade_slime_bowl.png' 18 14 6 {
+  param($b, $ox, $f)
+  $t = $f / 6.0 * 2 * [math]::PI
+  # ボウルのうしろのふち
+  Ellipse $b ($ox + 9) 8 8.2 2.6 (C '#e6f0ff')
+  Ellipse $b ($ox + 9) 8 7.0 1.9 (C '#2a3a9a')
+  # 棒
+  $tx = 10 + [int][math]::Round(1.6 * [math]::Cos($t))
+  Line $b ($ox + 14) 0 ($ox + $tx) 6 (C '#c8a070')
+  Line $b ($ox + 15) 0 ($ox + $tx + 1) 6 (C '#e8c898')
+  # スライム（盛り上がりがゆれる）
+  $rise = 3.0 + 0.9 * [math]::Sin($t)
+  EllO $b ($ox + 8.5) (8 - $rise * 0.5) 6.6 $rise (CA '#ff9ad8' 255)
+  EllO $b ($ox + 8.0) (8 - $rise * 0.7) 4.2 ($rise * 0.55) (CA '#ffc0ec' 255)
+  EllO $b ($ox + 6.5) (8 - $rise * 0.95) 1.8 1.0 (CA '#fff0fa' 255)
+  # ラメ
+  $gp = @(@(5, 3), @(9, 2), @(12, 4), @(7, 5), @(11, 6), @(4, 6))
+  $i = 0
+  foreach ($q in $gp) { if ((($f + $i) % 3) -eq 0) { PxO $b ($ox + $q[0]) $q[1] (CA '#ffffff' 255) } elseif ((($f + $i) % 3) -eq 1) { PxO $b ($ox + $q[0]) $q[1] (CA '#fff8a0' 220) }; $i++ }
+  # ボウル本体
+  for ($y = 8; $y -lt 13; $y++) {
+    $hw = 8.0 - ($y - 8) * 0.7
+    $xl = [int][math]::Round(9 - $hw); $xr = [int][math]::Round(9 + $hw) - 1
+    Rect $b ($ox + $xl) $y ($xr - $xl + 1) 1 (C '#3a56c8')
+    Px $b ($ox + $xl + 1) $y (C '#6a8aff'); Px $b ($ox + $xr) $y (C '#22348a'); Px $b ($ox + $xr - 1) $y (C '#2a3fa0')
+  }
+  Rect $b ($ox + 4) 13 10 1 (C '#1c2a70')
+  Rect $b ($ox + 2) 8 14 1 (C '#e6f0ff')
+  Rect $b ($ox + 4) 10 10 1 (C '#ffd36a')
+}
+
+Sheet 'handmade_slime_shelf.png' 22 20 4 {
+  param($b, $ox, $f)
+  # 棚（柱と板）
+  Rect $b ($ox + 0) 2 1 18 (C '#6a4a6e'); Rect $b ($ox + 21) 2 1 18 (C '#46304e')
+  Rect $b ($ox + 0) 9 22 2 (C '#8e6a8a'); Rect $b ($ox + 0) 9 22 1 (C '#b8909e')
+  Rect $b ($ox + 0) 18 22 2 (C '#8e6a8a'); Rect $b ($ox + 0) 18 22 1 (C '#b8909e'); Rect $b ($ox + 0) 19 22 1 (C '#46304e')
+  # 上の段: 色の素のボトル（スポイト付き）
+  $bt = @(@(3, '#ff7fcf'), @(10, '#4dffc4'), @(17, '#a688ff'))
+  foreach ($q in $bt) {
+    $x = $ox + $q[0]; $c = C $q[1]
+    Rect $b ($x - 1) 4 3 5 (Mix $c $n1 0.25); Rect $b ($x - 1) 4 1 5 $c; Px $b ($x - 1) 4 (Mix $c (C '#ffffff') 0.6)
+    Rect $b ($x - 1) 3 3 1 (C '#f4f6ff'); Rect $b $x 1 1 2 (C '#f4f6ff'); Px $b $x 0 (C '#d8e0ff')
+  }
+  # 下の段: 小さな瓶のスライム（ラメが光る）
+  $jr = @(@(3, '#ff9ad8'), @(10, '#7dffd0'), @(17, '#b79cff'))
+  $i = 0
+  foreach ($q in $jr) {
+    $x = $ox + $q[0]; $c = C $q[1]
+    Rect $b ($x - 2) 11 5 7 (Mix $c $n1 0.2); Rect $b ($x - 2) 11 1 7 (Mix $c (C '#ffffff') 0.5); Rect $b ($x + 2) 11 1 7 (Mix $c $n1 0.45)
+    Rect $b ($x - 2) 10 5 1 (C '#d8e0ff'); Rect $b ($x - 1) 9 3 1 (C '#c8d0f0'); Px $b $x 8 (C '#ffd36a'); Px $b ($x + 1) 7 (C '#ffd36a')
+    $st = ($f + $i) % 4
+    if ($st -eq 0) { Px $b ($x) 14 (C '#ffffff'); Px $b ($x - 1) 14 (CA '#ffffff' 150); Px $b ($x + 1) 14 (CA '#ffffff' 150); Px $b $x 13 (CA '#ffffff' 150); Px $b $x 15 (CA '#ffffff' 150) }
+    elseif ($st -eq 2) { Px $b ($x + 1) 16 (C '#fff8a0') }
+    $i++
+  }
+}
+
+# =====================================================================
+# オイルキーホルダー: キーホルダーの展示台 28x24 6コマ、素材（オイル・ラメ・ビーズ）26x15 4コマ
+# =====================================================================
+Sheet 'handmade_oil_display.png' 28 20 6 {
+  param($b, $ox, $f)
+  $t = $f / 6.0 * 2 * [math]::PI
+  # わく
+  Rect $b ($ox + 0) 2 1 18 (C '#6a4a6e'); Rect $b ($ox + 27) 2 1 18 (C '#46304e')
+  Rect $b ($ox + 0) 0 28 2 (C '#8e6a8a'); Rect $b ($ox + 0) 0 28 1 (C '#b8909e')
+  Rect $b ($ox + 0) 17 28 3 (C '#8e6a8a'); Rect $b ($ox + 0) 17 28 1 (C '#b8909e'); Rect $b ($ox + 0) 19 28 1 (C '#46304e')
+  # 4つのオイルキーホルダー（液体の中でラメ・星・ビーズがゆっくり動く）
+  $ks = @(
+    @('#3d9bff', '#ffe08a', 'star'),
+    @('#ff7fcf', '#ffe8f8', 'heart'),
+    @('#9a6bff', '#e0e8ff', 'glit'),
+    @('#4dffc4', '#ffd36a', 'bead')
+  )
+  for ($i = 0; $i -lt 4; $i++) {
+    $c = C $ks[$i][0]; $pc = C $ks[$i][1]; $kind = $ks[$i][2]
+    $x0 = $ox + 1 + 7 * $i
+    $sw = [int][math]::Round(0.5 * [math]::Sin($t + $i))
+    Px $b ($x0 + 3) 2 (C '#e8f0ff'); Px $b ($x0 + 2) 3 (C '#c8d0f0'); Px $b ($x0 + 3) 4 (C '#e8f0ff')
+    $cx0 = $x0 + $sw
+    # ケース（透明アクリル）
+    Rect $b $cx0 5 6 12 (CC (Mix $c $n1 0.25) 230)
+    Rect $b ($cx0 + 1) 7 4 9 (CC $c 215)
+    Rect $b $cx0 5 6 1 (C '#e8f6ff'); Rect $b $cx0 16 6 1 (C '#8ab0e8'); Rect $b $cx0 5 1 12 (C '#e8f6ff'); Rect $b ($cx0 + 5) 5 1 12 (C '#6a88c8')
+    Rect $b ($cx0 + 2) 5 2 2 (C '#c8d0f0'); Px $b ($cx0 + 3) 5 (C '#4a5a8a')
+    Rect $b ($cx0 + 1) 8 1 4 (CA '#ffffff' 170)
+    # 中身（ゆっくり上下・ゆれる）
+    for ($k = 0; $k -lt 4; $k++) {
+      $py = 10.5 + 2.6 * [math]::Sin($t + $k * 1.7 + $i)
+      $px = 1.5 + 2.0 * (0.5 + 0.5 * [math]::Sin($t + $k * 2.3 + $i * 0.8))
+      $xx = $cx0 + [int][math]::Round($px); $yy = [int][math]::Round($py)
+      if ($kind -eq 'star' -and $k -lt 2) { Px $b $xx $yy $pc; Px $b ($xx - 1) $yy (CC $pc 200); Px $b ($xx + 1) $yy (CC $pc 200); Px $b $xx ($yy - 1) (CC $pc 200); Px $b $xx ($yy + 1) (CC $pc 200) }
+      elseif ($kind -eq 'heart' -and $k -lt 2) { Px $b $xx $yy $pc; Px $b ($xx + 1) $yy $pc; Px $b ($xx - 1) ($yy - 1) (CC $pc 220); Px $b ($xx + 1) ($yy - 1) (CC $pc 220) }
+      elseif ($kind -eq 'bead') { Px $b $xx $yy (@((C '#ffd36a'), (C '#ff6fcf'), (C '#ffffff'), (C '#a688ff'))[$k]) }
+      else { Px $b $xx $yy $pc }
+    }
+  }
+}
+
+Sheet 'handmade_oil_mats.png' 26 15 4 {
+  param($b, $ox, $f)
+  # オイルのボトル（2本）
+  $ob = @(@(0, '#3d9bff'), @(6, '#ff7fcf'))
+  foreach ($q in $ob) {
+    $x = $ox + $q[0]; $c = C $q[1]
+    Rect $b ($x + 1) 0 3 2 (C '#c8a070'); Rect $b ($x + 1) 0 3 1 (C '#e8c898')
+    Rect $b ($x + 1) 2 3 2 (CC (Mix $c $n1 0.2) 230)
+    Rect $b $x 4 5 10 (CC (Mix $c $n1 0.25) 235); Rect $b $x 4 1 10 (Mix $c (C '#ffffff') 0.55); Rect $b ($x + 4) 4 1 10 (Mix $c $n1 0.5)
+    Rect $b ($x + 1) 7 3 1 (C '#f4f6ff'); Rect $b $x 13 5 1 (Mix $c $n1 0.55)
+    Px $b ($x + 1) 5 (C '#ffffff')
+  }
+  # ラメの瓶（きらきら）
+  Rect $b ($ox + 12) 7 7 7 (C '#2a3a8a'); Rect $b ($ox + 12) 7 1 7 (C '#8aa8e8'); Rect $b ($ox + 18) 7 1 7 (C '#1c2a70')
+  Rect $b ($ox + 11) 5 9 2 (C '#ffd36a'); Rect $b ($ox + 11) 5 9 1 (C '#ffe9a0')
+  Rect $b ($ox + 13) 10 5 3 (C '#c8d0f0')
+  $gl = @(@(14, 8), @(16, 9), @(15, 11), @(17, 12), @(13, 12))
+  $i = 0
+  foreach ($q in $gl) { if ((($f + $i) % 4) -eq 0) { Px $b ($ox + $q[0]) $q[1] (C '#ffffff') } else { Px $b ($ox + $q[0]) $q[1] (C @('#ffd36a', '#8fe8ff', '#ff9ae0', '#e0e8ff')[(($f + $i) % 4)]) }; $i++ }
+  # ビーズのお皿
+  Ellipse $b ($ox + 22.5) 11 3.6 2.4 (C '#e8e0ff')
+  Ellipse $b ($ox + 22.5) 11 2.8 1.6 (C '#8a7ac8')
+  $bd = @(@(21, 10, '#ff6fcf'), @(23, 10, '#27d8ff'), @(22, 11, '#ffd36a'), @(24, 11, '#4dffc4'), @(21, 12, '#a688ff'), @(23, 12, '#ffffff'))
+  foreach ($q in $bd) { Px $b ($ox + $q[0]) $q[1] (C $q[2]) }
+  Rect $b ($ox + 19) 14 7 1 (C '#5a4a8a')
+}
+
+# =====================================================================
+# キャンドルすくい: 水を張った浅いプール 64x44 8コマ（水面がゆれて光り、小さなキャンドルがぷかぷか浮かぶ）
+#   上の6行はふちに置いたポイ・網・カップ、下の札に体験名
+# =====================================================================
+$cdl = @(
+  @(10, 17, 'round', '#ff6fcf', 0),
+  @(21, 14, 'heart', '#ff4f6f', 2),
+  @(33, 18, 'star', '#ffd36a', 4),
+  @(47, 15, 'jelly', '#4de8ff', 6),
+  @(55, 19, 'round', '#4dffc4', 1),
+  @(38, 12, 'heart', '#b090ff', 5)
+)
+Sheet 'handmade_pool.png' 64 48 8 {
+  param($b, $ox, $f)
+  $t = $f / 8.0 * 2 * [math]::PI
+  # 水（上が明るく、下が深い）
+  for ($y = 9; $y -lt 23; $y++) { Rect $b ($ox + 4) $y 56 1 (Mix (C '#43b6ff') (C '#1c5ad0') (($y - 9) / 13.0)) }
+  Rect $b ($ox + 4) 9 56 1 (C '#1a50b8')
+  # ゆれる光の筋（さざなみ）
+  for ($r = 0; $r -lt 4; $r++) {
+    $yy = 11 + $r * 3
+    for ($x = 4; $x -lt 60; $x++) {
+      if ((($x + $f * 2 + $r * 5) % 13) -lt 4) { PxO $b ($ox + $x) ($yy + [int][math]::Round(0.6 * [math]::Sin($x * 0.4 + $t))) (CA '#a8e8ff' 120) }
+    }
+  }
+  # きらめき（水面のつぶ）
+  foreach ($q in @(@(8, 12), @(25, 19), @(41, 14), @(52, 11), @(16, 21), @(46, 20), @(31, 11))) {
+    $st = ($f + $q[0]) % 8
+    if ($st -eq 0) { Px $b ($ox + $q[0]) $q[1] (C '#ffffff'); PxO $b ($ox + $q[0] - 1) $q[1] (CA '#e8fcff' 200); PxO $b ($ox + $q[0] + 1) $q[1] (CA '#e8fcff' 200) }
+    elseif ($st -eq 1 -or $st -eq 7) { PxO $b ($ox + $q[0]) $q[1] (CA '#e8fcff' 190) }
+  }
+  # 浮かぶキャンドル
+  foreach ($q in $cdl) {
+    $cx = $q[0] + [math]::Round(1.2 * [math]::Sin($t + $q[4] * 0.9))
+    $cy = $q[1] + [math]::Round(0.8 * [math]::Cos($t * 1.0 + $q[4] * 1.3))
+    Cand $b ($ox + $cx) $cy $q[2] $q[3] $f $q[4]
+  }
+  # ふち（奥・左右・手前）
+  Rect $b ($ox + 1) 6 62 1 (C '#ffffff'); Rect $b ($ox + 1) 7 62 1 (C '#d0e0ff'); Rect $b ($ox + 1) 8 62 1 (C '#8aa8e0')
+  Rect $b ($ox + 0) 7 4 18 (C '#c8d8f8'); Rect $b ($ox + 60) 7 4 18 (C '#c8d8f8')
+  Rect $b ($ox + 0) 7 1 18 (C '#8aa8e0'); Rect $b ($ox + 63) 7 1 18 (C '#7090d0')
+  Rect $b ($ox + 3) 9 1 14 (C '#f4f8ff'); Rect $b ($ox + 60) 9 1 14 (C '#8aa8e0')
+  Rect $b ($ox + 1) 23 62 1 (C '#f4f8ff'); Rect $b ($ox + 0) 24 64 1 (C '#c8d8f8')
+  # 手前の札（水色のかべ）
+  for ($y = 25; $y -lt 46; $y++) { Rect $b $ox $y 64 1 (Mix (C '#143c9c') (C '#0a1a5a') (($y - 25) / 20.0)) }
+  Rect $b $ox 25 64 1 (C '#6fe8ff'); Rect $b $ox 26 64 1 (C '#2a6ad0')
+  for ($x = 0; $x -lt 64; $x += 12) { Rect $b ($ox + $x) 27 1 18 (C '#1a50b8') }
+  Rect $b $ox 45 64 1 (C '#6fe8ff')
+  for ($x = 0; $x -lt 64; $x += 2) { Px $b ($ox + $x) 46 (C '#c8962c'); Px $b ($ox + $x + 1) 46 (C '#ffd36a'); Px $b ($ox + $x) 47 (C '#8a6418') }
+  BoardText $b $ox 64 'キャンドル' 26 10 (C '#bff6ff') $true
+  BoardText $b $ox 64 'すくい' 36 10 (C '#fff3a0') $true
+  # ふちに置いた道具: ポイ（輪と紙）、網、すくったキャンドルの入ったカップ2つ
+  # ポイ
+  for ($y = 0; $y -le 6; $y++) { for ($x = 3; $x -le 13; $x++) {
+    $dx = ($x + 0.5 - 8) / 5.2; $dy = ($y + 0.5 - 3.4) / 3.0; $dd = $dx * $dx + $dy * $dy
+    if ($dd -le 1.0 -and $dd -gt 0.55) { Px $b ($ox + $x) $y (C '#ff6fcf') } elseif ($dd -le 0.55) { PxO $b ($ox + $x) $y (CA '#f4faff' 170) }
+  } }
+  Line $b ($ox + 13) 3 ($ox + 19) 5 (C '#e8c898')
+  # 網
+  for ($y = 0; $y -le 6; $y++) { for ($x = 22; $x -le 32; $x++) {
+    $dx = ($x + 0.5 - 27) / 5.2; $dy = ($y + 0.5 - 3.4) / 3.0; $dd = $dx * $dx + $dy * $dy
+    if ($dd -le 1.0 -and $dd -gt 0.6) { Px $b ($ox + $x) $y (C '#c8d0f0') } elseif ($dd -le 0.6 -and (($x + $y) % 2) -eq 0) { Px $b ($ox + $x) $y (C '#8aa8e0') }
+  } }
+  Line $b ($ox + 32) 3 ($ox + 37) 5 (C '#c8a070')
+  # カップ
+  foreach ($cxx in 49, 57) {
+    Rect $b ($ox + $cxx - 3) 2 7 1 (C '#ffffff')
+    for ($y = 3; $y -le 6; $y++) { Rect $b ($ox + $cxx - 3 + [int][math]::Floor(($y - 3) / 2)) $y (7 - 2 * [int][math]::Floor(($y - 3) / 2)) 1 (C '#f4f8ff') }
+    Rect $b ($ox + $cxx - 2) 4 5 1 (C '#4aa8ff')
+    Px $b ($ox + $cxx + 3) 3 (C '#a8c0e8')
+  }
+  Px $b ($ox + 48) 1 (C '#ff6fcf'); Px $b ($ox + 49) 1 (C '#ff9ae0'); Px $b ($ox + 49) 0 (C '#ffd36a')
+  Px $b ($ox + 57) 1 (C '#ffd36a'); Px $b ($ox + 56) 1 (C '#ffe9a0'); Px $b ($ox + 57) 0 (C '#ffffff')
+  foreach ($p in @(@(0, 6), @(63, 6), @(0, 24), @(63, 24))) { Clear $b ($ox + $p[0]) $p[1] }
+}

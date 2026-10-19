@@ -146,6 +146,17 @@ export interface KeyItemDef {
   icon?: string;
 }
 
+/** 名前のついた区域（出店の区画）。入ると名前が出て、ミニマップにも描かれる。scripts/build-stalls.mjs が出店ごとに作る */
+export interface AreaDef {
+  id: string;
+  name: string;
+  /** 左上と大きさ（px） */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface GroupDef {
   id: string;
   label: string;
@@ -180,4 +191,5 @@ export interface MapJson {
   objects?: ObjectDef[];
   groups?: GroupDef[];
   keyItems?: KeyItemDef[];
+  areas?: AreaDef[];
 }

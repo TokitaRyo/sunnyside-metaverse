@@ -2,6 +2,8 @@ import { map } from "../config";
 import { stamps } from "../game/stamps";
 import { starDataUrl } from "../game/starIcon";
 import { loadStampSheet, stampFrame, stampIconUrl } from "../game/stampIcons";
+import { sfx } from "../game/sfx";
+import { confetti } from "./Confetti";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -101,6 +103,13 @@ export class StampCard {
   collected(name: string | undefined, icon?: string): void {
     this.refresh();
     const left = stamps.total - stamps.count;
+    // 取ったときの手ごたえ。全部そろったら紙吹雪とファンファーレ
+    if (left === 0) {
+      sfx.complete();
+      confetti();
+    } else {
+      sfx.stamp();
+    }
     this.toastEl.replaceChildren(
       Object.assign(new Image(), { src: this.iconUrl(icon, true), alt: "" }),
       Object.assign(document.createElement("div"), {

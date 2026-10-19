@@ -17,7 +17,19 @@
       <form id="chat-form" autocomplete="off">
         <input id="chat-input" type="text" maxlength="140" placeholder="Enter でチャット / Esc で戻る" enterkeyhint="send" />
       </form>
-      <div id="tod-badge" title="10分ごとに、朝・昼・夜が変わります"></div>
+      <div id="online-count" title="いま遊んでいる人数"></div>
+      <button id="photo-btn" type="button" title="写真を撮る（画像が保存されます）" aria-label="写真を撮る">📷</button>
+      <div id="minimap" class="closed">
+        <button id="minimap-btn" type="button" title="ミニマップ（Mキー）">🗺</button>
+        <canvas id="minimap-cv"></canvas>
+        <div id="minimap-label"></div>
+      </div>
+      <div id="compass" hidden>
+        <span id="compass-arrow">➤</span>
+        <span id="compass-dist"></span>
+      </div>
+      <div id="area-banner" hidden></div>
+      <div id="tip" hidden></div>
       <button id="stamp-btn" type="button" title="スタンプカード" hidden></button>
       <div id="stamp-toast" hidden></div>
       <div id="stamp-card" hidden role="dialog" aria-label="スタンプカード">
@@ -80,7 +92,7 @@
         <button id="join-btn" type="submit" disabled>読み込み中…</button>
         <div class="bar"><i id="load-bar"></i></div>
         <p id="join-error" class="error" hidden></p>
-        <p class="hint">移動: WASD / 矢印キー ・ 走る: Shift ・ チャット: Enter ・ エモート: 1〜6 ・ 話す: E</p>
+        <p class="hint">移動: WASD / 矢印キー ・ 走る: Shift ・ チャット: Enter ・ エモート: 1〜6 ・ 話す: E ・ ミニマップ: M</p>
         <p class="credit">チャットは参加者全員に見えます。本名・連絡先などの個人情報は書かないでね。</p>
         <p class="credit">ドット絵素材: Sunnyside World Asset Pack（danieldiggle）／オリジナルのドット絵・ロゴ: AMPLIFIRE／描画: Phaser・通信: Colyseus</p>
       </form>

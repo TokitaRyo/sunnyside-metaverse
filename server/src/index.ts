@@ -25,7 +25,16 @@ const app = config({
     if (serveClient) {
       // 本番では Playground を出さない（開発用の道具。外から部屋に自由に入れてしまうため）。確認したいときだけ ENABLE_PLAYGROUND=1
       if (process.env.ENABLE_PLAYGROUND === "1") expressApp.use("/playground", playground());
-      expressApp.use(express.static(clientDist));
+      // 再訪を速くするキャッシュ設定。名前にハッシュが付く js/css は長く、画像などは10分、html は毎回確認（更新がすぐ届くように）
+      expressApp.use(
+        express.static(clientDist, {
+          setHeaders: (res, filePath) => {
+            if (filePath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache");
+            else if (/-[A-Za-z0-9_-]{8}\.(js|css)$/.test(filePath)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            else res.setHeader("Cache-Control", "public, max-age=600");
+          },
+        }),
+      );
     } else {
       // 開発時は http://localhost:2567 で Playground が開く
       expressApp.use("/", playground());

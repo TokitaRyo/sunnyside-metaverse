@@ -1,4 +1,4 @@
-﻿# 図書委員会の専用ドット絵（看板・奥の本棚の壁・貸出カウンターと小物・猫・低い本棚・ひじかけ椅子・ラグ・座布団・丸テーブル・めくれる本・フロアランプ・おすすめの平積み台・ブックトラック・返却ボックス・脚立・植木・のぼり・光の筋）を作る。
+﻿# 図書委員会の専用ドット絵（看板・奥の本棚の壁・ゆずりわたしカウンターと小物・猫・低い本棚・ひじかけ椅子・ラグ・座布団・丸テーブル・めくれる本・フロアランプ・おすすめの平積み台・ブックトラック・本の箱・脚立・植木・のぼり・光の筋）を作る。
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stalls/library.ps1   （リポジトリのルートで実行）
 #   一部だけ作り直す: $env:LIB_ONLY='wall|counter'; powershell ...（名前の正規表現）
 # 出力: client/public/brand/stall/library_*.png（原点は各スプライトの足元中央。配置は scripts/stalls/library.mjs）
@@ -236,7 +236,7 @@ if (Want 'floor') {
   Save $b 'library_floor.png'
 }
 
-# ---- 貸出カウンター 94x28。上は明るい木、正面は深緑の羽目板に「しずかに」「貸出」の札
+# ---- ゆずりわたしカウンター 94x28。上は明るい木、正面は深緑の羽目板に「しずかに」「無料」の札
 if (Want 'counter') {
   $b = NewBmp 94 28
   Rect $b 0 0 94 28 $k
@@ -248,9 +248,9 @@ if (Want 'counter') {
   # 札: しずかに
   Rect $b 5 12 50 12 $k; Rect $b 6 13 48 10 $c1; Rect $b 6 13 48 1 $c0
   [void](TextPx $b 'しずかに' 8 12 11 $bx2 $true)
-  # 札: 貸出
+  # 札: 無料
   Rect $b 59 12 30 12 $k; Rect $b 60 13 28 10 $bx1; Rect $b 60 13 28 1 $bx0; Frame $b 60 13 28 10 $gl1
-  [void](TextPx $b '貸出' 64 12 11 $c0 $true)
+  [void](TextPx $b '無料' 64 12 11 $c0 $true)
   foreach ($p in @(@(0, 0), @(93, 0), @(0, 27), @(93, 27))) { Px $b $p[0] $p[1] $clear }
   Save $b 'library_counter.png'
 }
@@ -483,7 +483,7 @@ if (Want 'glow') {
   Save $b 'library_glow.png'
 }
 
-# ---- おすすめの平積み台 72x38（手書きポップ、平積みの本、表紙を見せた本）
+# ---- ご自由にの平積み台 72x38（手書きポップ、平積みの本、表紙を見せた本）
 if (Want 'pile') {
   $b = NewBmp 72 44
   # 台（ボルドーのクロス）
@@ -495,7 +495,7 @@ if (Want 'pile') {
   # 手書きポップ（台のうしろに立てる）
   Rect $b 7 0 58 15 $k; Rect $b 8 1 56 13 $c0; Rect $b 8 1 56 1 $bx1; Rect $b 8 13 56 1 $c2
   Rect $b 10 3 1 1 $c0; Rect $b 61 3 1 1 $c0
-  [void](TextPx $b 'おすすめ' 17 2 11 $g2 $true)
+  [void](TextPx $b 'ご自由に' 17 2 11 $g2 $true)
   # ハートと星のらくがき
   Px $b 10 7 $bx1; Px $b 12 7 $bx1; Rect $b 10 8 3 1 $bx1; Px $b 11 9 $bx1
   Px $b 60 6 $gl1; Rect $b 59 7 3 1 $gl1; Px $b 60 8 $gl1; Px $b 58 5 $gl0
@@ -531,7 +531,7 @@ if (Want 'truck') {
   Save $b 'library_truck.png'
 }
 
-# ---- 返却ボックス 28x28（投入口と「返却」の札）
+# ---- 本の箱 28x28（投入口と「ほん」の札）
 if (Want 'return') {
   $b = NewBmp 28 28
   Rect $b 0 5 28 23 $k; Rect $b 1 6 26 21 $g1; Rect $b 1 6 1 21 $g0; Rect $b 26 6 1 21 $g2
@@ -540,7 +540,7 @@ if (Want 'return') {
   Rect $b 4 1 20 2 $k; Rect $b 5 2 18 1 $inb
   Rect $b 6 0 8 3 $k; Rect $b 7 1 6 2 $bx1; Rect $b 7 0 6 1 $c1
   Rect $b 2 8 24 14 $k; Rect $b 3 9 22 12 $c1; Rect $b 3 9 22 1 $c0; Frame $b 3 9 22 12 $gl1
-  [void](TextPx $b '返却' 3 10 11 $bx2 $true)
+  [void](TextPx $b 'ほん' 3 10 11 $bx2 $true)
   Rect $b 0 25 28 3 $wd3; Rect $b 1 25 26 1 $wd2
   Save $b 'library_return.png'
 }

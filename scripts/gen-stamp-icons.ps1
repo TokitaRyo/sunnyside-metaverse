@@ -1,11 +1,11 @@
-﻿# スタンプラリー用アイコン 17個 (16x16) を横一列のスプライトシートに描く。
+﻿# スタンプラリー用アイコン 20個 (16x16) を横一列のスプライトシートに描く。
 # 実行: リポジトリのルートで powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gen-stamp-icons.ps1
 # 各フレームは「塗りだけ」を描き、最後に外側へ1pxの濃い縁取り(AutoOutline)を自動で付ける。
 $script:OutDir = "client/public/brand/stamps"
 . "$PSScriptRoot\lib\pixel.ps1"
 
 $OL = C '#3a2230'
-$FRAMES = 17
+$FRAMES = 20
 
 function NewFrame { NewBmp 16 16 }
 # 透明ピクセルで、上下左右に不透明ピクセルが隣接しているものを縁取り色にする
@@ -412,5 +412,80 @@ $rows = @(
 CheckRows $rows 'f16'
 Ascii $f 0 0 $rows @{ B = (C '#86d9ff'); H = (C '#e4f8ff'); P = (C '#ff8fd1'); V = (C '#a06de0') }
 AutoOutline $f $OL; Blit $sheet $f 256
+
+# ---------- 17 photoart: レンズの大きな赤いカメラ ----------
+$f = NewFrame
+$rows = @(
+  '................',
+  '................',
+  '...SS.TTTT.YY...',
+  '.LLLLLLLLLLLLLL.',
+  '.TTTTTTTTTTTTTT.',
+  '.RRRRRRRRRRRRRR.',
+  '.RRRRRRRRRRRRRR.',
+  '.RRRRRRRRRRRRRR.',
+  '.RRRRRRRRRRRRRR.',
+  '.RRRRRRRRRRRRRR.',
+  '.RRRRRRRRRRRRRR.',
+  '.RRRRRRRRRRRRRR.',
+  '.RRRRRRRRRRRRRR.',
+  '.DDDDDDDDDDDDDD.'
+)
+CheckRows $rows 'f17'
+Ascii $f 0 0 $rows @{ S = (C '#9aa4bd'); T = (C '#c5cde0'); L = (C '#f4f7ff'); Y = (C '#ffd84a'); R = (C '#e8504c'); D = (C '#a8282f') }
+# 大きなレンズ: 黒い輪 > 青いガラス > 濃い青 > 白いハイライト
+Ellipse $f 8 9 4.4 4.4 (C '#2b3347')
+Ellipse $f 8 9 3.3 3.3 (C '#5bb6ff')
+Ellipse $f 8 9 1.7 1.7 (C '#2a62c8')
+foreach ($p in @(@(6, 7), @(7, 7), @(6, 8))) { Px $f $p[0] $p[1] (C '#ffffff') }
+Px $f 9 10 (C '#9fdcff')
+# 右上のダイヤルとシャッター下の小さな点
+Px $f 12 5 (C '#ffd84a'); Px $f 13 5 (C '#ffd84a')
+AutoOutline $f $OL; Blit $sheet $f 272
+
+# ---------- 18 dtm: 音符を挟んだヘッドホン ----------
+$f = NewFrame
+$rows = @(
+  '................',
+  '.....BBBBBB.....',
+  '...BBBHHHBBB....',
+  '..BBH......BBB..',
+  '.BBB........BBB.',
+  '.BB..........BB.',
+  '.CCCC......CCCC.',
+  '.CLLC...NN.CLLC.',
+  '.CLCC...N..CCLC.',
+  '.CCCC...N..CCCC.',
+  '.CCDD...N..DDCC.',
+  '.CCDD.NNN..DDCC.',
+  '.CCCC.NN...CCCC.',
+  '................'
+)
+CheckRows $rows 'f18'
+Ascii $f 0 0 $rows @{ B = (C '#4c5a82'); H = (C '#8fa0d0'); C = (C '#ff4f8b'); L = (C '#ffb3d0'); D = (C '#b52a5e'); N = (C '#2fd0ff') }
+AutoOutline $f $OL; Blit $sheet $f 288
+
+# ---------- 19 amateurradio: アンテナと電波の付いたトランシーバー ----------
+$f = NewFrame
+$rows = @(
+  '................',
+  '...........A....',
+  '....R..A....A...',
+  '....N...A...A...',
+  '....N..A....A...',
+  '....N......A....',
+  '....N...........',
+  '...HHHHHHHH.....',
+  '...YKKKKKKD.....',
+  '..PYKGGGGKD.....',
+  '..PYKKKKKKD.....',
+  '...YYYYYYYD.....',
+  '...YOYOYOYD.....',
+  '...YYRYYBYD.....',
+  '...DDDDDDDD.....'
+)
+CheckRows $rows 'f19'
+Ascii $f 0 0 $rows @{ A = (C '#3bc6ff'); R = (C '#ff4a4a'); N = (C '#8d95ad'); H = (C '#ffe58a'); Y = (C '#ffc83a'); D = (C '#c98a1a'); K = (C '#243a2a'); G = (C '#7dff8a'); O = (C '#8a5a14'); P = (C '#e53935'); B = (C '#3a7be0') }
+AutoOutline $f $OL; Blit $sheet $f 304
 
 Save $sheet 'stamps.png'

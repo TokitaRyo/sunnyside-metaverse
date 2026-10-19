@@ -1,122 +1,133 @@
-/** クラゲファクトリー（id は handmade のまま）。専用ドット絵は scripts/stalls/handmade.ps1（handmade_*.png）。夜の海の底のような地面で、光るクラゲと手作り雑貨を作る工房 */
-export const meta = { id: "handmade", label: "クラゲファクトリー" };
+/** くらげファクトリー（id は handmade のまま）。専用ドット絵は scripts/stalls/handmade.ps1（handmade_*.png）。夜の海の底のような地面に、光るクラゲを飾って、5つの体験コーナー（ラテキャンドル作り・キャンドルすくい・ぷるぷる石鹸作り・オイルキーホルダー・スライムキーホルダー）を並べる */
+export const meta = { id: "handmade", label: "くらげファクトリー" };
 
 export default function layout(k) {
   // ---- アニメ（横一列のシート）
   k.custom("handmade_sparkle", undefined, undefined, { frames: 4, fps: 3 }); // 床のプランクトンのきらめき
   k.custom("handmade_sign", undefined, undefined, { frames: 8, fps: 6 }); // 看板（歯車・ネオン・光・触手）
   k.custom("handmade_garland", undefined, undefined, { frames: 4, fps: 3 }); // 豆電球のまたたき
-  for (const c of ["c", "p", "v"]) k.custom(`handmade_hang_${c}`, undefined, undefined, { frames: 6, fps: 4 }); // 吊るしクラゲ
-  for (const c of ["a", "b", "c"]) k.custom(`handmade_drift_${c}`, undefined, undefined, { frames: 8, fps: 5 }); // 浮かぶ大きなクラゲ
+  for (const c of ["c"]) k.custom(`handmade_drift_${c}`, undefined, undefined, { frames: 8, fps: 5 }); // 浮かぶクラゲ（飾り。主役は体験コーナー）
   k.custom("handmade_bubbles", undefined, undefined, { frames: 8, fps: 5 });
-  for (const c of ["c", "v"]) k.custom(`handmade_lamp_${c}`, undefined, undefined, { frames: 4, fps: 3 });
-  for (const c of ["p", "c"]) k.custom(`handmade_bottle_${c}`, undefined, undefined, { frames: 4, fps: 3 });
-  k.custom("handmade_candle", undefined, undefined, { frames: 4, fps: 6 });
-  k.custom("handmade_tank", undefined, undefined, { frames: 6, fps: 4 });
-  k.custom("handmade_rack", undefined, undefined, { frames: 4, fps: 3 });
-  k.custom("handmade_tube", undefined, undefined, { frames: 8, fps: 5 }); // クラゲ培養管
-  k.custom("handmade_flask", undefined, undefined, { frames: 4, fps: 5 });
-  k.custom("handmade_lantern", undefined, undefined, { frames: 4, fps: 5 });
+  k.custom("handmade_pool", undefined, undefined, { frames: 8, fps: 5 }); // キャンドルすくいのプール（水面がゆれて、キャンドルが浮かぶ）
+  k.custom("handmade_latte_pot", undefined, undefined, { frames: 4, fps: 4 }); // ろうの鍋（ゆげ）とピック
+  k.custom("handmade_soap_jelly", undefined, undefined, { frames: 4, fps: 5 }); // ぷるぷる揺れる石鹸
+  k.custom("handmade_soap_bowl", undefined, undefined, { frames: 4, fps: 4 }); // 混ぜるボウル
+  k.custom("handmade_slime_bowl", undefined, undefined, { frames: 6, fps: 5 }); // スライムのボウルと混ぜる棒
+  k.custom("handmade_slime_shelf", undefined, undefined, { frames: 4, fps: 3 }); // 色の素のボトルと瓶のスライム
+  k.custom("handmade_oil_display", undefined, undefined, { frames: 6, fps: 3 }); // オイルキーホルダーの展示（ラメ・星・ビーズがゆっくり動く）
+  k.custom("handmade_oil_mats", undefined, undefined, { frames: 4, fps: 3 }); // 素材（オイル・ラメ・ビーズ）
   // ---- 静止
-  for (const n of ["handmade_floor", "handmade_pools", "handmade_awning", "handmade_wall", "handmade_counter", "handmade_beads", "handmade_shells", "handmade_gears", "handmade_hoop", "handmade_table"]) k.custom(n);
+  for (const n of ["handmade_floor", "handmade_pools", "handmade_awning", "handmade_wall", "handmade_bench_latte", "handmade_bench_soap", "handmade_bench_slime", "handmade_bench_oil", "handmade_latte_mugs"]) k.custom(n);
   k.custom("handmade_nobori", 13, 90);
 
-  const { put, person } = k;
-  const ON_COUNTER = 81; // カウンター(足元80)の上の物は手前に描く
-  const ON_TABLE = 113; // 前のテーブル(足元112)の上の物
+  const { put, person, blocker } = k;
+  const ON_BENCH = 83; // 奥の作業台(足元82)の上の物は手前に描く
+  const ON_FRONT = 129; // 手前右の作業台(足元128)の上の物
 
   // ---- 床: 暗い夜の海底 → 光だまり → きらめき（floor は置いた順に重なる）
   put("handmade_floor", 0, 128, { sort: "floor", by: 0 });
   put("handmade_pools", 0, 128, { sort: "floor", by: 1 });
   put("handmade_sparkle", 0, 128, { sort: "floor", by: 2 });
 
-  // ---- 店の構え: 奥の壁（柱・カーテン・棚・三日月）→ 天幕 → 豆電球 → 看板
-  put("handmade_wall", 0, 58, { by: 50, hit: [124, 6] });
-  put("handmade_awning", 0, 34, { by: 60 });
-  put("handmade_garland", 0, 41, { by: 61 });
+  // ---- 店の構え: 奥の壁（柱・カーテン・ペナント）→ 天幕 → 豆電球 → 看板
+  put("handmade_wall", 0, 58, { by: 10 });
+  put("handmade_awning", 0, 34, { by: 40 });
+  put("handmade_garland", 0, 41, { by: 41 });
   put("handmade_sign", 0, 28, { by: 62 }); // 板の上が草地の上端より約10pxはみ出す。下の触手が天幕に垂れる
 
-  // ---- 天幕から吊るしたクラゲ（脈打つ）
-  // 足元(foot)が絵の下端。天幕のふち(y=31)から糸を垂らす
-  put("handmade_hang_c", -57, 59, { by: 95, frame: 0 });
-  put("handmade_hang_p", -33, 59, { by: 95, frame: 2 });
-  put("handmade_hang_v", 41, 59, { by: 95, frame: 4 });
-  put("handmade_hang_c", 62, 59, { by: 95, frame: 3 });
+  // ---- のぼり（奥の作業台の後ろ。上にのびる）
+  put("handmade_nobori", -91, 62, { by: 30 });
+  put("handmade_nobori", 91, 62, { by: 30 });
 
-  // ---- 店番
-  person("human_longhair_doing", 12, 58, {
+  // ---- 奥の列: 作業台3つ（左から ぷるぷる石鹸作り / ラテキャンドル作り / スライムキーホルダー）
+  put("handmade_bench_soap", -61, 82, { hit: [54, 26] });
+  put("handmade_bench_latte", 0, 82, { hit: [64, 26] });
+  put("handmade_bench_slime", 61, 82, { hit: [54, 26] });
+  blocker(-93, 82, 8, 30); // 作業台の端から奥へ回り込めないように
+  blocker(93, 82, 8, 30);
+
+  // 石鹸
+  put("handmade_soap_jelly", -76, 54, { by: ON_BENCH });
+  put("handmade_soap_bowl", -56, 54, { by: ON_BENCH });
+  person("human_shorthair_doing", -43, 50, {
+    name: "あおい",
+    lines: [
+      "ようこそ！ ここは ぷるぷる せっけんづくりの コーナーだよ。",
+      "かたに とうめいな ざいりょうを いれて かためると、ゼリーみたいに ぷるぷるの せっけんに なるの。",
+      "クラゲや ほしや かいがらの かたが あって、みずいろ、ピンク、むらさきの いろから えらべるよ。",
+      "ゆびで つつくと ぷるんって ゆれるでしょ？ ボウルで やさしく まぜるのが コツだよ。",
+    ],
+  });
+
+  // ラテ
+  put("handmade_latte_pot", -23, 54, { by: ON_BENCH });
+  put("handmade_latte_mugs", 21, 54, { by: ON_BENCH });
+  person("human_longhair_doing", -3, 50, {
     name: "みなみ",
     lines: [
-      "いらっしゃいませ！ ここは「クラゲファクトリー」。クラゲを つくる こうぼうの ような、てづくりの おみせだよ。",
-      "クラゲは よるに ひかるんだよ。だから ここは、よるの うみの そこみたいに しているの。",
-      "ひかる ランプや びんの クラゲ、きらきらの チャームも あるよ。ガラスかんの なかでも クラゲが およいでるでしょ？",
-      "うえを ふわふわ およぐ クラゲも みてね。さわれないけど、かわいいでしょ？",
+      "いらっしゃいませ！ ここは「くらげファクトリー」。ラテキャンドルづくりの コーナーは ここだよ。",
+      "ミルクいろと コーヒーいろの ろうを、マグカップに そそいで つくる キャンドルなの。",
+      "ピックっていう ほそい ぼうで、ろうの うえに もようを かくんだよ。ハートや はっぱも かけるよ。",
+      "ほんもののラテアートみたいでしょ？ できあがりの みほんも ならんでるから みてね。",
+      "キャンドルすくい、ぷるぷる せっけん、オイルと スライムの キーホルダーも あるよ。ほかの たいけんも のぞいていってね！",
     ],
   });
-  put("expression_chat", 12, 35, { by: 100 });
 
-  // ---- カウンターと上の作品
-  put("handmade_counter", 0, 80, { hit: [114, 10] });
-  put("handmade_flask", -57, 62, { by: ON_COUNTER });
-  put("handmade_lamp_c", -45, 62, { by: ON_COUNTER });
-  put("handmade_bottle_p", -33, 62, { by: ON_COUNTER });
-  put("handmade_beads", -20, 62, { by: ON_COUNTER });
-  put("handmade_candle", -6, 62, { by: ON_COUNTER, frame: 3 });
-  put("handmade_bottle_c", 28, 62, { by: ON_COUNTER, frame: 2 });
-  put("handmade_gears", 41, 62, { by: ON_COUNTER });
-  put("handmade_lamp_v", 54, 62, { by: ON_COUNTER, frame: 2 });
-  put("handmade_flask", 66, 62, { by: ON_COUNTER, frame: 2 });
+  // スライム
+  put("handmade_slime_bowl", 59, 54, { by: ON_BENCH });
+  put("handmade_slime_shelf", 79, 54, { by: ON_BENCH });
+  person("human_spikeyhair_doing", 43, 50, {
+    name: "ゆうた",
+    lines: [
+      "ここは スライムキーホルダーの コーナーだよ！ ボウルの スライムを ぼうで ぐるぐる まぜるんだ。",
+      "いろの もとの ボトルを ぽとんと たらすと、パステルカラーに そまっていくよ。",
+      "ラメを まぜると きらきら するんだ。できた スライムは ちいさな びんに いれて キーホルダーに するよ。",
+      "ぷるぷるで やわらかいから、さわるだけでも たのしいよ。",
+    ],
+  });
 
-  // ---- 左: アクセサリー台と前のテーブル
-  put("handmade_rack", -81, 128, { hit: [26, 6] });
-  put("handmade_table", -48, 112, { hit: [48, 8] });
-  put("handmade_bottle_c", -66, 97, { by: ON_TABLE, frame: 1 });
-  put("handmade_lamp_v", -57, 97, { by: ON_TABLE, frame: 3 });
-  put("handmade_hoop", -45, 97, { by: ON_TABLE });
-  put("handmade_shells", -32, 97, { by: ON_TABLE });
+  // ---- 手前の列: キャンドルすくいのプール（左）とオイルキーホルダーの作業台（右）
+  put("handmade_pool", -60, 128, { hit: [58, 30] });
+  put("handmade_bench_oil", 52, 128, { hit: [54, 26] });
+  put("handmade_oil_display", 38, 100, { by: ON_FRONT });
+  put("handmade_oil_mats", 66, 100, { by: ON_FRONT });
+  person("human_bowlhair_doing", 88, 122, {
+    name: "ひなた",
+    lines: [
+      "ここは オイルキーホルダーの コーナーだよ。とうめいな アクリルの なかに、えきたいを いれて つくるの。",
+      "なかには ラメや ほしや ビーズを いれられるよ。ふると ゆっくり きらきら うごくんだ。",
+      "ざいりょうは、ラメ、ビーズ、オイルの ボトルが そろってるよ。すきな いろを えらんでね。",
+      "くみたてだいで ふたを しめたら かんせい！ ならんでいる みほんも かわいいでしょ。",
+    ],
+  });
 
-  // ---- 右: 水槽と月の街灯
-  put("handmade_tank", 56, 112, { hit: [30, 8] });
-  put("handmade_tube", 84, 128, { hit: [14, 6], hxOff: -2 });
-
-  // ---- 入口の提灯（道の両側）
-  put("handmade_lantern", -22, 126, { hit: [6, 4] });
-  put("handmade_lantern", 22, 126, { hit: [6, 4], frame: 2 });
-
-  // ---- のぼり
-  put("handmade_nobori", -83, 88, { hit: [4, 4], by: 61 });
-  put("handmade_nobori", 83, 88, { hit: [4, 4], by: 61 });
-
-  // ---- 客
-  person("human_curlyhair_idle", -13, 110, {
+  // ---- 客（体験中）
+  person("human_curlyhair_doing", -20, 114, {
     name: "おきゃくさん",
     lines: [
-      "かんばんの ギアが くるくる まわって、かっこいいね。",
-      "このクラゲの ランプ、ほんものみたいに ひかるの。よるに みると もっと きれいなんだって。",
+      "キャンドルすくい、むずかしい！ ポイで そっと ろうそくを すくうんだよ。",
+      "みずの うえに ハートや ほしや クラゲの かたちの ろうそくが うかんでるの。すくえたら カップに いれるよ。",
+      "ポイは ぬらすと やぶれやすいから、ゆっくり すくうのが コツなんだって。",
     ],
   }, true);
-  person("human_shorthair_idle", 30, 118, {
+  person("human_shorthair_idle", 20, 102, {
     name: "おきゃくさん",
     lines: [
-      "みて、おおきな ガラスの くだの なかで クラゲが ういてる！ ぷくぷくの あわも きれいだね。",
-      "ここは クラゲファクトリー。ほんとうに クラゲを つくっている みたいで わくわくするよ。",
+      "オイルキーホルダーが きれい！ ゆらすと なかの ラメが ゆっくり うごくんだ。",
+      "ぜんぶの コーナーを まわって みようかな。ぷるぷる せっけんも ラテキャンドルも きになる！",
     ],
   });
-  person("human_mophair_idle", 4, 98, {
+  person("human_mophair_idle", 16, 121, {
     name: "こども",
     lines: [
-      "クラゲが あたまの うえを およいでる！",
-      "ぼくも ひとつ、きらきらの チャームが ほしいなあ。",
+      "スライム、ぷにぷにで たのしかった！ ちいさな びんに いれて キーホルダーに するんだって。",
+      "つぎは キャンドルすくいに ちょうせんするんだ！",
     ],
   });
-  put("expression_love", 4, 76, { by: 120 });
+  put("expression_love", 20, 86, { by: 140 });
 
-  // ---- 浮かぶ大きなクラゲ（人より手前にふわふわ。通れる）
-  put("handmade_drift_a", 42, 126, { by: 300, frame: 0 });
-  put("handmade_drift_b", -34, 104, { by: 300, frame: 3 });
-  put("handmade_drift_c", -4, 126, { by: 300, frame: 5 });
-  // ---- 泡
-  put("handmade_bubbles", 38, 112, { by: 301 });
-  put("handmade_bubbles", -84, 100, { by: 301, frame: 4 });
-  put("handmade_bubbles", -8, 90, { by: 301, frame: 2 });
+  // ---- 飾りのクラゲ（光る。主役は体験コーナー）と泡
+  put("handmade_drift_c", -6, 127, { by: 300, frame: 5 });
+  put("handmade_bubbles", -88, 104, { by: 301, frame: 4 });
+  put("handmade_bubbles", 20, 96, { by: 301, frame: 2 });
 }

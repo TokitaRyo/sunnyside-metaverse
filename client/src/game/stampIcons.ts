@@ -23,6 +23,9 @@ export const STAMP_ICON_IDS = [
   "science",
   "library",
   "handmade",
+  "photoart",
+  "dtm",
+  "amateurradio",
 ] as const;
 
 export const STAMP_TEX = "stamp-icons";

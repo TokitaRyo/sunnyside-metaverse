@@ -189,26 +189,6 @@ html, body {
 }
 #stamp-btn:hover { background: rgba(45, 60, 38, 0.92); }
 #stamp-btn img, #stamp-toast img { width: 20px; height: 20px; image-rendering: pixelated; }
-/* 時間帯の表示（朝・昼・夜と、次までの残り時間）。スタンプのボタンの右 */
-#tod-badge {
-  position: absolute;
-  left: 150px;
-  top: 10px;
-  height: 34px;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 800;
-  color: #fff;
-  background: rgba(30, 40, 25, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 17px;
-  white-space: nowrap;
-  pointer-events: none;
-}
-#tod-badge:empty { display: none; }
-.touch #tod-badge { top: 54px; left: 112px; }
 #stamp-btn[hidden], #stamp-toast[hidden], #stamp-card[hidden], #stamp-done[hidden] { display: none; }
 #stamp-toast {
   position: absolute;
@@ -743,3 +723,118 @@ body.intro #hud, body.intro #labels { opacity: 0; pointer-events: none; }
   touch-action: pan-y;
 }
 #fatal h2 { color: #ff8a7a; font-family: inherit; }
+
+/* 道しるべ: 人数・写真・ミニマップ・方位マーカー・場所名・ヒント */
+#online-count, #photo-btn {
+  position: absolute;
+  top: 10px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(30, 40, 25, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 17px;
+}
+#online-count { left: 160px; padding: 0 12px; pointer-events: none; white-space: nowrap; }
+#online-count:empty { display: none; }
+#photo-btn { left: 238px; width: 34px; justify-content: center; padding: 0; font-size: 16px; cursor: pointer; }
+#photo-btn:hover { background: rgba(45, 60, 38, 0.92); }
+.touch #online-count { top: 54px; left: 130px; }
+.touch #photo-btn { top: 54px; left: 206px; }
+
+#minimap {
+  position: absolute;
+  right: 12px;
+  top: 52px;
+  width: 200px;
+  padding: 6px;
+  background: rgba(20, 30, 15, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+}
+#minimap canvas { display: block; width: 100%; image-rendering: pixelated; border-radius: 4px; }
+#minimap-btn {
+  position: absolute;
+  right: 6px;
+  top: -34px;
+  width: 34px;
+  height: 28px;
+  padding: 0;
+  font-size: 15px;
+  cursor: pointer;
+  background: rgba(30, 40, 25, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 14px;
+  color: #fff;
+}
+#minimap-label { min-height: 16px; margin-top: 4px; font-size: 12px; font-weight: 800; color: #fff; text-align: center; }
+#minimap.closed { width: 0; padding: 0; border: 0; background: none; }
+#minimap.closed canvas, #minimap.closed #minimap-label { display: none; }
+.touch #minimap { top: 112px; width: 148px; }
+
+#compass {
+  position: absolute;
+  left: 10px;
+  top: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(30, 40, 25, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 15px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#compass-arrow { display: inline-block; font-size: 18px; line-height: 1; color: #ffd36a; text-shadow: 0 0 4px rgba(0, 0, 0, 0.6); }
+.touch #compass { top: 96px; }
+
+#area-banner {
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  transform: translateX(-50%);
+  padding: 8px 26px;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(20, 30, 15, 0.8), 0 0 10px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(90deg, transparent, rgba(20, 30, 15, 0.7) 20%, rgba(20, 30, 15, 0.7) 80%, transparent);
+  pointer-events: none;
+  white-space: nowrap;
+}
+#area-banner.show { animation: area-in 2.6s ease both; }
+@keyframes area-in {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  12% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#tip {
+  position: absolute;
+  left: 50%;
+  bottom: 70px;
+  transform: translateX(-50%);
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--ink);
+  background: rgba(253, 248, 234, 0.95);
+  border: 2px solid rgba(20, 30, 15, 0.6);
+  border-radius: 12px;
+  pointer-events: none;
+}
+.touch #tip { bottom: 150px; }
+@media (prefers-reduced-motion: reduce) { #area-banner.show { animation: none; } }
