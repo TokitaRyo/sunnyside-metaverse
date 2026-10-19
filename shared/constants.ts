@@ -66,8 +66,10 @@ export const PLAYER_ACTIONS: readonly string[] = [...LOCOMOTION, ...EMOTE_IDS];
  * 利用規約・データの取り扱いの版。文面（client/src/ui/terms.ts）を変えたら、この日付を新しくする。
  * サーバーは、この版に同意した人だけ入室させる（変えると全員がもう一度同意する）。
  */
-export const CONSENT_VERSION = "2026-10-20";
+export const CONSENT_VERSION = "2026-10-20-2";
 /** 集めたデータ（チャット・滞在記録）を残す日数。過ぎたものはサーバーが自動で消す */
 export const DATA_RETENTION_DAYS = 30;
 /** 規約に書く問い合わせ先。運営の実際の連絡先に直す */
 export const OPERATOR_CONTACT = "文化祭の運営係（会場の受付、または担当の先生）";
+/** 規約に書くメールアドレス（問い合わせ・記録の確認や削除の依頼） */
+export const OPERATOR_EMAIL = "s2301088@sendai-nct.jp";
