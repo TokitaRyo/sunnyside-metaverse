@@ -10,6 +10,22 @@ export interface MoveMessage {
 export interface ChatSend {
   text: string;
 }
+/** 入室時にクライアントが送る情報（Colyseus の join options） */
+export interface JoinOptions {
+  name: string;
+  hair: string;
+  /** 同意した規約の版（CONSENT_VERSION と同じでないと入室できない） */
+  consent: string;
+  /** ブラウザに保存したランダムな訪問者ID（再訪を数えるため。個人は特定しない） */
+  vid: string;
+  /** touch=スマホ・タブレット, desktop=パソコン */
+  device: "touch" | "desktop";
+}
+/** 集めたスタンプの数（出店めぐりの達成度の集計用） */
+export interface StampsSend {
+  count: number;
+  total: number;
+}
 export interface EmoteSend {
   id: EmoteId;
 }
@@ -36,4 +52,5 @@ export const MSG = {
   chat: "chat",
   emote: "emote",
   correct: "correct",
+  stamps: "stamps",
 } as const;

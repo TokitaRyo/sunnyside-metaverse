@@ -6,6 +6,7 @@ import { defineRoom, matchMaker } from "colyseus";
 import { playground } from "@colyseus/playground";
 import { ROOM_NAME } from "@metaverse/shared";
 import { MainRoom } from "./rooms/MainRoom";
+import { adminEnabled, adminRouter } from "./admin";
 
 // ビルド済みクライアント(client/dist)があれば同じサーバーから配信する。
 // ws:// と https:// の混在を避けられ、TLS終端が1か所で済む（README参照）。
@@ -22,6 +23,9 @@ const app = config({
     await matchMaker.createRoom(ROOM_NAME, {});
   },
   initializeExpress: (expressApp) => {
+    // 管理ページ（ADMIN_PASSWORD を知っている人だけ。未設定なら 404）。開発時・本番とも同じ
+    expressApp.use("/admin", adminRouter());
+    console.log(adminEnabled ? "[server] 管理ページ: 有効 (/admin)" : "[server] 管理ページ: 無効（ADMIN_PASSWORD 未設定）");
     if (serveClient) {
       // 本番では Playground を出さない（開発用の道具。外から部屋に自由に入れてしまうため）。確認したいときだけ ENABLE_PLAYGROUND=1
       if (process.env.ENABLE_PLAYGROUND === "1") expressApp.use("/playground", playground());

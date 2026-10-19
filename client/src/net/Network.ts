@@ -9,7 +9,9 @@ import {
   type EmoteBroadcast,
   type EmoteId,
   type EmoteSend,
+  type JoinOptions,
   type MoveMessage,
+  type StampsSend,
   type Player,
 } from "@metaverse/shared";
 
@@ -42,12 +44,12 @@ export interface NetHandlers {
 export class Network {
   room!: NetRoom;
 
-  async join(name: string, hair: string, h: NetHandlers): Promise<void> {
+  async join(name: string, hair: string, extra: Pick<JoinOptions, "consent" | "vid" | "device">, h: NetHandlers): Promise<void> {
     const client = new Client(serverUrl());
     // 部屋はサーバーが起動時に1つだけ作る。join のみ使い、満員なら断られる
     let room: NetRoom;
     try {
-      room = (await client.join(ROOM_NAME, { name, hair }, MainRoomState)) as NetRoom;
+      room = (await client.join(ROOM_NAME, { name, hair, ...extra } satisfies JoinOptions, MainRoomState)) as NetRoom;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (/locked|full|no rooms/i.test(msg)) throw new Error("満員です。しばらくしてからもう一度お試しください");
@@ -85,6 +87,11 @@ export class Network {
   sendEmote(id: EmoteId): void {
     const m: EmoteSend = { id };
     this.room.send(MSG.emote, m);
+  }
+  /** 集めたスタンプの数を、運営の集計用に知らせる */
+  sendStamps(count: number, total: number): void {
+    const m: StampsSend = { count, total };
+    this.room.send(MSG.stamps, m);
   }
   leave(): void {
     void this.room?.leave();

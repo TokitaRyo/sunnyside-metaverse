@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import {
+  CONSENT_VERSION,
   EMOTES,
   emoteBubble,
   FOOT_H,
@@ -21,6 +22,7 @@ import { STAMP_TEX, stampFrame } from "../game/stampIcons";
 import { StampCard } from "../ui/StampCard";
 import { Navi } from "../ui/Navi";
 import { sfx } from "../game/sfx";
+import { deviceKind, visitorId } from "../game/visitor";
 import { TILES_KEY, elementKey, objectKey, tilesetKey } from "../game/assets";
 import { Character } from "../game/Character";
 import type { InputState } from "../game/InputState";
@@ -347,7 +349,10 @@ export class WorldScene extends Phaser.Scene {
     for (const e of [...this.keyItemEntries]) {
       if (Math.hypot(me.x - e.d.x, me.y - e.d.y) > KEY_ITEM_RANGE) continue;
       this.keyItemEntries.splice(this.keyItemEntries.indexOf(e), 1);
-      if (stamps.add(e.d.id)) this.stampCard?.collected(e.d.name, e.d.icon);
+      if (stamps.add(e.d.id)) {
+        this.stampCard?.collected(e.d.name, e.d.icon);
+        this.net.sendStamps(stamps.count, stamps.total);
+      }
       // 取ったら星がぽんと跳ねて消える
       e.glow.destroy();
       e.shade.destroy();
@@ -453,7 +458,7 @@ export class WorldScene extends Phaser.Scene {
   protected async connect(): Promise<void> {
     const { name, hair, input } = this.init0;
     try {
-      await this.net.join(name, hair, {
+      await this.net.join(name, hair, { consent: CONSENT_VERSION, vid: visitorId(), device: deviceKind() }, {
         onPlayerAdd: (p, id) => this.onPlayerAdd(p, id),
         onPlayerChange: (p, id) => this.onPlayerChange(p, id),
         onPlayerRemove: (_p, id) => this.onPlayerRemove(id),
@@ -485,6 +490,7 @@ export class WorldScene extends Phaser.Scene {
     });
     this.talk = new Talk({ onPrompt: () => this.onTalkKey(), onAdvance: () => this.onTalkKey() });
     this.stampCard = new StampCard();
+    this.net.sendStamps(stamps.count, stamps.total);
     this.navi = new Navi();
     document.getElementById("photo-btn")!.onclick = () => this.takePhoto();
     input.onAction = () => this.onTalkKey();

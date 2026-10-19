@@ -3,9 +3,9 @@
  *   npm run cheat-test
  */
 import { Client } from "@colyseus/sdk";
-import { MSG, ROOM_NAME, MainRoomState } from "@metaverse/shared";
+import { CONSENT_VERSION, MSG, ROOM_NAME, MainRoomState } from "@metaverse/shared";
 
-const room = await new Client(process.env.URL ?? "ws://localhost:2567").join(ROOM_NAME, { name: "cheater", hair: "mophair" }, MainRoomState);
+const room = await new Client(process.env.URL ?? "ws://localhost:2567").join(ROOM_NAME, { name: "cheater", hair: "mophair", consent: CONSENT_VERSION, vid: "cheat-test-bot-0001", device: "desktop" }, MainRoomState);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let corrected: { x: number; y: number } | null = null;
 room.onMessage(MSG.correct, (m: { x: number; y: number }) => (corrected = m));

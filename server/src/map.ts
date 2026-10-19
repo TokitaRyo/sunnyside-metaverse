@@ -7,6 +7,8 @@ interface MapFile {
   height: number;
   spawn: { x: number; y: number };
   layers: { collision: number[][] };
+  /** 出店の区画（scripts/build-stalls.mjs が作る） */
+  areas?: { id: string; name: string; x: number; y: number; w: number; h: number }[];
 }
 
 /** クライアントと同じ map.json を読む（配置データは1か所だけ）。 */
@@ -15,7 +17,14 @@ export function loadMap() {
   const raw = JSON.parse(readFileSync(url, "utf8")) as MapFile;
   const tile = raw.tileSize ?? TILE_SIZE;
   const collision = raw.layers.collision;
+  const areas = raw.areas ?? [];
   return {
+    areas: areas.map((a) => ({ id: a.id, name: a.name })),
+    /** その位置がどの出店の区画か（クライアントの Navi と同じ余白。通路から前に来たあたりまで含む）。無ければ空文字 */
+    areaAt(px: number, py: number): string {
+      const a = areas.find((r) => px >= r.x - 10 && px < r.x + r.w + 10 && py >= r.y - 14 && py < r.y + r.h + 14);
+      return a?.id ?? "";
+    },
     pixelW: raw.width * tile,
     pixelH: raw.height * tile,
     /** スポーン地点（ピクセル・タイル中心） */

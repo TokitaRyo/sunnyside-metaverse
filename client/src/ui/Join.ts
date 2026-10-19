@@ -1,6 +1,8 @@
 import { HAIRS, NAME_MAX, type Hair } from "@metaverse/shared";
 import { humanLayers } from "../game/assets";
 import { DIVE_FADE_AT_MS } from "./intro";
+import { hasConsented, saveConsent, visitorId } from "../game/visitor";
+import { renderTerms } from "./terms";
 
 const HAIR_LABEL: Record<Hair, string> = {
   bowlhair: "ボウル",
@@ -24,6 +26,7 @@ export class JoinScreen {
   private hair: Hair = HAIRS[Math.floor(Math.random() * HAIRS.length)];
   private loaded = false;
   private busy = false;
+  private consent = false;
   onSubmit?: (info: JoinInfo) => void;
 
   constructor() {
@@ -57,9 +60,42 @@ export class JoinScreen {
     }
     this.refresh();
 
+    // 利用規約・データの取り扱いへの同意（同意しないと入室できない）。同じ版に同意済みなら、チェックを入れた状態で始める
+    const box = $<HTMLInputElement>("consent");
+    this.consent = hasConsented();
+    box.checked = this.consent;
+    box.addEventListener("change", () => {
+      this.consent = box.checked;
+      saveConsent(this.consent);
+      this.updateButton();
+    });
+    const terms = $("terms");
+    const openTerms = () => {
+      renderTerms($("terms-body"), visitorId());
+      terms.hidden = false;
+      $("terms-body").scrollTop = 0;
+    };
+    const closeTerms = () => (terms.hidden = true);
+    $("terms-open").addEventListener("click", (e) => {
+      e.preventDefault();
+      openTerms();
+    });
+    $("terms-close").addEventListener("click", closeTerms);
+    $("terms-back").addEventListener("click", closeTerms);
+    $("terms-agree").addEventListener("click", () => {
+      box.checked = true;
+      this.consent = true;
+      saveConsent(true);
+      this.updateButton();
+      closeTerms();
+    });
+    terms.addEventListener("click", (e) => {
+      if (e.target === terms) closeTerms();
+    });
+
     $("join-form").addEventListener("submit", (e) => {
       e.preventDefault();
-      if (!this.loaded || this.busy) return;
+      if (!this.loaded || this.busy || !this.consent) return;
       const name = Array.from(nameEl.value.trim()).slice(0, NAME_MAX).join("") || "ゲスト";
       this.persist({ name, hair: this.hair });
       this.setBusy(true);
@@ -73,17 +109,31 @@ export class JoinScreen {
 
   setReady(): void {
     this.loaded = true;
+    this.updateButton();
+  }
+
+  /** 入室ボタンの状態: 読み込み中 → 同意待ち → 入室できる */
+  private updateButton(): void {
     const btn = $<HTMLButtonElement>("join-btn");
-    btn.disabled = false;
-    btn.textContent = "入室する";
+    if (this.busy) {
+      btn.disabled = true;
+      btn.textContent = "接続中…";
+    } else if (!this.loaded) {
+      btn.disabled = true;
+      btn.textContent = "読み込み中…";
+    } else if (!this.consent) {
+      btn.disabled = true;
+      btn.textContent = "同意すると入室できます";
+    } else {
+      btn.disabled = false;
+      btn.textContent = "入室する";
+    }
   }
 
   setBusy(busy: boolean): void {
     this.busy = busy;
     if (busy) $("join-error").hidden = true;
-    const btn = $<HTMLButtonElement>("join-btn");
-    btn.disabled = busy;
-    btn.textContent = busy ? "接続中…" : "入室する";
+    this.updateButton();
   }
 
   showError(msg: string): void {

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>AMPLIFIRE 管理</title>
+    <link rel="stylesheet" href="/admin/admin.css" />
+  </head>
+  <body>
+    <header class="top">
+      <h1>AMPLIFIRE <small>管理ページ</small></h1>
+      <div class="top-r">
+        <span id="updated">読み込み中…</span>
+        <label class="auto"><input type="checkbox" id="auto" checked /> 10秒ごとに更新</label>
+        <button id="reload" type="button">いま更新</button>
+      </div>
+    </header>
+
+    <div id="warn" class="warn" hidden></div>
+
+    <nav class="tabs" id="tabs">
+      <button data-tab="overview" class="on" type="button">概要</button>
+      <button data-tab="online" type="button">オンライン</button>
+      <button data-tab="chat" type="button">チャット履歴</button>
+      <button data-tab="sessions" type="button">入退室の記録</button>
+      <button data-tab="ops" type="button">運営の操作</button>
+    </nav>
+
+    <main>
+      <!-- 概要 -->
+      <section id="tab-overview" class="tab">
+        <div class="kpis" id="kpis"></div>
+        <div class="grid2">
+          <div class="card">
+            <h2>オンライン人数（直近24時間）</h2>
+            <canvas id="c-online" class="chart"></canvas>
+          </div>
+          <div class="card">
+            <h2>入室数（1時間ごと・直近48時間）</h2>
+            <canvas id="c-hourly" class="chart"></canvas>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h2>出店ごとの人気（そばにいた人数と時間）</h2>
+            <table id="t-stalls"></table>
+          </div>
+          <div class="card">
+            <h2>滞在時間の分布</h2>
+            <div id="stay-dist" class="bars"></div>
+            <h2 class="sp">スタンプを集めた数（のべ入室ごと）</h2>
+            <div id="stamp-dist" class="bars"></div>
+            <h2 class="sp">端末</h2>
+            <div id="devices" class="bars"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>日ごと</h2>
+          <table id="t-daily"></table>
+        </div>
+      </section>
+
+      <!-- オンライン -->
+      <section id="tab-online" class="tab" hidden>
+        <div class="card">
+          <h2>いま入室中の人 <span id="online-n"></span></h2>
+          <table id="t-online"></table>
+        </div>
+      </section>
+
+      <!-- チャット -->
+      <section id="tab-chat" class="tab" hidden>
+        <div class="card">
+          <h2>チャット履歴</h2>
+          <form id="chat-search" class="row">
+            <input id="q" type="search" placeholder="ことば・ニックネームで探す" maxlength="60" />
+            <input id="qvid" type="text" placeholder="訪問者ID（任意）" maxlength="64" />
+            <button type="submit">探す</button>
+            <a class="btn" href="/admin/api/export/chat.csv">CSVで保存</a>
+          </form>
+          <div id="chat-list" class="chatlist"></div>
+          <button id="chat-more" type="button" class="more" hidden>もっと古い分を見る</button>
+        </div>
+      </section>
+
+      <!-- 入退室の記録 -->
+      <section id="tab-sessions" class="tab" hidden>
+        <div class="card">
+          <h2>入退室の記録（新しい順・最大200件）</h2>
+          <p class="note"><a class="btn" href="/admin/api/export/sessions.csv">CSVで保存（全件）</a></p>
+          <table id="t-sessions"></table>
+        </div>
+      </section>
+
+      <!-- 運営の操作 -->
+      <section id="tab-ops" class="tab" hidden>
+        <div class="card">
+          <h2>おしらせを流す</h2>
+          <p class="note">いま入室中の全員のチャットに「おしらせ」として出ます（140文字まで）。</p>
+          <form id="announce" class="row">
+            <input id="ann-text" type="text" maxlength="140" placeholder="例: あと10分で終了します" required />
+            <button type="submit">送る</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>利用停止の人</h2>
+          <p class="note">「オンライン」タブで「利用停止」にした人の一覧です。解除すると、また入室できます（訪問者IDが同じ端末のみが対象）。</p>
+          <table id="t-bans"></table>
+        </div>
+        <div class="card danger">
+          <h2>データの削除</h2>
+          <p class="note">本人から削除の申し出があったとき用です。「訪問者ID」は、本人が利用規約の画面で見られるIDです（チャット履歴・入退室の記録の表にも出ます）。</p>
+          <form id="del-visitor" class="row">
+            <input id="del-vid" type="text" placeholder="訪問者ID（全部）" maxlength="64" required />
+            <button type="submit" class="red">この人のデータを削除</button>
+          </form>
+          <p class="note sp">すべての記録（チャット・入退室・人数の推移）を消します。元に戻せません。</p>
+          <form id="purge" class="row">
+            <input id="purge-confirm" type="text" placeholder="DELETE ALL と入力" maxlength="20" />
+            <button type="submit" class="red">すべて削除</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>この記録について</h2>
+          <ul id="about" class="plain"></ul>
+        </div>
+      </section>
+    </main>
+    <div id="toast" hidden></div>
+    <script src="/admin/admin.js"></script>
+  </body>
+</html>

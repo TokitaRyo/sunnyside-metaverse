@@ -21,7 +21,7 @@ function showFatal(title: string, lines: string[]): void {
   $("join").hidden = true;
 }
 
-function setConn(kind: "ok" | "reconnecting" | "lost"): void {
+function setConn(kind: "ok" | "reconnecting" | "lost", code?: number): void {
   const root = $("conn");
   const text = $("conn-text");
   const reload = $<HTMLButtonElement>("conn-reload");
@@ -32,7 +32,9 @@ function setConn(kind: "ok" | "reconnecting" | "lost"): void {
   root.hidden = false;
   root.classList.toggle("soft", kind === "reconnecting");
   reload.hidden = kind === "reconnecting";
-  text.textContent = kind === "reconnecting" ? "接続が切れました。再接続しています…" : "接続が切れました。ページを再読込してください。";
+  // 4002/4003 は運営による退室・利用停止（管理ページの操作）
+  const byAdmin = kind === "lost" && (code === 4002 || code === 4003);
+  text.textContent = kind === "reconnecting" ? "接続が切れました。再接続しています…" : byAdmin ? (code === 4003 ? "運営によって利用が停止されました。" : "運営によって退室しました。もう一度入るには、ページを再読込してください。") : "接続が切れました。ページを再読込してください。";
 }
 
 /**
@@ -156,8 +158,8 @@ function boot(): void {
   });
   game.events.on(EV_LOAD_ERROR, (failed: string[]) => join.showError(`素材の読み込みに失敗しました: ${failed.length}件（コンソール参照）`));
   game.events.on(EV_JOINED, () => join.dive());
-  game.events.on(EV_JOIN_FAILED, (msg: string) => join.showError(msg.includes("満員") ? msg : `サーバーに接続できません（${msg}）`));
-  game.events.on(EV_CONN, (kind: "ok" | "reconnecting" | "lost") => setConn(kind));
+  game.events.on(EV_JOIN_FAILED, (msg: string) => join.showError(msg.includes("満員") || msg.includes("利用できません") || msg.includes("同意") ? msg : `サーバーに接続できません（${msg}）`));
+  game.events.on(EV_CONN, (kind: "ok" | "reconnecting" | "lost", code?: number) => setConn(kind, code));
 
   join.onSubmit = ({ name, hair }) => {
     bgm.start(); // クリック(ユーザー操作)のハンドラ内なので自動再生制限を通る

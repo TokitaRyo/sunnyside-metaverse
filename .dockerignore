@@ -15,3 +15,7 @@ sunnyside-kit
 docs
 scripts
 *.md
+
+# 手元の記録を本番のイメージに入れない
+data
+server/data

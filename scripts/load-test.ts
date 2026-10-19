@@ -12,6 +12,7 @@ import {
   FOOT_W,
   HAIRS,
   MSG,
+  CONSENT_VERSION,
   ROOM_NAME,
   SEND_INTERVAL_MS,
   WALK_SPEED,
@@ -48,7 +49,7 @@ const rooms: Room[] = [];
 
 async function spawnBot(i: number): Promise<void> {
   const client = new Client(URL_);
-  const room = (await client.join(ROOM_NAME, { name: `bot${i}`, hair: rand(HAIRS) }, MainRoomState)) as Room<any, MainRoomState>;
+  const room = (await client.join(ROOM_NAME, { name: `bot${i}`, hair: rand(HAIRS), consent: CONSENT_VERSION, vid: `load-test-bot-${i}-xxxxxxxx`, device: "desktop" }, MainRoomState)) as Room<any, MainRoomState>;
   rooms.push(room);
   connected++;
   if (i === 0) {

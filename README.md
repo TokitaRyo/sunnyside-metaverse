@@ -126,3 +126,7 @@ docs/     decisions.md（設計判断・計測結果）
 ## ライセンス・クレジット
 
 素材は [Sunnyside World Asset Pack（danieldiggle, itch.io）](https://danieldiggle.itch.io/sunnyside)（V2.1）。無料・商用利用可、クレジット不要（歓迎）ですが、**素材の再配布・再販売は禁止**です。`client/public/assets/`（`gm/` と `*_ext.png` を含む）と、元パックの配置データ由来の `client/src/config/map.json` を含むリポジトリを公開する場合は、`.gitignore` の該当行を有効にして素材を除外してください。
+
+## 管理ページ・同意
+
+運営者だけが見られる管理ページ（`/admin`。集計・チャット履歴・退室/利用停止など）と、入室時の同意の仕様・設定は [docs/ADMIN.md](docs/ADMIN.md)。本番で使うには `fly secrets set ADMIN_PASSWORD=...` が必要（未設定なら管理ページは無効）。
