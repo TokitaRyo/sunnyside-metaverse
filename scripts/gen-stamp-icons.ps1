@@ -1,11 +1,11 @@
-﻿# スタンプラリー用アイコン 20個 (16x16) を横一列のスプライトシートに描く。
+﻿# スタンプラリー用アイコン 21個 (16x16) を横一列のスプライトシートに描く。
 # 実行: リポジトリのルートで powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gen-stamp-icons.ps1
 # 各フレームは「塗りだけ」を描き、最後に外側へ1pxの濃い縁取り(AutoOutline)を自動で付ける。
 $script:OutDir = "client/public/brand/stamps"
 . "$PSScriptRoot\lib\pixel.ps1"
 
 $OL = C '#3a2230'
-$FRAMES = 20
+$FRAMES = 21
 
 function NewFrame { NewBmp 16 16 }
 # 透明ピクセルで、上下左右に不透明ピクセルが隣接しているものを縁取り色にする
@@ -487,5 +487,29 @@ $rows = @(
 CheckRows $rows 'f19'
 Ascii $f 0 0 $rows @{ A = (C '#3bc6ff'); R = (C '#ff4a4a'); N = (C '#8d95ad'); H = (C '#ffe58a'); Y = (C '#ffc83a'); D = (C '#c98a1a'); K = (C '#243a2a'); G = (C '#7dff8a'); O = (C '#8a5a14'); P = (C '#e53935'); B = (C '#3a7be0') }
 AutoOutline $f $OL; Blit $sheet $f 304
+
+# ---------- 20 volleyball: 白・青・黄のカーブ模様のバレーボール ----------
+$f = NewFrame
+$rows = @(
+  '................',
+'.....BBBBBB.....',
+  '....WWWWBBBB....',
+  '...WWWWWWBBBB...',
+  '..WWWYWWWWBBBB..',
+  '.WWYYYYYWWBBBBB.',
+  '.WYYYYYWWWBBBBB.',
+  '.YYYYYWWWWBBBBB.',
+  '.YYYYYWWWWBBBBB.',
+  '.YYYYYWWWBBBBBS.',
+  '.YYYYYWWBBBBBSS.',
+  '..YYYYWWWWBSSS..',
+  '...YYYYWWSSSS...',
+  '....YYYYSSSS....',
+  '.....YYYYYY.....',
+  '................'
+)
+CheckRows $rows 'f20'
+Ascii $f 0 0 $rows @{ B = (C '#3a86e8'); Y = (C '#ffd23f'); W = (C '#fff8ec'); S = (C '#cdd6ea') }
+AutoOutline $f $OL; Blit $sheet $f 320
 
 Save $sheet 'stamps.png'

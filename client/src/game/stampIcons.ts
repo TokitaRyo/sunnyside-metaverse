@@ -26,6 +26,7 @@ export const STAMP_ICON_IDS = [
   "photoart",
   "dtm",
   "amateurradio",
+  "volleyball",
 ] as const;
 
 export const STAMP_TEX = "stamp-icons";
