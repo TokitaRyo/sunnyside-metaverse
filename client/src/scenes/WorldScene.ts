@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import {
   CONSENT_VERSION,
+  decodeLook,
+  encodeLook,
   EMOTES,
   emoteBubble,
   FOOT_H,
@@ -12,6 +14,7 @@ import {
   type CorrectMessage,
   type EmoteBroadcast,
   type EmoteId,
+  type Look,
   type Player,
 } from "@metaverse/shared";
 import { map, sprites, type KeyItemDef, type ObjectDef, type TileLayerDef } from "../config";
@@ -37,6 +40,8 @@ export const EV_CONN = "conn-state";
 export interface WorldInit {
   name: string;
   hair: string;
+  /** アバターの見た目（髪・目・服の色とかざり）。無ければ髪型だけ */
+  look?: Look;
   input: InputState;
 }
 
@@ -480,9 +485,9 @@ export class WorldScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- 接続
   protected async connect(): Promise<void> {
-    const { name, hair, input } = this.init0;
+    const { name, hair, look, input } = this.init0;
     try {
-      await this.net.join(name, hair, { consent: CONSENT_VERSION, vid: visitorId(), device: deviceKind() }, {
+      await this.net.join(name, hair, { consent: CONSENT_VERSION, vid: visitorId(), device: deviceKind(), look: look ? encodeLook(look) : undefined }, {
         onPlayerAdd: (p, id) => this.onPlayerAdd(p, id),
         onPlayerChange: (p, id) => this.onPlayerChange(p, id),
         onPlayerRemove: (_p, id) => this.onPlayerRemove(id),
@@ -625,7 +630,7 @@ export class WorldScene extends Phaser.Scene {
   private onPlayerAdd(p: Player, id: string): void {
     if (id === this.net.room.sessionId) {
       this.myId = id;
-      this.me = new Character(this, p.x, p.y, "human", p.hair);
+      this.me = new Character(this, p.x, p.y, "human", p.hair, "idle", decodeLook(p.look));
       this.flipX = p.flipX;
       this.me.setFlip(this.flipX);
       // 入室の降下演出中は、演出が終わった時点で追従を始める（ここで寄せるとマップ全体の映像が崩れる）
@@ -636,7 +641,7 @@ export class WorldScene extends Phaser.Scene {
       this.hud?.addTag(id, p.name, "self");
       return;
     }
-    const char = new Character(this, p.x, p.y, "human", p.hair);
+    const char = new Character(this, p.x, p.y, "human", p.hair, "idle", decodeLook(p.look));
     char.setFlip(p.flipX);
     const r: Remote = { char, lastAction: "idle" };
     this.remotes.set(id, r);
@@ -963,10 +968,12 @@ export class WorldScene extends Phaser.Scene {
       if (sx < -TAG_MARGIN || sx > W + TAG_MARGIN || sy < -TAG_MARGIN || sy > H + TAG_MARGIN) this.hud.hideTag(id);
       else this.hud.moveTag(id, sx, sy);
     };
-    if (this.me) place(this.myId, this.me.x, this.me.y);
+    // あたまのかざりは名札にかぶるので、そのぶん名札を上げる
+    const LIFT = 11;
+    if (this.me) place(this.myId, this.me.x, this.me.y - (this.me.headAccessory ? LIFT : 0));
     for (const [id, r] of this.remotes) {
       // 見せていない参加者の名札・吹き出しも出さない
-      if (r.char.isShown) place(id, r.char.x, r.char.y);
+      if (r.char.isShown) place(id, r.char.x, r.char.y - (r.char.headAccessory ? LIFT : 0));
       else this.hud.hideTag(id);
     }
     this.mobs.forEach((c, i) => place(`mob:${i}`, c.x, c.y));

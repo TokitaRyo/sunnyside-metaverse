@@ -1,7 +1,16 @@
 import Phaser from "phaser";
-import { CHAR_ORIGIN_X, CHAR_ORIGIN_Y } from "@metaverse/shared";
+import { CHAR_ORIGIN_X, CHAR_ORIGIN_Y, type Look } from "@metaverse/shared";
 import { sprites } from "../config";
 import { charKey, humanLayers } from "./assets";
+import { ensureLookTextures } from "./avatarTextures";
+import { STAMP_TEX, stampFrame } from "./stampIcons";
+
+/** かざりの位置（足元を原点にした、キャラの中の座標）。体は約11x16px、あたまの上は y=-18、手は右に +9 */
+const HEAD_Y = -18;
+const HAND_X = 10;
+const HAND_Y = -6;
+const HEAD_SCALE = 0.75;
+const HAND_SCALE = 0.625;
 
 /**
  * 1人のキャラ。人間は base + hair + tools の3枚を同座標に重ねて1つの Container にまとめる。
@@ -12,6 +21,9 @@ export class Character extends Phaser.GameObjects.Container {
   readonly hair: string | undefined;
   private sprites: Phaser.GameObjects.Sprite[] = [];
   private layerNames: (string | null)[];
+  private accHand?: Phaser.GameObjects.Image;
+  /** あたまにかざりを付けている（名札を、そのぶん上に出す） */
+  headAccessory = false;
   currentAction = "";
   /** 画面に出しているか（出さない間は描かず、アニメも止めて、軽くする） */
   private shown = true;
@@ -19,7 +31,7 @@ export class Character extends Phaser.GameObjects.Container {
   targetX: number;
   targetY: number;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, kind: string, hair?: string, initialAction = "idle") {
+  constructor(scene: Phaser.Scene, x: number, y: number, kind: string, hair?: string, initialAction = "idle", look?: Look | null) {
     super(scene, x, y);
     this.kind = kind;
     this.hair = hair;
@@ -27,15 +39,33 @@ export class Character extends Phaser.GameObjects.Container {
     this.targetY = y;
 
     const def = sprites.characters[kind];
-    this.layerNames = def.layered ? humanLayers(hair ?? def.hairOptions![0]) : [null];
+    // 色を変えたアバターは、色替え済みの体・髪のテクスチャを使う（tools は素材のまま）
+    const lookId = kind === "human" ? ensureLookTextures(scene, look ?? null) : null;
+    const layers = def.layered ? humanLayers(hair ?? def.hairOptions![0]) : [null];
+    this.layerNames = lookId ? layers.map((l) => (l === "base" || l === (hair ?? "")) ? `${l}~${lookId}` : l) : layers;
     for (const layer of this.layerNames) {
       const s = scene.add.sprite(0, 0, charKey(kind, layer, initialAction));
       s.setOrigin(CHAR_ORIGIN_X, CHAR_ORIGIN_Y);
       this.sprites.push(s);
     }
     this.add(this.sprites);
+    if (look) this.addAccessories(look);
     scene.add.existing(this);
     this.play(initialAction);
+  }
+
+  /** かざり（出店のスタンプの絵）。あたまの上と、手に持つもの */
+  private addAccessories(look: Look): void {
+    if (!this.scene.textures.exists(STAMP_TEX)) return;
+    const make = (id: string | undefined, scale: number) => {
+      const f = stampFrame(id);
+      return f >= 0 ? this.scene.add.image(0, 0, STAMP_TEX, f).setScale(scale) : undefined;
+    };
+    const head = make(look.head, HEAD_SCALE)?.setOrigin(0.5, 1).setPosition(0, HEAD_Y);
+    const hand = make(look.hand, HAND_SCALE)?.setOrigin(0.5, 0.5).setPosition(HAND_X, HAND_Y);
+    this.accHand = hand;
+    this.headAccessory = !!head;
+    for (const a of [head, hand]) if (a) this.add(a);
   }
 
   hasAction(action: string): boolean {
@@ -84,6 +114,8 @@ export class Character extends Phaser.GameObjects.Container {
 
   setFlip(flipX: boolean): this {
     for (const s of this.sprites) s.setFlipX(flipX);
+    // 手に持つかざりは、向いている側の手に
+    if (this.accHand) this.accHand.setPosition(flipX ? -HAND_X : HAND_X, HAND_Y).setFlipX(flipX);
     return this;
   }
 

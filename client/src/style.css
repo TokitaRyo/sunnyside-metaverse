@@ -970,3 +970,215 @@ body.emote-open #talk-prompt { visibility: hidden; }
   .touch #emote-bar { width: 160px; }
   .touch #chat-log { max-height: 16vh; }
 }
+
+/* ================= アバターをつくる画面（白い背景にパステル。サマーウォーズの OZ のような、明るくて静かな色合い） =================
+   宇宙の背景・地球・ロゴは、入室したあとの「惑星へ降りる」演出のために残してあり、この白い画面(.oz)がその上にかぶさっている。 */
+:root {
+  --oz-ink: #34456b;
+  --oz-sub: #7a8bb2;
+  --oz-line: #dbe6ff;
+  --oz-bg: #f4f9ff;
+  --oz-cyan: #79d4ff;
+  --oz-pink: #ffb0d6;
+  --oz-lav: #c4b5ff;
+  --oz-mint: #aeeed4;
+  --oz-yellow: #fff0a0;
+  --oz-grad: linear-gradient(120deg, #79d4ff, #c4b5ff 50%, #ffb0d6);
+}
+#join { overflow: hidden; }
+.oz {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; padding: 14px;
+  overflow: hidden auto; touch-action: pan-y; -webkit-overflow-scrolling: touch;
+  color: var(--oz-ink);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -5%, #ffffff 0%, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, #f7fbff 0%, #e8f4ff 55%, #e2eeff 100%);
+  transition: opacity 0.55s ease;
+}
+/* ふわっと浮かぶ、うすい輪（OZ の空間の感じ） */
+.oz-deco { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.oz-deco i { position: absolute; border-radius: 50%; border: 2px solid rgba(121, 212, 255, 0.35); animation: oz-float 9s ease-in-out infinite alternate; }
+.oz-deco i:nth-child(1) { width: 52vmin; height: 52vmin; left: -12vmin; top: -10vmin; }
+.oz-deco i:nth-child(2) { width: 34vmin; height: 34vmin; right: -8vmin; top: 8vmin; border-color: rgba(255, 176, 214, 0.4); animation-delay: -3s; }
+.oz-deco i:nth-child(3) { width: 70vmin; height: 70vmin; right: -22vmin; bottom: -30vmin; border-color: rgba(196, 181, 255, 0.35); animation-delay: -5s; }
+.oz-deco i:nth-child(4) { width: 14vmin; height: 14vmin; left: 12vmin; bottom: 14vmin; border-width: 0; background: radial-gradient(circle, rgba(255, 240, 160, 0.8), rgba(255, 240, 160, 0) 70%); }
+.oz-deco i:nth-child(5) { width: 18vmin; height: 18vmin; left: 40vmin; top: 6vmin; border-width: 0; background: radial-gradient(circle, rgba(174, 238, 212, 0.7), rgba(174, 238, 212, 0) 70%); animation-delay: -2s; }
+.oz-deco i:nth-child(6) { width: 22vmin; height: 22vmin; right: 18vmin; bottom: 18vmin; border-width: 0; background: radial-gradient(circle, rgba(255, 176, 214, 0.5), rgba(255, 176, 214, 0) 70%); animation-delay: -6s; }
+@keyframes oz-float { from { transform: translate(0, 0) scale(1); } to { transform: translate(1.5vmin, -2vmin) scale(1.04); } }
+
+.oz-panel {
+  position: relative; margin: auto; flex: none;
+  width: min(1000px, 100%); padding: 18px 26px 16px;
+  background: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)) padding-box, var(--oz-grad) border-box;
+  border: 2px solid transparent; border-radius: 28px;
+  box-shadow: 0 18px 60px rgba(110, 150, 230, 0.22), 0 2px 0 rgba(255, 255, 255, 0.9) inset;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.oz-head { text-align: center; margin-bottom: 10px; }
+.oz-title {
+  margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 0.32em; text-indent: 0.32em;
+  background: var(--oz-grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.oz-sub { margin: 4px 0 0; font-size: 13px; font-weight: 700; color: var(--oz-sub); letter-spacing: 0.08em; }
+.oz-grid { display: grid; grid-template-columns: minmax(250px, 300px) 1fr; gap: 22px; align-items: start; }
+
+/* 左: プレビュー */
+.oz-stage { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.oz-ring, .oz-show-ring {
+  display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, #ffffff 0%, #eef7ff 55%, #dbeaff 100%) padding-box, var(--oz-grad) border-box;
+  border: 4px solid transparent;
+  box-shadow: 0 10px 34px rgba(121, 212, 255, 0.35), 0 0 0 10px rgba(255, 255, 255, 0.6), 0 0 0 11px rgba(196, 181, 255, 0.35);
+}
+.oz-ring { width: 244px; height: 244px; }
+.av-canvas { display: block; image-rendering: pixelated; }
+.oz-ring .av-canvas { width: 180px; height: 216px; margin-top: 6px; }
+.oz-quick { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.oz-chip {
+  font: inherit; font-size: 13px; font-weight: 700; color: var(--oz-ink); cursor: pointer;
+  padding: 7px 14px; background: #fff; border: 2px solid var(--oz-line); border-radius: 999px;
+  box-shadow: 0 2px 0 var(--oz-line);
+}
+.oz-chip:hover { border-color: var(--oz-cyan); }
+.oz-chip:active { transform: translateY(2px); box-shadow: none; }
+.oz-name { width: 100%; display: block; }
+.oz-name > span { display: block; margin: 0 0 4px 4px; font-size: 12px; font-weight: 800; color: var(--oz-sub); letter-spacing: 0.06em; }
+.oz #join-name {
+  width: 100%; height: 44px; padding: 0 16px; font: inherit; font-size: 16px; font-weight: 700; color: var(--oz-ink);
+  background: #fff; border: 2px solid var(--oz-line); border-radius: 999px; outline: none;
+}
+.oz #join-name::placeholder { color: #b6c4e2; }
+.oz #join-name:focus { border-color: var(--oz-cyan); box-shadow: 0 0 0 4px rgba(121, 212, 255, 0.25); }
+
+/* 右: つくる */
+.oz-tools { display: grid; gap: 12px; min-width: 0; }
+.oz-block { padding: 12px 14px; background: rgba(244, 249, 255, 0.85); border: 2px solid var(--oz-line); border-radius: 20px; }
+.oz-block h2 { margin: 0 0 8px; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: var(--oz-ink); }
+.oz-block h2 small { margin-left: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--oz-sub); }
+.oz #hair-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.oz .hair-opt {
+  position: relative; height: 92px; padding: 0; overflow: hidden; cursor: pointer;
+  background: #fff; border: 2px solid var(--oz-line); border-radius: 16px; animation: none; box-shadow: none;
+}
+.oz .hair-opt:hover { border-color: var(--oz-cyan); }
+.oz .hair-opt[aria-checked="true"] {
+  border-color: transparent; animation: none; box-shadow: 0 4px 14px rgba(121, 212, 255, 0.4);
+  background: linear-gradient(#f4fbff, #f4fbff) padding-box, var(--oz-grad) border-box; background-size: 100% 100%;
+}
+.oz .hair-opt .pv { top: 6px; transform: translateX(-50%) scale(2.2); }
+.oz .hair-opt small { bottom: 4px; font-size: 11px; font-weight: 800; color: var(--oz-sub); }
+.color-row { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; padding: 3px 0; }
+.color-label { font-size: 12px; font-weight: 800; color: var(--oz-sub); }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.swatch {
+  position: relative; width: 26px; height: 26px; padding: 0; cursor: pointer; flex: none;
+  border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--oz-line), 0 2px 4px rgba(90, 120, 190, 0.18);
+}
+.swatch:hover { transform: scale(1.12); }
+.swatch.on { box-shadow: 0 0 0 3px var(--oz-cyan), 0 2px 6px rgba(90, 120, 190, 0.3); transform: scale(1.1); }
+.swatch.none { background: #fff; }
+.swatch.none::after { content: ""; position: absolute; left: 3px; right: 3px; top: 50%; height: 2px; background: #ff8fb0; transform: rotate(-45deg); border-radius: 2px; }
+.swatch.custom { background: conic-gradient(#ff8f8f, #ffd27f, #fff09a, #b8f0c8, #9be3ff, #b9b4ff, #ffb3c8, #ff8f8f); overflow: hidden; }
+.swatch.custom input { position: absolute; inset: -6px; width: 40px; height: 40px; opacity: 0; cursor: pointer; }
+.oz-tabs { display: inline-flex; gap: 4px; padding: 3px; margin-bottom: 8px; background: #fff; border: 2px solid var(--oz-line); border-radius: 999px; }
+.oz-tabs button { font: inherit; font-size: 12px; font-weight: 800; padding: 4px 14px; color: var(--oz-sub); cursor: pointer; background: transparent; border: 0; border-radius: 999px; }
+.oz-tabs button.on { color: #fff; background: var(--oz-grad); }
+.acc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.acc {
+  height: 52px; padding: 0; display: grid; place-items: center; cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; color: var(--oz-sub);
+  background: #fff; border: 2px solid var(--oz-line); border-radius: 14px;
+}
+.acc:hover { border-color: var(--oz-cyan); }
+.acc.on { border-color: transparent; background: linear-gradient(#f4fbff, #f4fbff) padding-box, var(--oz-grad) border-box; box-shadow: 0 3px 10px rgba(121, 212, 255, 0.4); }
+.acc img { width: 40px; height: 40px; image-rendering: pixelated; pointer-events: none; }
+
+/* 同意・入室ボタン・ほか */
+.oz .consent { display: flex; align-items: flex-start; gap: 10px; margin: 14px 4px 10px; font-size: 12px; line-height: 1.5; color: var(--oz-ink); cursor: pointer; text-align: left; }
+.oz .consent input { width: 18px; height: 18px; margin: 1px 0 0; flex: none; accent-color: #79b8ff; cursor: pointer; }
+.oz .consent a { color: #4c8dff; font-weight: 800; }
+.oz .consent small { display: block; color: var(--oz-sub); font-size: 10px; }
+.oz #join-btn {
+  display: block; width: min(420px, 100%); height: 52px; margin: 0 auto; font: inherit; font-size: 17px; font-weight: 800; letter-spacing: 0.12em; text-indent: 0.12em;
+  color: #fff; text-shadow: 0 1px 2px rgba(80, 100, 200, 0.35); cursor: pointer;
+  background: var(--oz-grad); background-size: 200% 100%; animation: oz-btn 6s ease-in-out infinite alternate;
+  border: 0; border-radius: 999px; box-shadow: 0 8px 22px rgba(121, 150, 255, 0.4), 0 3px 0 rgba(120, 130, 220, 0.35);
+}
+@keyframes oz-btn { to { background-position: 100% 0; } }
+.oz #join-btn:disabled { background: #dfe8f8; color: #9fb0d3; text-shadow: none; box-shadow: none; animation: none; cursor: default; }
+.oz #join-btn:not(:disabled):hover { filter: brightness(1.05); }
+.oz #join-btn:not(:disabled):active { transform: translateY(3px); box-shadow: 0 3px 10px rgba(121, 150, 255, 0.4); }
+.oz .bar { width: min(420px, 100%); height: 6px; margin: 12px auto 0; background: #e4edfb; border-radius: 999px; overflow: hidden; }
+.oz .bar i { display: block; width: 0; height: 100%; background: var(--oz-grad); background-size: 100% 100%; animation: none; border-radius: 999px; transition: width 0.15s; }
+.oz .error { margin: 10px 0 0; text-align: center; color: #e0486a; font-size: 13px; font-weight: 800; }
+.oz .hint { margin: 12px 0 0; font-size: 11px; text-align: center; color: var(--oz-sub); }
+.oz .credit { margin: 4px 0 0; font-size: 10px; line-height: 1.5; text-align: center; color: #9fb0d3; }
+
+/* 決定したあと: えらんだアバターを大きく */
+.oz-show {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  pointer-events: none; animation: oz-show-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.oz-show[hidden] { display: none; }
+.oz-show-ring { width: min(420px, 78vw, 56vh); height: min(420px, 78vw, 56vh); animation: oz-pulse 2.2s ease-in-out infinite alternate; }
+.oz-show .av-canvas { width: min(300px, 58vw, 40vh); height: auto; aspect-ratio: 30 / 36; margin-top: 3%; }
+.oz-show-name { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.08em; color: var(--oz-ink); }
+.oz-show-sub { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: var(--oz-sub); }
+@keyframes oz-show-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes oz-pulse { to { box-shadow: 0 10px 44px rgba(255, 176, 214, 0.5), 0 0 0 16px rgba(255, 255, 255, 0.6), 0 0 0 17px rgba(121, 212, 255, 0.4); } }
+#join.showcase .oz-panel { display: none; }
+#join.showcase .oz { overflow: hidden; }
+#join.dive .oz { opacity: 0; pointer-events: none; }
+
+/* 規約のダイアログも、白いパステルに */
+#terms { background: rgba(70, 90, 140, 0.45); }
+.terms-box { background: #fff; color: var(--oz-ink); border: 2px solid transparent; border-radius: 22px; background: linear-gradient(#fff, #fff) padding-box, var(--oz-grad) border-box; box-shadow: 0 18px 60px rgba(60, 90, 160, 0.35); }
+.terms-head { border-bottom: 1px solid var(--oz-line); }
+.terms-head button { color: var(--oz-sub); }
+.terms-body h3 { color: #4c8dff; }
+.terms-id { background: #f4f9ff; border: 1px solid var(--oz-line); }
+.terms-ver { color: var(--oz-sub); }
+.terms-foot { border-top: 1px solid var(--oz-line); }
+.terms-foot button { color: #fff; background: var(--oz-grad); border-radius: 999px; }
+.terms-foot button.ghost { color: var(--oz-ink); background: #e8f0fd; }
+
+/* 狭い画面（スマホ）: 1列にして、プレビューは小さく */
+@media (max-width: 760px) {
+  .oz { padding: 8px; }
+  .oz-panel { padding: 14px 12px 12px; border-radius: 22px; }
+  .oz-grid { grid-template-columns: 1fr; gap: 12px; }
+  .oz-ring { width: 190px; height: 190px; }
+  .oz-ring .av-canvas { width: 130px; height: 156px; }
+  .oz #hair-grid { grid-template-columns: repeat(3, 1fr); }
+  .color-row { grid-template-columns: 1fr; gap: 4px; }
+  .oz-title { font-size: 22px; }
+}
+/* 低い画面（横向きのスマホ）: 左右に並べたまま、全体を小さくする */
+@media (max-height: 560px) and (min-width: 761px) {
+  .oz-panel { padding: 10px 16px 8px; }
+  .oz-head { margin-bottom: 6px; }
+  .oz-title { font-size: 20px; }
+  .oz-sub { display: none; }
+  .oz-grid { gap: 14px; grid-template-columns: 210px 1fr; }
+  .oz-ring { width: 170px; height: 170px; }
+  .oz-ring .av-canvas { width: 112px; height: 134px; }
+  .oz .hair-opt { height: 70px; }
+  .oz .hair-opt .pv { transform: translateX(-50%) scale(1.6); }
+  .oz-block { padding: 8px 10px; }
+  .oz #join-btn { height: 44px; }
+  .oz .hint, .oz .credit { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .oz-deco i, .oz-show, .oz-show-ring, .oz #join-btn { animation: none; } }
+
+/* なまえは、プレビューの下ではなく、画面の上（パネルの先頭）に置いた */
+.oz-name { display: block; width: min(420px, 100%); margin: 0 auto 12px; }
+.oz-stage { align-self: start; }
+@media (max-width: 760px) {
+  /* スマホ: 下の色やかざりを選んでいる間も、プレビューが見えるように上に貼り付ける */
+  .oz-stage { position: sticky; top: 0; z-index: 4; padding: 6px 0 8px; gap: 6px; background: rgba(255, 255, 255, 0.98); border-bottom: 1px solid var(--oz-line); border-radius: 0 0 20px 20px; box-shadow: 0 8px 12px -8px rgba(110, 150, 230, 0.35); }
+  .oz-ring { width: 128px; height: 128px; box-shadow: 0 6px 20px rgba(121, 212, 255, 0.35), 0 0 0 6px rgba(255, 255, 255, 0.6), 0 0 0 7px rgba(196, 181, 255, 0.35); }
+  .oz-ring .av-canvas { width: 88px; height: 106px; margin-top: 2px; }
+  .oz-quick { gap: 6px; }
+  .oz-chip { padding: 4px 10px; font-size: 12px; }
+}
+@media (max-height: 560px) and (min-width: 761px) { .oz-name { margin-bottom: 6px; } }

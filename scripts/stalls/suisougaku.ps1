@@ -1,5 +1,7 @@
-﻿# 吹奏楽部の専用ドット絵（看板・楽譜の幕・段の舞台・管楽器・打楽器・譜面台・指揮台・指揮棒・パイプ椅子・受付・のぼり・音符・きらめき）を作る。
+﻿# 吹奏楽・筝曲部（合併）の専用ドット絵（看板・楽譜の幕・段の舞台・管楽器・打楽器・譜面台・指揮台・指揮棒・パイプ椅子・受付・のぼり・音符・きらめき、
+# 和楽器コーナー＝毛氈と畳・三味線・尺八・筝・音の波）を作る。
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stalls/suisougaku.ps1
+# 一部だけ作り直す: $env:SUI_ONLY='sign|koto|shamisen'; （ファイル名の正規表現。省略すると全部）
 # 出力: client/public/brand/stall/suisougaku_*.png （配置は scripts/stalls/suisougaku.mjs）
 # 配色は金（金管）・赤紫のベルベット・赤茶の木・黒・白。アニメは「フレームを横一列に並べたPNG」。
 # 絵はすべてこのスクリプトで描いたオリジナル（素材パックの絵は使わない）。
@@ -9,6 +11,7 @@ function CA($h, $a) { $c = C $h; [System.Drawing.Color]::FromArgb($a, $c.R, $c.G
 function Mix($a, $z, $t) { [System.Drawing.Color]::FromArgb(255, [int]($a.R + ($z.R - $a.R) * $t), [int]($a.G + ($z.G - $a.G) * $t), [int]($a.B + ($z.B - $a.B) * $t)) }
 # フレームを横に並べたシートを作る。$draw には ($b, $ox, $f) が渡る
 function Sheet($name, $w, $h, $n, $draw) {
+  if ($env:SUI_ONLY -and $name -notmatch $env:SUI_ONLY) { return }
   $bm = NewBmp ($w * $n) $h
   for ($f = 0; $f -lt $n; $f++) { & $draw $bm ($f * $w) $f }
   Save $bm $name
@@ -23,30 +26,44 @@ $v0 = C '#3a0a22'; $v1 = C '#5e1230'; $v2 = C '#841a44'; $v3 = C '#a82a58'
 $w0 = C '#3a2014'; $w1 = C '#6b3a22'; $w2 = C '#8c4a32'; $w3 = C '#b8764a'; $w4 = C '#d9a070'
 $k0 = C '#14101a'; $k1 = C '#2c2630'; $k2 = C '#443c4c'; $k3 = C '#6a6070'
 $wht = C '#f6f3ee'; $cream = C '#efe3c8'
+# 和楽器コーナー: 毛氈（赤）/ 畳（いぐさ）/ 紫檀（三味線）/ 桐（筝）/ 竹（尺八）
+$m0 = C '#5a0c18'; $m1 = C '#8e1424'; $m2 = C '#c0263a'; $m3 = C '#e0505c'
+$t0 = C '#5c6636'; $t1 = C '#92a058'; $t2 = C '#b6c078'; $t3 = C '#d6dc9c'
+$r0 = C '#24100c'; $r1 = C '#44180f'; $r2 = C '#7a3320'; $r3 = C '#a85a3a'
+$p0 = C '#7a4c28'; $p1 = C '#b07a44'; $p2 = C '#d6a468'; $p3 = C '#f0cf98'
+$b0 = C '#6a4a12'; $b1 = C '#a47c26'; $b2 = C '#d2ac4a'; $b3 = C '#f0d684'
+$skin = C '#f3eedd'; $skin2 = C '#d4cbb0'
 
-# ---- 看板「吹奏楽部」96x32。金の文字・赤紫のベルベット・電球が追いかけて光り、きらめきが走る 6コマ
-$signTxt = '吹奏楽部'
-Sheet 'suisougaku_sign.png' 96 32 6 {
+# ---- 看板「吹奏楽・筝曲部」128x32。金の文字・赤紫のベルベット・電球が追いかけて光り、きらめきが走る 6コマ
+# （MS Gothic に「筝(U+7B1D)」の字が無いので、絵の中では同じ意味の「箏(U+7B8F)」を使う）
+$signA = '吹奏楽'; $signB = '箏曲部'
+Sheet 'suisougaku_sign.png' 128 32 6 {
   param($b, $ox, $f)
-  Rect $b $ox 0 96 32 $k0
-  Rect $b ($ox + 1) 1 94 30 $g1
-  Rect $b ($ox + 2) 2 92 28 $g3
-  Rect $b ($ox + 3) 3 90 26 $g1
-  Rect $b ($ox + 4) 4 88 24 $v1
-  for ($x = 4; $x -lt 92; $x += 4) { Rect $b ($ox + $x) 4 1 24 $v2 }
-  for ($x = 6; $x -lt 92; $x += 8) { Rect $b ($ox + $x) 4 1 24 $v0 }
-  Rect $b ($ox + 4) 4 88 1 $v0; Rect $b ($ox + 4) 27 88 1 $v0
-  for ($i = 0; $i -lt 15; $i++) {
+  Rect $b $ox 0 128 32 $k0
+  Rect $b ($ox + 1) 1 126 30 $g1
+  Rect $b ($ox + 2) 2 124 28 $g3
+  Rect $b ($ox + 3) 3 122 26 $g1
+  Rect $b ($ox + 4) 4 120 24 $v1
+  for ($x = 4; $x -lt 124; $x += 4) { Rect $b ($ox + $x) 4 1 24 $v2 }
+  for ($x = 6; $x -lt 124; $x += 8) { Rect $b ($ox + $x) 4 1 24 $v0 }
+  Rect $b ($ox + 4) 4 120 1 $v0; Rect $b ($ox + 4) 27 120 1 $v0
+  for ($i = 0; $i -lt 20; $i++) {
     $x = 5 + $i * 6
     $col = if ((($i + $f) % 3) -eq 0) { $g4 } else { $g2 }
     Px $b ($ox + $x) 2 $col; Px $b ($ox + $x) 29 $col
   }
-  foreach ($y in 8, 14, 20, 26) { $col = if (((($y / 6) + $f) % 3) -lt 1) { $g4 } else { $g2 }; Px $b ($ox + 2) $y $col; Px $b ($ox + 93) $y $col }
-  [void](TextPx $b $signTxt ($ox + 9) 7 20 $v0 $true)
-  [void](TextPx $b $signTxt ($ox + 8) 6 20 $g3 $true)
-  $gx = 12 + $f * 14; $gy = 9 + ($f % 2) * 11
+  foreach ($y in 8, 14, 20, 26) { $col = if (((($y / 6) + $f) % 3) -lt 1) { $g4 } else { $g2 }; Px $b ($ox + 2) $y $col; Px $b ($ox + 125) $y $col }
+  # 「吹奏楽」・「箏曲部」（16px 太字）。あいだの「・」は 3x3 の金の点
+  $tx = 10; $ty = 8
+  [void](TextPx $b $signA ($ox + $tx + 1) ($ty + 1) 16 $v0 $true)
+  [void](TextPx $b $signB ($ox + $tx + 60) ($ty + 1) 16 $v0 $true)
+  Rect $b ($ox + 63) 16 3 3 $v0
+  [void](TextPx $b $signA ($ox + $tx) $ty 16 $g3 $true)
+  [void](TextPx $b $signB ($ox + $tx + 59) $ty 16 $g3 $true)
+  Rect $b ($ox + 62) 15 3 3 $g3
+  $gx = 12 + $f * 20; $gy = 9 + ($f % 2) * 11
   Px $b ($ox + $gx) $gy $wht; Px $b ($ox + $gx - 1) $gy $g4; Px $b ($ox + $gx + 1) $gy $g4; Px $b ($ox + $gx) ($gy - 1) $g4; Px $b ($ox + $gx) ($gy + 1) $g4
-  foreach ($p in @(@(0, 0), @(95, 0), @(0, 31), @(95, 31))) { Clear $b ($ox + $p[0]) $p[1] }
+  foreach ($p in @(@(0, 0), @(127, 0), @(0, 31), @(127, 31))) { Clear $b ($ox + $p[0]) $p[1] }
 }
 
 # ---- 背景の幕 140x36。赤紫のベルベットのカーテン・金のふさ・真ん中は楽譜
@@ -331,7 +348,7 @@ Sheet 'suisougaku_booth.png' 44 28 1 {
 }
 
 # ---- のぼり旗（風でゆれる）。文字は縦書き。4コマ
-function Nobori($name, $chars, $H) {
+function Nobori($name, $chars, $H, $fs = 11, $y0 = 6, $pitch = 11) {
   $tmp = NewBmp 16 $H
   Rect $tmp 0 2 16 2 $g1; Rect $tmp 0 2 16 1 $g3
   Rect $tmp 0 2 2 ($H - 2) $k2; Rect $tmp 0 2 1 ($H - 2) $k3
@@ -340,7 +357,7 @@ function Nobori($name, $chars, $H) {
   Rect $tmp 2 4 1 $ch $g3; Rect $tmp 14 4 1 $ch $g3; Rect $tmp 2 4 13 1 $g3
   for ($x = 4; $x -lt 14; $x += 3) { Rect $tmp $x 5 1 ($ch - 1) $v2 }
   for ($i = 0; $i -lt 13; $i++) { if ($i % 2 -eq 0) { Rect $tmp (2 + $i) (4 + $ch) 1 3 $v1; Px $tmp (2 + $i) (6 + $ch) $g2 } }
-  for ($i = 0; $i -lt $chars.Count; $i++) { [void](TextPx $tmp $chars[$i] 3 (6 + 11 * $i) 11 $wht $false) }
+  for ($i = 0; $i -lt $chars.Count; $i++) { [void](TextPx $tmp $chars[$i] 3 ($y0 + $pitch * $i) $fs $wht $false) }
   Sheet $name 16 $H 4 {
     param($b, $ox, $f)
     for ($y = 0; $y -lt $H; $y++) {
@@ -355,7 +372,7 @@ function Nobori($name, $chars, $H) {
   $tmp.Dispose()
 }
 Nobori 'suisougaku_nobori_a.png' @('吹', '奏', '楽', '部') 56
-Nobori 'suisougaku_nobori_b.png' @('演', '奏', '会') 46
+Nobori 'suisougaku_nobori_b.png' @('箏', '曲', '部') 52 12 6 13
 
 # ---- 楽器のきらめき 9x9 4コマ
 Sheet 'suisougaku_glint.png' 9 9 4 {
@@ -388,4 +405,157 @@ Sheet 'suisougaku_notes.png' 30 34 4 {
   }
   Ascii $b ($ox + 4) (22 - $f * 5) $noteRows @{ X = $gold }
   Ascii $b ($ox + 18) (25 - $f * 5) $noteRows @{ X = $white }
+}
+
+# =====================================================================
+# 和楽器コーナー（筝曲部）: 毛氈と畳の敷物・三味線・尺八・筝・音の波
+# =====================================================================
+
+# ---- 毛氈（赤）と畳の敷物 54x32（床に敷く）。畳のふちに黒いへり、真ん中に赤い毛氈
+Sheet 'suisougaku_mosen.png' 54 32 1 {
+  param($b, $ox, $f)
+  Rect $b $ox 0 54 32 $t1
+  for ($y = 1; $y -lt 32; $y += 2) { Rect $b $ox $y 54 1 $t2 }
+  for ($y = 0; $y -lt 32; $y += 4) { for ($x = (($y / 4) % 2) * 3; $x -lt 54; $x += 6) { Px $b ($ox + $x) $y $t3 } }
+  Rect $b $ox 0 54 1 $k1; Rect $b $ox 31 54 1 $k1
+  Rect $b $ox 1 54 1 $t0; Rect $b $ox 30 54 1 $t0
+  Rect $b ($ox + 27) 2 1 28 $t0
+  # 毛氈
+  Rect $b ($ox + 4) 4 46 24 $k1
+  Rect $b ($ox + 5) 5 44 22 $m2
+  for ($y = 5; $y -lt 27; $y++) { for ($x = 5; $x -lt 49; $x++) { if ((($x + $y * 2) % 5) -eq 0) { Px $b ($ox + $x) $y $m1 } elseif ((($x * 2 + $y) % 11) -eq 0) { Px $b ($ox + $x) $y $m3 } } }
+  Rect $b ($ox + 5) 5 44 1 $m3; Rect $b ($ox + 5) 26 44 1 $m1
+  Frame $b ($ox + 6) 6 42 20 $g2
+  Frame $b ($ox + 7) 7 40 18 $m1
+  # 毛氈のふさ（左右のはし）
+  foreach ($y in 8, 12, 16, 20, 24) { Px $b ($ox + 3) $y $g2; Px $b ($ox + 50) $y $g2 }
+  foreach ($p in @(@(0, 0), @(53, 0), @(0, 31), @(53, 31))) { Px $b ($ox + $p[0]) $p[1] $clr }
+}
+
+# ---- 三味線 24x24 4コマ（胴・糸・さお・バチ。糸がふるえ、バチが皮を打つ）
+Sheet 'suisougaku_shamisen.png' 24 24 4 {
+  param($b, $ox, $f)
+  # さお（紫檀）。左下の胴から右上の天神へ、幅3pxのまっすぐなさお
+  for ($d = 0; $d -le 2; $d++) {
+    $col = if ($d -eq 0) { $r2 } elseif ($d -eq 1) { $r1 } else { $r0 }
+    Line $b ($ox + 8 + $d) 12 ($ox + 17 + $d) 1 $col
+  }
+  # 糸（ふるえるコマはまん中がずれて白く光る）
+  $shift = @(0, 1, 0, (-1))[$f]
+  for ($i = 0; $i -le 10; $i++) {
+    $sh = 0
+    if ($shift -ne 0 -and $i -ge 3 -and $i -le 8) { $sh = $shift }
+    $col = if ($sh -ne 0) { $wht } else { $s2 }
+    Px $b ($ox + 9 + $i + $sh) (12 - $i) $col
+  }
+  # 天神（先の糸巻き）
+  Rect $b ($ox + 15) 0 7 3 $r0; Rect $b ($ox + 16) 0 5 2 $r1
+  Px $b ($ox + 15) 1 $cream; Px $b ($ox + 21) 1 $cream; Px $b ($ox + 17) 3 $cream; Px $b ($ox + 22) 2 $cream
+  # 胴（まわりは紫檀、皮は白）
+  Rect $b ($ox + 1) 12 10 10 $r0
+  Rect $b ($ox + 2) 13 8 8 $r3
+  Rect $b ($ox + 3) 14 6 6 $skin
+  Rect $b ($ox + 3) 19 6 1 $skin2
+  Rect $b ($ox + 3) 13 6 1 $r2
+  Px $b ($ox + 2) 13 $r2
+  Rect $b ($ox + 4) 17 3 1 $r0; Px $b ($ox + 5) 16 $r0
+  Line $b ($ox + 5) 16 ($ox + 8) 12 $s2
+  Px $b ($ox + 1) 12 $clr; Px $b ($ox + 10) 21 $clr; Px $b ($ox + 1) 21 $clr
+  # 糸かけ（赤い房）
+  Rect $b ($ox + 5) 22 2 2 $m2; Px $b ($ox + 5) 23 $m1
+  # バチ（象牙色の三角）。ふり上げる→ふり下ろして皮を打つ
+  $tips = @(@(13, 15), @(8, 18), @(11, 17), @(8, 18))
+  $tx = $tips[$f][0]; $ty = $tips[$f][1]
+  $hx = $tx + 6; $hy = $ty + 5
+  Line $b ($ox + $hx) ($hy + 1) ($ox + $tx) ($ty + 1) $r1
+  Line $b ($ox + $hx) $hy ($ox + $tx) $ty $cream
+  $blade = @(@(0, -2), @(1, -2), @(0, -1), @(1, -1), @(2, -1), @(-1, 0), @(0, 0), @(1, 0), @(2, 0), @(0, 1), @(1, 1), @(2, 1), @(0, 2), @(1, 2))
+  foreach ($q in $blade) { foreach ($n in @(@(-1, 0), @(1, 0), @(0, -1), @(0, 1))) { Px $b ($ox + $tx + $q[0] + $n[0]) ($ty + $q[1] + $n[1]) $r0 } }
+  foreach ($q in $blade) { Px $b ($ox + $tx + $q[0]) ($ty + $q[1]) $wht }
+  foreach ($q in $blade) { if ($q[0] -ge 2) { Px $b ($ox + $tx + $q[0]) ($ty + $q[1]) $cream } }
+}
+
+# ---- 尺八 12x16 4コマ（竹の笛。吹くたびにゆれる）
+Sheet 'suisougaku_shakuhachi.png' 12 16 4 {
+  param($b, $ox, $f)
+  $sway = @(0, 1, 0, (-1))[$f]
+  $ex = 9 + $sway
+  Line $b ($ox + 0) 0 ($ox + $ex) 14 $b0
+  Line $b ($ox + 1) 0 ($ox + $ex + 1) 14 $b1
+  Line $b ($ox + 2) 0 ($ox + $ex + 2) 14 $b2
+  Line $b ($ox + 3) 0 ($ox + $ex + 3) 14 $b3
+  Line $b ($ox + 3) 1 ($ox + $ex + 3) 15 $b2
+  # 節（ふし）と指穴
+  foreach ($t in 0.22, 0.5, 0.78) {
+    $y = [int][math]::Round(14 * $t); $x = [int][math]::Round($ex * $t)
+    Px $b ($ox + $x) $y $b0; Px $b ($ox + $x + 1) $y $b0; Px $b ($ox + $x + 2) $y $b1; Px $b ($ox + $x + 3) $y $b1
+  }
+  foreach ($t in 0.36, 0.44, 0.58, 0.66, 0.9) {
+    $y = [int][math]::Round(14 * $t); $x = [int][math]::Round($ex * $t)
+    Px $b ($ox + $x + 2) $y $k0
+  }
+  # 歌口（うたぐち）と下のはし
+  Px $b ($ox + 0) 0 $k1; Px $b ($ox + 1) 0 $k1; Px $b ($ox + 1) 1 $cream
+  Rect $b ($ox + $ex + 1) 14 3 2 $b0; Px $b ($ox + $ex + 2) 14 $k0; Px $b ($ox + $ex + 2) 15 $k0
+}
+
+# ---- 筝 42x14 4コマ（13本の弦・13個の柱（じ）・二つの台。弦がきらめいてふるえる）
+Sheet 'suisougaku_koto.png' 42 14 4 {
+  param($b, $ox, $f)
+  # 胴（桐）。上の面→手前の面→台
+  Rect $b ($ox + 2) 0 38 8 $p1
+  Rect $b ($ox + 2) 0 38 1 $p3
+  Rect $b ($ox + 2) 7 38 1 $p0
+  Rect $b ($ox + 2) 8 38 3 $p0
+  Rect $b ($ox + 2) 8 38 1 $p2
+  Rect $b ($ox + 2) 10 38 1 $r1
+  for ($x = 6; $x -lt 38; $x += 8) { Px $b ($ox + $x) 9 $p1 }
+  # 両はし（黒漆と金のふち）
+  foreach ($ex in 0, 39) {
+    Rect $b ($ox + $ex) 1 3 10 $r0
+    Rect $b ($ox + $ex) 1 1 10 $r1; Px $b ($ox + $ex + 1) 2 $r3; Px $b ($ox + $ex + 1) 3 $r2
+    Rect $b ($ox + $ex + 1) 5 2 1 $g2; Rect $b ($ox + $ex + 1) 8 2 1 $g2
+  }
+  Clear $b ($ox + 0) 1; Clear $b ($ox + 41) 1; Clear $b ($ox + 0) 10; Clear $b ($ox + 41) 10
+  # 弦（13本ぶんを細かい線で）。ふるえるコマは1段ずつずらして光る
+  foreach ($y in 1, 3, 5) {
+    $yy = $y + $(if ($f -eq 1) { 1 } elseif ($f -eq 3) { 0 } else { 0 })
+    $col = if (($f % 2) -eq 1) { $wht } else { $cream }
+    Rect $b ($ox + 3) $y 36 1 $col
+    Rect $b ($ox + 3) ($y + 1) 36 1 $p2
+  }
+  for ($i = 0; $i -lt 3; $i++) { Px $b ($ox + 4 + (($f * 11 + $i * 13) % 34)) (1 + ((($f + $i) % 3) * 2)) $g4 }
+  # 柱（じ）13個。ななめに並ぶ（手前から奥へ）
+  for ($i = 0; $i -lt 13; $i++) {
+    $x = [int][math]::Round(6 + $i * 2.5)
+    $y = [int][math]::Round(5.5 - $i * 0.42)
+    Rect $b ($ox + $x) $y 1 2 $r0
+    Px $b ($ox + $x) ($y - 1) $wht; Px $b ($ox + $x + 1) $y $p0
+  }
+  # 台（2つ）
+  foreach ($sx in 6, 31) {
+    Rect $b ($ox + $sx) 11 5 3 $r1; Rect $b ($ox + $sx) 11 5 1 $r2; Rect $b ($ox + $sx) 13 5 1 $r0
+    Px $b ($ox + $sx) 13 $clr; Px $b ($ox + $sx + 4) 13 $clr
+  }
+}
+
+# ---- 音の波 14x20 4コマ（楽器から広がる弧。左の点がもと）
+Sheet 'suisougaku_wave.png' 14 20 4 {
+  param($b, $ox, $f)
+  $rings = @(@(3, 255), @(3, 255, 6, 210), @(6, 210, 9, 160), @(9, 140, 12, 80))[$f]
+  for ($k = 0; $k -lt $rings.Count; $k += 2) {
+    $rad = $rings[$k]; $al = $rings[$k + 1]
+    $c = CA '#fff3b0' $al
+    $o = CA '#5e1230' ([int]($al * 0.7))
+    for ($d = -52; $d -le 52; $d += 3) {
+      $a = $d * [math]::PI / 180
+      $x = [int][math]::Round(1 + $rad * [math]::Cos($a)); $y = [int][math]::Round(10 + $rad * 1.25 * [math]::Sin($a))
+      Px $b ($ox + $x) ($y + 1) $o
+    }
+    for ($d = -52; $d -le 52; $d += 2) {
+      $a = $d * [math]::PI / 180
+      $x = [int][math]::Round(1 + $rad * [math]::Cos($a)); $y = [int][math]::Round(10 + $rad * 1.25 * [math]::Sin($a))
+      Px $b ($ox + $x) $y $c
+    }
+  }
 }

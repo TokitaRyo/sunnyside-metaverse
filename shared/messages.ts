@@ -18,6 +18,8 @@ export interface JoinOptions {
   consent: string;
   /** ブラウザに保存したランダムな訪問者ID（再訪を数えるため。個人は特定しない） */
   vid: string;
+  /** 見た目。encodeLook() の文字列（サーバーが形を確かめる）。無ければ髪型だけ */
+  look?: string;
   /** touch=スマホ・タブレット, desktop=パソコン */
   device: "touch" | "desktop";
 }

@@ -1,16 +1,20 @@
-/** 吹奏楽部の演奏会場。専用ドット絵は scripts/stalls/suisougaku.ps1（suisougaku_*.png）。奥に3段の舞台と部員の半円、手前に指揮台・客席・受付 */
-export const meta = { id: "suisougaku", label: "吹奏楽部" };
+/** 吹奏楽・筝曲部（合併）の演奏会場。専用ドット絵は scripts/stalls/suisougaku.ps1（suisougaku_*.png）。奥に3段の舞台と部員の半円、手前に指揮台・客席・受付、右手前に和楽器コーナー（毛氈の上の三味線・尺八・筝） */
+export const meta = { id: "suisougaku", label: "吹奏楽・筝曲部" };
 
 export default function layout(k) {
   // アニメ
   k.custom("suisougaku_sign", undefined, undefined, { frames: 6, fps: 5 });
+  k.custom("suisougaku_shamisen", undefined, undefined, { frames: 4, fps: 6 });
+  k.custom("suisougaku_shakuhachi", undefined, undefined, { frames: 4, fps: 3 });
+  k.custom("suisougaku_koto", undefined, undefined, { frames: 4, fps: 5 });
+  k.custom("suisougaku_wave", undefined, undefined, { frames: 4, fps: 3 });
   k.custom("suisougaku_baton", undefined, undefined, { frames: 4, fps: 4 });
   k.custom("suisougaku_glint", undefined, undefined, { frames: 4, fps: 4 });
   k.custom("suisougaku_notes", undefined, undefined, { frames: 4, fps: 2 });
   k.custom("suisougaku_nobori_a", 1, 56, { frames: 4, fps: 3 });
-  k.custom("suisougaku_nobori_b", 1, 46, { frames: 4, fps: 3 });
+  k.custom("suisougaku_nobori_b", 1, 52, { frames: 4, fps: 3 });
   // 静止
-  for (const n of ["backdrop", "risers", "floor", "trumpet", "trombone", "tuba", "horn", "sax", "clarinet", "flute", "snare", "bassdrum", "timpani", "cymbal", "stand", "podium", "chairback", "chairseat", "booth"]) k.custom(`suisougaku_${n}`);
+  for (const n of ["backdrop", "risers", "floor", "trumpet", "trombone", "tuba", "horn", "sax", "clarinet", "flute", "snare", "bassdrum", "timpani", "cymbal", "stand", "podium", "chairback", "chairseat", "booth", "mosen"]) k.custom(`suisougaku_${n}`);
 
   const { put, person } = k;
   const glint = (dx, foot, frame) => put("suisougaku_glint", dx, foot, { by: 130, frame });
@@ -144,6 +148,7 @@ export default function layout(k) {
     lines: [
       "みなさん、ようこそ！ ぼくが しきしゃだよ。",
       "しきぼうを ふって、みんなの おとを ひとつに あわせるのが しごとなんだ。",
+      "ことや しゃみせん、しゃくはちの ぶいんも いっしょに えんそうするよ。わがっきの ひびきも たのしんでね。",
       "ぶいんたちの えんそうを、ゆっくり きいていってね。",
     ],
   });
@@ -161,19 +166,48 @@ export default function layout(k) {
     put("suisougaku_chairseat", dx, foot + 1, { by: foot + 1 });
   };
   seat(-28, 113, "human_bowlhair_idle", { name: "おきゃくさん", lines: ["ここは さいしょの れつ！ えんそうが とっても ちかくで きこえるよ。", "ぶいんの みなさん、きらきらしてる！"] });
-  seat(28, 113, "human_curlyhair_idle", { name: "おきゃくさん", lines: ["ラッパの おとが きんいろに ひかって みえるみたい。", "いちばん すきなのは、たいこの ひびきかな。"] }, true);
-  seat(50, 113, "human_spikeyhair_idle", null, true);
-  seat(66, 113, "human_longhair_idle", null, true);
-  seat(-28, 126, "human_shorthair_idle", null);
-  seat(30, 126, "human_longhair_idle", { name: "こども", lines: ["ぼくも おおきくなったら、ふくがっきを やってみたいな！", "ピカピカの がっきが かっこいいんだ。"] }, true);
-  seat(52, 126, "human_mophair_idle", null, true);
+  seat(-28, 126, "human_shorthair_idle", { name: "こども", lines: ["ぼくも おおきくなったら、ふくがっきを やってみたいな！", "ピカピカの がっきが かっこいいんだ。"] });
+
+  // ---- 和楽器コーナー（右手前）。筝曲部の部員が毛氈（もうせん）と畳の上で演奏する。通路（中央の赤い絨毯）と右の外側はあけてある
+  put("suisougaku_mosen", 48, 128, { sort: "floor" });
+  // 奥の列: 三味線（左）・尺八（右）。手前の列: 筝（まん中）
+  person("human_longhair_idle", 28, 110, {
+    name: "しゃみせん",
+    lines: [
+      "しゃみせんは、バチで 3ぼんの いとを はじいて ひく がっきだよ。",
+      "どうに かわが はってあって、ベンッと ちからづよい おとが でるんだ。",
+      "すいそうがくぶと いっしょに なって、いろんな おとが たのしめるよ！",
+    ],
+  });
+  put("suisougaku_shamisen", 34, 112, { by: 111 });
+  put("suisougaku_wave", 19, 114, { by: 130, flip: true });
+  person("human_spikeyhair_idle", 68, 110, {
+    name: "しゃくはち",
+    lines: [
+      "しゃくはちは、たけで できた ふえ。いきを ふきこんで ならすよ。",
+      "あなを ゆびで ふさいだり ひらいたりして、おとの たかさを かえるんだ。",
+      "しずかで ふかい おとが、すいそうがくの ひびきと まざるのも すてきでしょ？",
+    ],
+  });
+  put("suisougaku_shakuhachi", 62, 116, { by: 111, flip: true });
+  person("human_bowlhair_idle", 48, 120, {
+    name: "おこと",
+    lines: [
+      "ことは、13ぼんの いとを つめで はじいて ひく ながい がっきだよ。",
+      "ならんでいる 「ことじ」を うごかして、おとの たかさを きめるんだ。",
+      "ぼくたち ことの ぶいんは、すいそうがくぶと いっしょに なったんだよ。よろしくね！",
+    ],
+  });
+  put("suisougaku_koto", 48, 127, { by: 127, hit: [38, 5] });
+  put("suisougaku_wave", 77, 110, { by: 130, frame: 2 });
 
   // ---- 受付（プログラムを配る）
   put("suisougaku_booth", -56, 128, { hit: [44, 8] });
   person("human_curlyhair_idle", -56, 110, {
     name: "うけつけ",
     lines: [
-      "ようこそ！ ここは うけつけだよ。プログラムを くばっているよ。",
+      "ようこそ！ ここは すいそうがく・ことの きょくぶの うけつけだよ。プログラムを くばっているよ。",
+      "すいそうがくぶと ことの きょくぶが いっしょに なったから、わがっきの えんそうも きけるんだ。",
       "あかい じゅうたんの つうろを すすむと、ぶいんの ステージに つくよ。",
       "すきな せきに すわって、ゆっくり えんそうを たのしんでね。",
     ],

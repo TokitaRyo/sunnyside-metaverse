@@ -44,7 +44,7 @@ export interface NetHandlers {
 export class Network {
   room!: NetRoom;
 
-  async join(name: string, hair: string, extra: Pick<JoinOptions, "consent" | "vid" | "device">, h: NetHandlers): Promise<void> {
+  async join(name: string, hair: string, extra: Pick<JoinOptions, "consent" | "vid" | "device" | "look">, h: NetHandlers): Promise<void> {
     const client = new Client(serverUrl());
     // 部屋はサーバーが起動時に1つだけ作る。join のみ使い、満員なら断られる
     let room: NetRoom;

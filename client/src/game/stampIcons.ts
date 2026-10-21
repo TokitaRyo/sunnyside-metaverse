@@ -1,33 +1,13 @@
 import type Phaser from "phaser";
+import { ACCESSORY_IDS } from "@metaverse/shared";
 
 /**
  * 出店ごとのスタンプの絵柄（16x16のドット絵を横一列に並べた1枚の画像 client/public/brand/stamps/stamps.png）。
  * 並び順 = STAMP_ICON_IDS の順（scripts/gen-stamp-icons.ps1 と同じ順にする）。KeyItemDef.icon にこの id を入れる。
  * 画像が無い・id が無いときは、従来の星にする。
  */
-export const STAMP_ICON_IDS = [
-  "okonomiyaki",
-  "taiyaki",
-  "cafe",
-  "chocobanana",
-  "takoyaki",
-  "shateki",
-  "suisougaku",
-  "sadokado",
-  "aburasoba",
-  "wataame",
-  "potato",
-  "casino",
-  "obakeyashiki",
-  "programming",
-  "science",
-  "library",
-  "handmade",
-  "photoart",
-  "dtm",
-  "amateurradio",
-  "volleyball",
-] as const;
+// かざり（アバター）にも同じ絵を使うので、並びは shared/avatar.ts の ACCESSORY_IDS と同じものを使う
+export const STAMP_ICON_IDS = ACCESSORY_IDS;
 
 export const STAMP_TEX = "stamp-icons";
 export const STAMP_FRAME = 16;

@@ -161,9 +161,10 @@ function boot(): void {
   game.events.on(EV_JOIN_FAILED, (msg: string) => join.showError(msg.includes("満員") || msg.includes("利用できません") || msg.includes("同意") ? msg : `サーバーに接続できません（${msg}）`));
   game.events.on(EV_CONN, (kind: "ok" | "reconnecting" | "lost", code?: number) => setConn(kind, code));
 
-  join.onSubmit = ({ name, hair }) => {
+  join.onSubmit = (info) => {
     bgm.start(); // クリック(ユーザー操作)のハンドラ内なので自動再生制限を通る
-    game.scene.start("World", { name, hair, input });
+    // えらんだアバターを大きく見せてから、ゲームに接続して降下の演出へ（接続に失敗したら、元の画面に戻る）
+    void join.showcase(info).then(() => game.scene.start("World", { name: info.name, hair: info.look.hair, look: info.look, input }));
   };
 
   // 開発時のデバッグ用

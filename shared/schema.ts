@@ -4,6 +4,8 @@ import { schema, t, type SchemaType } from "@colyseus/schema";
 export const Player = schema({
   name: t.string(),
   hair: t.string(),
+  /** 見た目（髪・目・服の色とかざり）。encodeLook() の文字列。空なら素材のまま */
+  look: t.string(),
   x: t.float32(),
   y: t.float32(),
   flipX: t.boolean(),
