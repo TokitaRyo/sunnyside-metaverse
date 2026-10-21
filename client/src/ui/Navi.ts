@@ -41,6 +41,7 @@ export class Navi {
   private bannerTimer = 0;
   private tipTimer = 0;
   private lastDraw = 0;
+  private distKey = "";
 
   constructor() {
     Navi.current = this;
@@ -146,7 +147,13 @@ export class Navi {
     this.compass.hidden = false;
     const ang = Math.atan2(best.y - me.y, best.x - me.x);
     this.arrow.style.transform = `rotate(${ang}rad)`;
-    this.dist.textContent = `${best.name ?? "スタンプ"}  ${Math.round(bd / map.tileSize)}マス`;
+    // 名前は狭い画面（スマホ）では CSS で隠す
+    const nm = best.name ?? "スタンプ";
+    const n = `${Math.round(bd / map.tileSize)}マス`;
+    if (this.distKey !== nm + n) {
+      this.distKey = nm + n;
+      this.dist.replaceChildren(Object.assign(document.createElement("span"), { className: "nm", textContent: nm + "  " }), n);
+    }
   }
 
   private draw(now: number, me: Pt, peers: Pt[], remaining: KeyItemDef[]): void {

@@ -23,7 +23,7 @@ import { StampCard } from "../ui/StampCard";
 import { Navi } from "../ui/Navi";
 import { sfx } from "../game/sfx";
 import { deviceKind, visitorId } from "../game/visitor";
-import { TILES_KEY, elementKey, objectKey, tilesetKey } from "../game/assets";
+import { TILES_KEY, elementKey, objectFrame, objectKey, tilesetKey } from "../game/assets";
 import { Character } from "../game/Character";
 import type { InputState } from "../game/InputState";
 import { Network } from "../net/Network";
@@ -46,6 +46,20 @@ export interface WorldInit {
  * 送信15Hz/patch20Hz に対して 0.001 で実機確認済みの落としどころ。触るなら docs/decisions.md も更新。
  */
 const REMOTE_SMOOTHING = 0.001;
+/**
+ * 一度に見せる他の参加者の数（近い順）。大勢が同じ場所に集まっても、描く数・名札の数を増やさないための上限。
+ * 余白(HYSTERESIS)を持たせて、境目で出たり消えたりをくり返さないようにする。スマホはさらに少なく。
+ */
+const MAX_VISIBLE_PEERS = 8;
+const MAX_VISIBLE_PEERS_TOUCH = 6;
+const PEER_HYSTERESIS = 2;
+const PEER_CHECK_MS = 250;
+/** 画面から離れた配置物のアニメを止める判定の余白(ワールドpx)と、見直す間隔 */
+const ANIM_MARGIN = 160;
+const ANIM_CHECK_MS = 300;
+/** 名札を出す画面の外側の余白(CSS px)。これより外の名札は動かさない */
+const TAG_MARGIN = 80;
+
 /** これ以上離れたら補間せず瞬間移動（入室直後・棄却復帰など） */
 const REMOTE_SNAP_DIST = 96;
 
@@ -100,6 +114,8 @@ export interface TileLayerRuntime {
 export interface ObjectEntry {
   o: ObjectDef;
   s: Phaser.GameObjects.Sprite;
+  /** 画面から遠いのでアニメを止めている */
+  frozen?: boolean;
 }
 
 /** キーアイテム1個ぶんの「データ」と「描画」（星・光・影） */
@@ -117,6 +133,10 @@ export class WorldScene extends Phaser.Scene {
   private talk?: Talk;
   private stampCard?: StampCard;
   private navi?: Navi;
+  /** いま見せている他の参加者（近い順の上位。maxVisiblePeers 人ほど） */
+  private visiblePeers = new Set<string>();
+  private peerCheckAt = 0;
+  private animCheckAt = 0;
   /** 参加人数の表示を最後に更新した秒 */
   private onlineSec = -1;
   private tipsChecked = false;
@@ -161,6 +181,9 @@ export class WorldScene extends Phaser.Scene {
     this.talk = undefined;
     this.stampCard = undefined;
     this.navi = undefined;
+    this.visiblePeers = new Set();
+    this.peerCheckAt = 0;
+    this.animCheckAt = 0;
     this.onlineSec = -1;
     this.tipsChecked = false;
     this.intro = false;
@@ -252,7 +275,8 @@ export class WorldScene extends Phaser.Scene {
     const animated = def.frames > 1 && this.anims.exists(key);
     // 念のため 0..frames-1 に収める（負の値・範囲外でも落とさない）
     const start = animated ? (((o.frame ?? 0) % def.frames) + def.frames) % def.frames : 0;
-    const s = this.add.sprite(o.x, o.y, key, start);
+    const tex = objectFrame(o.sprite, start); // アトラスの中にあれば、そのページのコマ
+    const s = this.add.sprite(o.x, o.y, tex.key, tex.frame);
     s.setOrigin(def.ox / def.fw, def.oy / def.fh);
     if (o.sx !== undefined || o.sy !== undefined) s.setScale(o.sx ?? 1, o.sy ?? 1);
     if (o.angle) s.setAngle(o.angle);
@@ -737,7 +761,48 @@ export class WorldScene extends Phaser.Scene {
 
     for (const e of this.keyItemEntries) this.placeKeyItem(e, this.time.now);
     if (this.me && this.hud && !this.intro) this.updateLocal(dt, delta);
+    this.updatePeerVisibility(this.time.now);
+    this.updateObjectAnims(this.time.now);
     this.updateNavi();
+  }
+
+  /**
+   * 画面から遠い配置物のアニメを止める（出店だけで400個以上がアニメしていて、見えないものまで毎フレーム更新すると無駄）。
+   * 画面に入る少し手前で再開する。ほかの物（人物・タイル）には影響しない。
+   */
+  private updateObjectAnims(now: number): void {
+    if (now < this.animCheckAt) return;
+    this.animCheckAt = now + ANIM_CHECK_MS;
+    const v = this.cameras.main.worldView;
+    const x0 = v.x - ANIM_MARGIN, x1 = v.right + ANIM_MARGIN, y0 = v.y - ANIM_MARGIN, y1 = v.bottom + ANIM_MARGIN;
+    for (const e of this.objectEntries) {
+      const s = e.s;
+      if (!s.anims.currentAnim) continue;
+      // 絵の大きさぶんは余白に含める（大きな看板が、端がまだ見えているのに止まらないように）
+      const hw = s.displayWidth, hh = s.displayHeight;
+      const inside = s.x + hw > x0 && s.x - hw < x1 && s.y + hh > y0 && s.y - hh < y1;
+      if (inside === !e.frozen) continue;
+      e.frozen = !inside;
+      if (inside) s.anims.resume();
+      else s.anims.pause();
+    }
+  }
+
+  /** 近い順に数人だけ見せる。250msごとに見直し、順位が少し入れ替わるくらいでは切り替えない */
+  private updatePeerVisibility(now: number): void {
+    if (!this.me || now < this.peerCheckAt) return;
+    this.peerCheckAt = now + PEER_CHECK_MS;
+    const max = document.body.classList.contains("touch") ? MAX_VISIBLE_PEERS_TOUCH : MAX_VISIBLE_PEERS;
+    const me = this.me;
+    const order = [...this.remotes]
+      .map(([id, r]) => ({ id, r, d: Math.hypot(r.char.x - me.x, r.char.y - me.y) }))
+      .sort((a, b) => a.d - b.d);
+    const next = new Set<string>();
+    order.forEach((p, rank) => {
+      if (rank < max || (this.visiblePeers.has(p.id) && rank < max + PEER_HYSTERESIS)) next.add(p.id);
+    });
+    this.visiblePeers = next;
+    for (const p of order) p.r.char.setShown(next.has(p.id));
   }
 
   /** ミニマップ・場所の名前・方位マーカー・参加人数・はじめてのヒント（プレイ中のみ） */
@@ -890,13 +955,20 @@ export class WorldScene extends Phaser.Scene {
     const wv = cam.worldView;
     const z = cam.zoom;
     const HEAD = 20; // 足元から頭上までのワールドpx
+    const W = this.scale.width, H = this.scale.height;
+    // 画面の外にある名札は動かさない（NPCの名札だけで100個以上あり、歩くたびに全部のDOMを書き換えると重い）
     const place = (id: string, x: number, y: number) => {
       const sx = (x - wv.x) * z;
       const sy = (y - HEAD - wv.y) * z;
-      this.hud.moveTag(id, sx, sy);
+      if (sx < -TAG_MARGIN || sx > W + TAG_MARGIN || sy < -TAG_MARGIN || sy > H + TAG_MARGIN) this.hud.hideTag(id);
+      else this.hud.moveTag(id, sx, sy);
     };
     if (this.me) place(this.myId, this.me.x, this.me.y);
-    for (const [id, r] of this.remotes) place(id, r.char.x, r.char.y);
+    for (const [id, r] of this.remotes) {
+      // 見せていない参加者の名札・吹き出しも出さない
+      if (r.char.isShown) place(id, r.char.x, r.char.y);
+      else this.hud.hideTag(id);
+    }
     this.mobs.forEach((c, i) => place(`mob:${i}`, c.x, c.y));
     this.objectEntries.forEach((e, i) => {
       if (e.o.npc) place(`npc:${i}`, e.o.x, e.o.by);

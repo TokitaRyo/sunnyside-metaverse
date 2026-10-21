@@ -40,6 +40,7 @@ export class Hud {
       Hud.staticBound = true;
       this.bindChat();
       this.bindPad();
+      this.bindTouchToggles();
     }
     if (matchMedia("(pointer: coarse)").matches || new URLSearchParams(location.search).has("pad")) {
       document.body.classList.add("touch");
@@ -182,6 +183,37 @@ export class Hud {
       });
       bar.append(btn);
       this.emoteButtons.set(id, btn);
+    });
+  }
+
+  /**
+   * スマホ用の「エモート」「チャット」ボタン。エモートは押すと一覧が開き、選ぶと閉じる。
+   * チャットは押すと入力欄が出て（キーボードも開く）、送信するか外をタップすると閉じる。リスナーはページで1回だけ。
+   */
+  private bindTouchToggles(): void {
+    const bar = $("emote-bar");
+    const et = $<HTMLButtonElement>("emote-toggle");
+    const setEmote = (open: boolean) => {
+      bar.classList.toggle("open", open);
+      document.body.classList.toggle("emote-open", open); // 開いている間は「話す」ボタンを隠す（狭い画面で重ならないように）
+      et.setAttribute("aria-expanded", String(open));
+    };
+    et.addEventListener("click", () => setEmote(!bar.classList.contains("open")));
+    // 一覧のどれかを選んだら閉じる（ボタン側の click はその前に実行される）
+    bar.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest("button")) setEmote(false);
+    });
+    const form = $("chat-form");
+    const input = $<HTMLInputElement>("chat-input");
+    $("chat-toggle").addEventListener("click", () => {
+      setEmote(false);
+      form.classList.add("open");
+      document.body.classList.add("chat-open"); // 入力中は、パッドなど下のボタンを隠す
+      input.focus(); // タップの操作の中で focus しないと、iOS ではキーボードが開かない
+    });
+    input.addEventListener("blur", () => {
+      form.classList.remove("open");
+      document.body.classList.remove("chat-open");
     });
   }
 

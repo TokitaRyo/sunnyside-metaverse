@@ -28,3 +28,6 @@ reference/stall-previews/
 # 管理ページの記録（チャット・滞在時間。個人情報を含むので絶対にコミットしない）
 data/
 server/data/
+
+# 本番ビルドのときに作るアトラス（client/scripts/pack-atlas.mjs の出力）
+client/public/atlas/

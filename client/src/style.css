@@ -857,3 +857,116 @@ body.intro #hud, body.intro #labels { opacity: 0; pointer-events: none; }
 .terms-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 14px; border-top: 1px solid #2f2a63; }
 .terms-foot button { font: inherit; font-weight: 800; padding: 9px 18px; color: #1a1448; background: #6fe8ff; border: 0; border-radius: 10px; cursor: pointer; }
 .terms-foot button.ghost { color: #ece9ff; background: #2a2560; }
+
+/* ================= 画面の部品の置き直し（重なり・押せない問題の整理） =================
+   ・左上のボタンは1本の列(#hud-top)にまとめた（幅が変わっても重ならない）。
+   ・スマホでは、エモートとチャットは右下のボタンから開く。パッド・走る・会話の窓は、重ならない場所に置く。
+   ・飾りの表示（バナー・ヒント・方位）は、押せる部品の上にかぶせない（pointer-events: none）。 */
+button, .btn, #terms-open { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+#hud-top { position: absolute; left: 54px; top: 10px; display: flex; align-items: center; gap: 6px; pointer-events: none; }
+#hud-top > * { pointer-events: auto; position: static; }
+#hud-top #stamp-btn { height: 34px; }
+#hud-top #online-count { pointer-events: none; }
+#hud-top #photo-btn, #hud-top #minimap-btn {
+  width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; color: #fff; background: rgba(30, 40, 25, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 17px;
+}
+#hud-top #photo-btn:hover, #hud-top #minimap-btn:hover { background: rgba(45, 60, 38, 0.92); }
+#minimap { top: 52px; }
+#minimap.closed { display: none; }
+#compass { top: 52px; }
+#compass .nm { display: inline; }
+#emote-toggle, #chat-toggle { display: none; }
+#join.dive { pointer-events: none; }
+
+/* ---- スマホ・タッチ端末 ---- */
+.touch #hud-top { left: max(52px, calc(env(safe-area-inset-left) + 44px)); }
+.touch #hud-top #stamp-btn { height: 34px; }
+.touch #minimap { top: 52px; right: max(10px, env(safe-area-inset-right)); width: 124px; padding: 4px; }
+.touch #minimap-label { font-size: 10px; min-height: 13px; margin-top: 2px; }
+.touch #compass { top: 52px; left: 10px; height: 28px; font-size: 11px; }
+.touch #compass .nm { display: none; }
+.touch #chat-log { top: 88px; bottom: auto; left: 10px; width: min(280px, calc(100vw - 160px)); max-height: 20vh; pointer-events: none; font-size: 12px; }
+.touch #stamp-toast { top: 22%; }
+.touch #area-banner { top: 12%; font-size: 18px; }
+.touch #tip { top: 34%; bottom: auto; }
+
+/* パッド・走る・エモート・チャットのボタン（右下に縦に並べる） */
+.touch #pad { left: max(12px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom)); }
+.touch #run-btn { right: max(14px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); }
+.touch #emote-toggle, .touch #chat-toggle {
+  display: grid; place-items: center; position: absolute; right: max(22px, env(safe-area-inset-right));
+  width: 52px; height: 52px; padding: 0; font-size: 22px; line-height: 1; cursor: pointer;
+  border: 2px solid rgba(20, 30, 15, 0.55); border-radius: 50%; background: rgba(253, 248, 234, 0.8);
+}
+.touch #emote-toggle { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px); }
+.touch #chat-toggle { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 144px); }
+.touch #emote-toggle[aria-expanded="true"] { background: var(--sun); }
+
+/* エモートの一覧（スマホ）: ボタンの左に、2列で開く */
+.touch #emote-bar {
+  display: none; position: absolute; top: auto; left: auto;
+  right: calc(max(22px, env(safe-area-inset-right)) + 62px); bottom: calc(max(16px, env(safe-area-inset-bottom)) + 70px);
+  width: 188px; max-width: none; grid-template-columns: repeat(2, 1fr); gap: 6px;
+  padding: 8px; background: rgba(20, 30, 15, 0.7); border-radius: 12px; z-index: 4;
+}
+.touch #emote-bar.open { display: grid; }
+.touch #emote-bar button { height: 40px; padding: 0 6px; font-size: 13px; }
+.touch #emote-bar kbd { display: none; }
+
+/* チャット入力（スマホ）: 普通は隠れていて、💬 を押すと下いっぱいに出る */
+.touch #chat-form { display: none; left: 10px; right: 10px; bottom: 10px; width: auto; z-index: 6; }
+.touch #chat-form.open { display: block; }
+
+/* 会話: 「話す」と会話の窓は、パッドの上に置く */
+.touch #talk-prompt { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 190px); }
+.touch #talk-box { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 190px); width: min(560px, calc(100vw - 24px)); }
+@media (orientation: landscape) and (max-height: 520px) {
+  /* 横向きのスマホ: 縦が足りないので、会話の窓は左右のボタンの間の下に置く */
+  .touch #talk-prompt { bottom: 16px; }
+  .touch #talk-box { bottom: 12px; width: min(520px, calc(100vw - 440px)); min-height: 96px; padding: 8px 14px 20px; }
+  .touch #talk-text { font-size: 14px; }
+  .touch #pad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); }
+  .touch #run-btn { width: 64px; height: 64px; }
+  .touch #emote-toggle { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 76px); }
+  .touch #chat-toggle { right: calc(max(22px, env(safe-area-inset-right)) + 62px); bottom: max(22px, env(safe-area-inset-bottom)); }
+  .touch #emote-bar { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 60px); width: 170px; }
+  .touch #chat-log { max-height: 18vh; }
+  .touch #minimap { width: 104px; }
+}
+
+/* ---- 重なりの整理（2回め）: 押せる物どうし・かぶさる物を、もう一度ずらす ---- */
+/* 右下のボタンの縦の並び（下から 走る / 😊 / 💬）の上に、エモートの一覧を開く */
+.touch #emote-bar {
+  right: max(14px, env(safe-area-inset-right)); left: auto;
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 214px);
+  width: min(188px, calc(100vw - 28px));
+}
+/* 「話す」はパッドの上、左寄せ。会話の窓は、右下のボタンの列より上に出す */
+.touch #talk-prompt { left: max(12px, env(safe-area-inset-left)); transform: none; max-width: calc(100vw - 150px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 196px); }
+.touch #talk-box { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 222px); }
+.touch #talk-box:not([hidden]) ~ #emote-bar { display: none; }
+/* チャットを書いている間は、下のボタン（パッド・走る・😊・💬）を隠して、入力欄に場所をあける */
+body.chat-open #pad, body.chat-open #run-btn, body.chat-open #emote-toggle, body.chat-open #chat-toggle, body.chat-open #talk-prompt { visibility: hidden; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .touch #emote-bar { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 140px); right: max(14px, env(safe-area-inset-right)); width: 170px; }
+  .touch #talk-prompt { bottom: 16px; left: calc(max(12px, env(safe-area-inset-left)) + 170px); max-width: 200px; }
+  .touch #talk-box { bottom: 12px; left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 440px)); }
+}
+
+/* 「話す」ボタンと会話の窓は、中央寄せの transform を使うので、出現のアニメも中央寄せを含めて動かす（出る瞬間に横へずれないように） */
+@keyframes pop-c { from { transform: translateX(-50%) translateY(4px) scale(0.92); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+#talk-box, #talk-prompt { animation-name: pop-c; }
+.touch #talk-prompt { animation-name: pop; }
+@media (orientation: landscape) and (max-height: 520px) {
+  /* 横向きのスマホ: エモートの一覧は、右下のボタンの列の左に開く（ミニマップや会話の窓にかぶらない） */
+  .touch #emote-bar { right: calc(max(14px, env(safe-area-inset-right)) + 150px); bottom: max(16px, env(safe-area-inset-bottom)); }
+}
+
+body.emote-open #talk-prompt { visibility: hidden; }
+.touch #tip { top: 26%; }
+@media (max-width: 360px) {
+  .touch #emote-bar { width: 160px; }
+  .touch #chat-log { max-height: 16vh; }
+}

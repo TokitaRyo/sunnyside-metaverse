@@ -17,10 +17,14 @@
       <form id="chat-form" autocomplete="off">
         <input id="chat-input" type="text" maxlength="140" placeholder="Enter でチャット / Esc で戻る" enterkeyhint="send" />
       </form>
-      <div id="online-count" title="いま遊んでいる人数"></div>
-      <button id="photo-btn" type="button" title="写真を撮る（画像が保存されます）" aria-label="写真を撮る">📷</button>
+      <!-- 左上のボタン列（ここに並べると、画面の幅が変わっても重ならない） -->
+      <div id="hud-top">
+        <button id="stamp-btn" type="button" title="スタンプカード" hidden></button>
+        <div id="online-count" title="いま遊んでいる人数"></div>
+        <button id="photo-btn" type="button" title="写真を撮る（画像が保存されます）" aria-label="写真を撮る">📷</button>
+        <button id="minimap-btn" type="button" title="ミニマップ（Mキー）" aria-label="ミニマップ">🗺</button>
+      </div>
       <div id="minimap" class="closed">
-        <button id="minimap-btn" type="button" title="ミニマップ（Mキー）">🗺</button>
         <canvas id="minimap-cv"></canvas>
         <div id="minimap-label"></div>
       </div>
@@ -30,7 +34,6 @@
       </div>
       <div id="area-banner" hidden></div>
       <div id="tip" hidden></div>
-      <button id="stamp-btn" type="button" title="スタンプカード" hidden></button>
       <div id="stamp-toast" hidden></div>
       <div id="stamp-card" hidden role="dialog" aria-label="スタンプカード">
         <div class="sc-head"><b>スタンプカード</b><span id="stamp-count"></span><button id="stamp-close" type="button" aria-label="とじる">✕</button></div>
@@ -45,6 +48,9 @@
         <div id="talk-hint"></div>
       </div>
       <div id="emote-bar"></div>
+      <!-- スマホ用: エモートとチャットは、右下のボタンから開く（画面を広く使うため） -->
+      <button id="emote-toggle" type="button" aria-label="エモート" aria-expanded="false">😊</button>
+      <button id="chat-toggle" type="button" aria-label="チャットを書く">💬</button>
       <div id="pad" aria-hidden="true">
         <button data-pad="up" class="pad-up"><img src="assets/ui/arrow_up.png" alt="上" /></button>
         <button data-pad="left" class="pad-left"><img src="assets/ui/arrow_left.png" alt="左" /></button>

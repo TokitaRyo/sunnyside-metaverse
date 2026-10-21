@@ -17,6 +17,39 @@ export const elementKey = (name: string) => `el/${name}`;
 export const tilesetKey = (name: string) => `ts/${name}`;
 export const objectKey = (name: string) => `obj/${name}`;
 
+/**
+ * アトラス（配置物のシートを数枚の大きな画像に詰めたもの。client/scripts/pack-atlas.mjs が作る）。
+ * 本番ビルドで manifest.json があるときだけ使う。無ければ、今までどおり1枚ずつ読み込む。
+ */
+export interface AtlasManifest {
+  pages: { file: string; w: number; h: number }[];
+  sprites: Record<string, { p: number; x: number; y: number }>;
+}
+let atlas: AtlasManifest | null = null;
+export const atlasKey = (page: number) => `atlas/${page}`;
+export function setAtlas(m: AtlasManifest | null): void {
+  atlas = m && Array.isArray(m.pages) && m.sprites ? m : null;
+}
+export const hasAtlas = (): boolean => atlas !== null;
+
+/** 配置物の絵のテクスチャキーとフレーム。アトラスに入っていれば、そのページのフレーム名（"名前#番号"） */
+export function objectFrame(name: string, index = 0): { key: string; frame: string | number } {
+  const a = atlas?.sprites[name];
+  return a ? { key: atlasKey(a.p), frame: `${name}#${index}` } : { key: objectKey(name), frame: index };
+}
+
+/** 読み込み後に、アトラスの各シートのコマ（フレーム）をテクスチャに登録する */
+export function registerAtlasFrames(textures: Phaser.Textures.TextureManager): void {
+  if (!atlas) return;
+  for (const [name, a] of Object.entries(atlas.sprites)) {
+    const sp = map.sprites?.[name];
+    const key = atlasKey(a.p);
+    if (!sp || !textures.exists(key)) continue;
+    const tex = textures.get(key);
+    for (let i = 0; i < sp.frames; i++) tex.add(`${name}#${i}`, 0, a.x + i * sp.fw, a.y, sp.fw, sp.fh);
+  }
+}
+
 /** 人間が重ねるレイヤー名（base → hair → tools） */
 export function humanLayers(hair: string): string[] {
   const order = sprites.characters.human.layerOrder ?? ["base", "hair", "tools"];
@@ -36,6 +69,7 @@ function pathOf(kind: string, layer: string | null, action: string): string {
 
 /** map.json とプレイヤー仕様から、実際に必要な素材だけを読み込む（フレーム数は必ず sprites.json から）。 */
 export function queueAssets(load: Phaser.Loader.LoaderPlugin): void {
+  // アトラスを使うときは、先に setAtlas() を呼んでおく
   load.setPath(ASSET_BASE);
   if (map.tileLayers) {
     // 任意枚数のタイル層を使うマップ: 使うタイルセットと配置物スプライトを map.json の定義どおりに読む
@@ -43,8 +77,10 @@ export function queueAssets(load: Phaser.Loader.LoaderPlugin): void {
     // カタログ項目(エディタ用の見本)は、実際に配置されているものだけ読む。エディタ(?edit=1)では全部読む
     const used = new Set((map.objects ?? []).map((o) => o.sprite));
     const editing = import.meta.env.DEV && new URLSearchParams(location.search).has("edit");
+    if (atlas) atlas.pages.forEach((pg, i) => load.image(atlasKey(i), pg.file));
     for (const [name, sp] of Object.entries(map.sprites ?? {})) {
       if (sp.crop) continue; // タイルセットの切り出しは、読み込み後に PreloadScene で作る
+      if (atlas?.sprites[name]) continue; // アトラスの中にある
       if (sp.catalog && !used.has(name) && !editing) continue;
       load.spritesheet(objectKey(name), sp.file, { frameWidth: sp.fw, frameHeight: sp.fh });
     }
@@ -126,6 +162,19 @@ export function createAnimations(scene: Phaser.Scene): void {
   }
   // 配置物（速度は個体ごとに play 時に上書きする）
   for (const [name, sp] of Object.entries(map.sprites ?? {})) {
-    if (sp.frames > 1) reg(objectKey(name), sp.frames, sp.fps, -1);
+    if (sp.frames <= 1) continue;
+    const a = atlas?.sprites[name];
+    if (a) {
+      const key = objectKey(name);
+      if (anims.exists(key) || !scene.textures.exists(atlasKey(a.p))) continue;
+      anims.create({
+        key,
+        frames: Array.from({ length: sp.frames }, (_, i) => ({ key: atlasKey(a.p), frame: `${name}#${i}` })),
+        frameRate: sp.fps,
+        repeat: -1,
+      });
+    } else {
+      reg(objectKey(name), sp.frames, sp.fps, -1);
+    }
   }
 }

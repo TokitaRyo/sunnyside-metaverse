@@ -49,7 +49,9 @@ export class Talk {
       this.prompt.hidden = true;
       return;
     }
-    const text = label ? `💬 ${label}と話す (E)` : "💬 話す (E)";
+    // キー操作の案内 (E) は、キーボードの無い端末では出さない
+    const key = document.body.classList.contains("touch") ? "" : " (E)";
+    const text = label ? `💬 ${label}と話す${key}` : `💬 話す${key}`;
     if (this.prompt.textContent !== text) this.prompt.textContent = text;
     this.prompt.hidden = false;
   }
@@ -120,6 +122,7 @@ export class Talk {
     const n = this.npc!;
     const done = this.shown >= n.lines[this.page].length;
     const last = this.page + 1 >= n.lines.length;
-    $("talk-hint").textContent = !done ? "" : last ? "▼ とじる (E)" : `▼ つぎへ (E)  ${this.page + 1}/${n.lines.length}`;
+    const key = document.body.classList.contains("touch") ? "" : " (E)";
+    $("talk-hint").textContent = !done ? "" : last ? `▼ とじる${key}` : `▼ つぎへ${key}  ${this.page + 1}/${n.lines.length}`;
   }
 }

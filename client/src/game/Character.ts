@@ -13,6 +13,8 @@ export class Character extends Phaser.GameObjects.Container {
   private sprites: Phaser.GameObjects.Sprite[] = [];
   private layerNames: (string | null)[];
   currentAction = "";
+  /** 画面に出しているか（出さない間は描かず、アニメも止めて、軽くする） */
+  private shown = true;
   /** リモート補間用の目標座標 */
   targetX: number;
   targetY: number;
@@ -62,6 +64,22 @@ export class Character extends Phaser.GameObjects.Container {
   isOneShotPlaying(): boolean {
     const a = this.sprites[0].anims;
     return a.isPlaying && a.currentAnim?.repeat !== -1;
+  }
+
+  /** 出す／出さない。出さない間はアニメを止める（人が多いとき、近くの数人だけ描くため） */
+  setShown(v: boolean): this {
+    if (this.shown === v) return this;
+    this.shown = v;
+    this.setVisible(v);
+    for (const s of this.sprites) {
+      if (v) s.anims.resume();
+      else s.anims.pause();
+    }
+    return this;
+  }
+
+  get isShown(): boolean {
+    return this.shown;
   }
 
   setFlip(flipX: boolean): this {
