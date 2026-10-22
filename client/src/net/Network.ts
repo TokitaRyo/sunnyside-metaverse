@@ -4,6 +4,8 @@ import {
   ROOM_NAME,
   MainRoomState,
   type ChatBroadcast,
+  type ChatDelete,
+  type ChatState,
   type ChatSend,
   type CorrectMessage,
   type EmoteBroadcast,
@@ -32,6 +34,10 @@ export interface NetHandlers {
   onPlayerChange(player: Player, sessionId: string): void;
   onPlayerRemove(player: Player, sessionId: string): void;
   onChat(msg: ChatBroadcast): void;
+  /** チャットの停止・再開（運営の操作）。入室時にも届く */
+  onChatState(msg: ChatState): void;
+  /** 運営が消した発言 */
+  onChatDelete(msg: ChatDelete): void;
   onEmote(msg: EmoteBroadcast): void;
   onCorrect(msg: CorrectMessage): void;
   /** 回線が途切れ、自動再接続を試みている */
@@ -65,6 +71,8 @@ export class Network {
     cb.onRemove("players", (player, sessionId) => h.onPlayerRemove(player, sessionId));
 
     room.onMessage(MSG.chat, (m: ChatBroadcast) => h.onChat(m));
+    room.onMessage(MSG.chatState, (m: ChatState) => h.onChatState(m));
+    room.onMessage(MSG.chatDelete, (m: ChatDelete) => h.onChatDelete(m));
     room.onMessage(MSG.emote, (m: EmoteBroadcast) => h.onEmote(m));
     room.onMessage(MSG.correct, (m: CorrectMessage) => h.onCorrect(m));
 

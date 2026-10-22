@@ -2,7 +2,15 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <!-- スマホ: 拡大しない・ノッチまで使う・キーボードが開いたら画面（レイアウト）を縮める（Android）。「ホーム画面に追加」すると、アドレスバーなしの全画面で開く -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AMPLIFIRE" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#04020d" />
     <title>AMPLIFIRE</title>
     <link rel="icon" href="data:," />
@@ -20,7 +28,9 @@
       <!-- 左上のボタン列（ここに並べると、画面の幅が変わっても重ならない） -->
       <div id="hud-top">
         <button id="stamp-btn" type="button" title="スタンプカード" hidden></button>
+        <button id="fs-btn" type="button" title="全画面にする" aria-label="全画面にする" hidden>⛶</button>
         <div id="online-count" title="いま遊んでいる人数"></div>
+        <button id="chat-vis-btn" type="button" title="チャット欄を隠す" aria-label="チャット欄を隠す" aria-pressed="true">💬</button>
         <button id="photo-btn" type="button" title="写真を撮る（画像が保存されます）" aria-label="写真を撮る">📷</button>
         <button id="minimap-btn" type="button" title="ミニマップ（Mキー）" aria-label="ミニマップ">🗺</button>
       </div>
@@ -141,6 +151,7 @@
           <button id="join-btn" type="submit" disabled>読み込み中…</button>
           <div class="bar"><i id="load-bar"></i></div>
           <p id="join-error" class="error" hidden></p>
+          <p id="ios-hint" class="ios-hint" hidden>📱 iPhone は、共有ボタン →「ホーム画面に追加」して開くと、アドレスバーが消えて全画面で遊べます。</p>
           <p class="hint">移動: WASD / 矢印キー ・ 走る: Shift ・ チャット: Enter ・ エモート: 1〜6 ・ 話す: E ・ ミニマップ: M</p>
           <p class="credit">チャットは参加者全員に見えます。本名・連絡先などの個人情報は書かないでね。</p>
           <p class="credit">ドット絵素材: Sunnyside World Asset Pack（danieldiggle）／オリジナルのドット絵・ロゴ: AMPLIFIRE／描画: Phaser・通信: Colyseus</p>

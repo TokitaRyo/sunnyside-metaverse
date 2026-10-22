@@ -48,7 +48,7 @@ export const EMOTES = {
   jump: { action: "jump", label: "ジャンプ", loop: false },
   roll: { action: "roll", label: "転がる", loop: false },
   wave: { action: "doing", label: "手を振る", loop: false },
-  sit: { action: "waiting", label: "座る", loop: true },
+  sword: { action: "attack", label: "剣", loop: false, bubble: "⚔️" },
   // 絵文字(bubble)が頭の上に出る前向きなエモート（学校行事の場なので、攻撃・やられるは入れない）
   heart: { action: "jump", label: "ハート", loop: false, bubble: "💖" },
   cheer: { action: "doing", label: "やったー", loop: false, bubble: "🎉" },

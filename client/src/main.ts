@@ -1,4 +1,6 @@
 import "./style.css";
+import { installTouchGuard } from "./ui/touchGuard";
+import { canFullscreen, isIOS, isStandalone, isTouchDevice, toggleFullscreen } from "./ui/Fullscreen";
 import Phaser from "phaser";
 import { bgm } from "./audio/Bgm";
 import { mapErrors } from "./config";
@@ -32,9 +34,9 @@ function setConn(kind: "ok" | "reconnecting" | "lost", code?: number): void {
   root.hidden = false;
   root.classList.toggle("soft", kind === "reconnecting");
   reload.hidden = kind === "reconnecting";
-  // 4002/4003 は運営による退室・利用停止（管理ページの操作）
-  const byAdmin = kind === "lost" && (code === 4002 || code === 4003);
-  text.textContent = kind === "reconnecting" ? "接続が切れました。再接続しています…" : byAdmin ? (code === 4003 ? "運営によって利用が停止されました。" : "運営によって退室しました。もう一度入るには、ページを再読込してください。") : "接続が切れました。ページを再読込してください。";
+  // 4801/4802 は運営による退室・利用停止（管理ページの操作。Colyseus 自身の 4001〜4003 などと区別する）
+  const byAdmin = kind === "lost" && (code === 4801 || code === 4802);
+  text.textContent = kind === "reconnecting" ? "接続が切れました。再接続しています…" : byAdmin ? (code === 4802 ? "運営によって利用が停止されました。" : "運営によって退室しました。もう一度入るには、ページを再読込してください。") : "接続が切れました。ページを再読込してください。";
 }
 
 /**
@@ -99,7 +101,25 @@ function setupDevToggle(game: Phaser.Game, join: JoinScreen, input: InputState):
   return { switchToEdit };
 }
 
+/** スマホ: 全画面のボタン（右上の列）と、iPhone 向けの案内。ブラウザのアドレスバー・タブを消すため */
+function setupFullscreen(): void {
+  const btn = document.getElementById("fs-btn") as HTMLButtonElement | null;
+  if (btn && isTouchDevice() && canFullscreen()) {
+    btn.hidden = false;
+    btn.addEventListener("click", () => toggleFullscreen());
+    document.addEventListener("fullscreenchange", () => {
+      const on = !!document.fullscreenElement;
+      btn.textContent = on ? "✕" : "⛶";
+      btn.title = btn.ariaLabel = on ? "全画面をやめる" : "全画面にする";
+    });
+  }
+  const hint = document.getElementById("ios-hint");
+  if (hint && isIOS() && !isStandalone()) hint.hidden = false;
+}
+
 function boot(): void {
+  installTouchGuard();
+  setupFullscreen();
   // 起動時に map.json を検証。問題があれば無言で落とさず画面とコンソールに出す（SPEC 5.2）
   if (mapErrors.length) {
     showFatal(`map.json に ${mapErrors.length} 件の問題があります`, mapErrors);

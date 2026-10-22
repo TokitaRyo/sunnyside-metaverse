@@ -11,6 +11,7 @@
     <header class="top">
       <h1>AMPLIFIRE <small>管理ページ</small></h1>
       <div class="top-r">
+        <button id="lock-btn" type="button" class="lock" title="チャットを、いま全員分 停止／再開します">💬 チャット: …</button>
         <span id="updated">読み込み中…</span>
         <label class="auto"><input type="checkbox" id="auto" checked /> 10秒ごとに更新</label>
         <button id="reload" type="button">いま更新</button>
@@ -79,6 +80,11 @@
             <button type="submit">探す</button>
             <a class="btn" href="/admin/api/export/chat.csv">CSVで保存</a>
           </form>
+          <div class="row sel-bar">
+            <label class="selall"><input type="checkbox" id="chat-all" /> 表示中をすべて選ぶ</label>
+            <span id="sel-count" class="note">0件 選択中</span>
+            <button id="chat-del" type="button" class="red" disabled>選んだ発言を削除</button>
+          </div>
           <div id="chat-list" class="chatlist"></div>
           <button id="chat-more" type="button" class="more" hidden>もっと古い分を見る</button>
         </div>

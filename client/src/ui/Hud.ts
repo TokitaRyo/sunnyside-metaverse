@@ -4,6 +4,8 @@ import type { InputState } from "../game/InputState";
 interface Tag {
   root: HTMLDivElement;
   bubble?: HTMLDivElement;
+  /** いま出している吹き出しの発言の番号（運営が消したら、吹き出しも消す） */
+  bubbleMsg?: number;
   timer?: number;
   lastKey: string;
 }
@@ -41,11 +43,16 @@ export class Hud {
       this.bindChat();
       this.bindPad();
       this.bindTouchToggles();
+      this.bindChatVisibility();
     }
     if (matchMedia("(pointer: coarse)").matches || new URLSearchParams(location.search).has("pad")) {
       document.body.classList.add("touch");
     }
-    inputState.onEnter = () => this.input.focus();
+    inputState.onEnter = () => {
+      // チャット欄を隠しているとき・停止中は、Enter で入力欄を開かない
+      if (document.body.classList.contains("chat-hidden") || this.input.disabled) return;
+      this.input.focus();
+    };
     inputState.onEmoteKey = (i) => {
       const id = EMOTE_IDS[i];
       if (id) cb.onEmote(id);
@@ -94,7 +101,7 @@ export class Hud {
     }
   }
 
-  showBubble(id: string, text: string): void {
+  showBubble(id: string, text: string, msgId?: number): void {
     const t = this.tags.get(id);
     if (!t) return;
     window.clearTimeout(t.timer);
@@ -114,16 +121,21 @@ export class Hud {
 
     t.root.prepend(b);
     t.bubble = b;
+    t.bubbleMsg = msgId;
     t.timer = window.setTimeout(() => {
       b.remove();
-      if (t.bubble === b) t.bubble = undefined;
+      if (t.bubble === b) {
+        t.bubble = undefined;
+        t.bubbleMsg = undefined;
+      }
     }, CHAT_BUBBLE_MS);
   }
 
   // ---------- チャットログ ----------
-  addChatLine(name: string, text: string, self: boolean): void {
+  addChatLine(name: string, text: string, self: boolean, msgId?: number): void {
     const line = document.createElement("div");
     line.className = `line${self ? " self" : ""}`;
+    if (msgId !== undefined) line.dataset.msg = String(msgId);
     const who = document.createElement("span");
     who.className = "who";
     who.textContent = name;
@@ -132,6 +144,70 @@ export class Hud {
     this.log.append(line);
     while (this.log.childElementCount > CHAT_LOG_MAX) this.log.firstElementChild?.remove();
     if (stick) this.log.scrollTop = this.log.scrollHeight;
+  }
+
+  /** 運営が消した発言を、チャット欄と吹き出しから消す */
+  removeChatMessages(ids: number[]): void {
+    const set = new Set(ids.map(String));
+    this.log.querySelectorAll<HTMLElement>("[data-msg]").forEach((el) => {
+      if (set.has(el.dataset.msg ?? "")) el.remove();
+    });
+    for (const t of this.tags.values()) {
+      if (t.bubbleMsg !== undefined && set.has(String(t.bubbleMsg))) {
+        window.clearTimeout(t.timer);
+        t.bubble?.remove();
+        t.bubble = undefined;
+        t.bubbleMsg = undefined;
+      }
+    }
+  }
+
+  /** 運営がチャットを停止している間は、入力できなくして、知らせる。切り替わったときだけ、チャット欄にも1行出す */
+  setChatLocked(locked: boolean): void {
+    const was = document.body.classList.contains("chat-locked");
+    document.body.classList.toggle("chat-locked", locked);
+    this.input.disabled = locked;
+    this.input.placeholder = locked ? "いま、チャットは 停止中です" : "Enter でチャット / Esc で戻る";
+    if (locked) this.input.blur();
+    if (locked !== was && (locked || was)) {
+      const line = document.createElement("div");
+      line.className = "line notice";
+      line.textContent = locked ? "チャットは、運営によって停止されました" : "チャットが、再開されました";
+      this.log.append(line);
+      this.log.scrollTop = this.log.scrollHeight;
+    }
+  }
+
+  /**
+   * チャット欄（ログと入力欄）を、出す・隠す。パソコンもスマホも同じ。選んだ状態は端末に残す。
+   * 左上のボタン（#chat-vis-btn）で切り替える。隠していても、吹き出し（頭の上の発言）は出る。
+   */
+  private bindChatVisibility(): void {
+    const key = "amplifire.chat.hidden";
+    const btn = $<HTMLButtonElement>("chat-vis-btn");
+    const apply = (hidden: boolean) => {
+      document.body.classList.toggle("chat-hidden", hidden);
+      btn.classList.toggle("off", hidden);
+      btn.setAttribute("aria-pressed", String(!hidden));
+      btn.title = btn.ariaLabel = hidden ? "チャット欄を出す" : "チャット欄を隠す";
+      if (hidden) this.input.blur();
+    };
+    let hidden = false;
+    try {
+      hidden = localStorage.getItem(key) === "1";
+    } catch {
+      /* 保存されていなければ、出した状態 */
+    }
+    apply(hidden);
+    btn.addEventListener("click", () => {
+      hidden = !document.body.classList.contains("chat-hidden");
+      apply(hidden);
+      try {
+        localStorage.setItem(key, hidden ? "1" : "0");
+      } catch {
+        /* 保存できなくても動く */
+      }
+    });
   }
 
   // ---------- 内部 ----------
@@ -206,6 +282,7 @@ export class Hud {
     const form = $("chat-form");
     const input = $<HTMLInputElement>("chat-input");
     $("chat-toggle").addEventListener("click", () => {
+      if (document.body.classList.contains("chat-locked")) return; // 運営が停止中
       setEmote(false);
       form.classList.add("open");
       document.body.classList.add("chat-open"); // 入力中は、パッドなど下のボタンを隠す

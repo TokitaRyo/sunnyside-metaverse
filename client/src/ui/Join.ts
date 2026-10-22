@@ -3,6 +3,7 @@ import { humanLayers } from "../game/assets";
 import { loadStampSheet, stampFrame, stampIconUrl } from "../game/stampIcons";
 import { hasConsented, saveConsent, visitorId } from "../game/visitor";
 import { AvatarPreview } from "./AvatarPreview";
+import { enterFullscreenOnTouch } from "./Fullscreen";
 import { DIVE_FADE_AT_MS } from "./intro";
 import { renderTerms } from "./terms";
 
@@ -112,6 +113,7 @@ export class JoinScreen {
       if (!this.loaded || this.busy || !this.consent) return;
       const name = Array.from(nameEl.value.trim()).slice(0, NAME_MAX).join("") || "ゲスト";
       this.persist({ name, look: this.look });
+      enterFullscreenOnTouch(); // タップの操作の中なので、スマホ（Android）では全画面にできる
       this.setBusy(true);
       this.onSubmit?.({ name, look: this.look });
     });

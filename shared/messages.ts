@@ -34,6 +34,8 @@ export interface EmoteSend {
 
 /** S→C */
 export interface ChatBroadcast {
+  /** 記録の番号（管理ページが、この発言を選んで消すときに使う） */
+  id?: number;
   sessionId: string;
   name: string;
   text: string;
@@ -42,6 +44,14 @@ export interface ChatBroadcast {
 export interface EmoteBroadcast {
   sessionId: string;
   id: EmoteId;
+}
+/** チャットの停止中かどうか（運営が管理ページで切り替える）。入室時と、切り替わったときに全員へ */
+export interface ChatState {
+  locked: boolean;
+}
+/** 運営が消した発言（番号）。参加者の画面のチャット欄からも消す */
+export interface ChatDelete {
+  ids: number[];
 }
 /** 速度超過などで棄却した際、本人にだけ正しい座標を返す。 */
 export interface CorrectMessage {
@@ -55,4 +65,6 @@ export const MSG = {
   emote: "emote",
   correct: "correct",
   stamps: "stamps",
+  chatState: "chatState",
+  chatDelete: "chatDelete",
 } as const;

@@ -22,6 +22,10 @@ export interface AdminHooks {
   announce(text: string): void;
   /** その人を退室させる。退室させたら true */
   kick(sid: string, reason: string): boolean;
+  /** チャットの停止・再開を全員に知らせる */
+  setChatLocked(locked: boolean): void;
+  /** 消した発言を、参加者の画面のチャット欄からも消す */
+  retractChat(ids: number[]): void;
 }
 let hooks: AdminHooks | null = null;
 export function registerAdminHooks(h: AdminHooks): void {
@@ -144,6 +148,7 @@ export function adminRouter(): Router {
       }),
     );
   });
+  r.get("/api/settings", (_req, res) => res.json({ chatLocked: stats.chatLocked }));
   r.get("/api/bans", (_req, res) => res.json([...bans.entries()].map(([vid, b]) => ({ vid, ...b }))));
 
   r.get("/api/export/chat.csv", (_req, res) => {
@@ -169,6 +174,23 @@ export function adminRouter(): Router {
     if (!text || !hooks) return void res.status(400).json({ error: "text required" });
     hooks.announce(text);
     res.json({ ok: true });
+  });
+  // チャットの停止・再開（ワンタッチ）
+  r.post("/api/chat/lock", mutating, json, (req, res) => {
+    const locked = req.body?.locked === true;
+    if (!hooks) return void res.status(503).json({ error: "not ready" });
+    hooks.setChatLocked(locked);
+    console.log(`[admin] chat ${locked ? "LOCKED" : "unlocked"}`);
+    res.json({ ok: true, chatLocked: stats.chatLocked });
+  });
+  // 選んだ発言を消す（記録からも、参加者の画面からも）
+  r.post("/api/chat/delete", mutating, json, (req, res) => {
+    const ids = Array.isArray(req.body?.ids) ? (req.body.ids as unknown[]).filter((v): v is number => Number.isInteger(v)).slice(0, 500) : [];
+    if (!ids.length || !hooks) return void res.status(400).json({ error: "ids required" });
+    const deleted = stats.deleteChat(ids);
+    hooks.retractChat(ids);
+    console.log(`[admin] delete chat x${deleted}`);
+    res.json({ ok: true, deleted });
   });
   r.post("/api/kick", mutating, json, (req, res) => {
     const sid = typeof req.body?.sid === "string" ? req.body.sid : "";

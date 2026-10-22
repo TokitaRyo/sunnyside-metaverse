@@ -204,11 +204,30 @@
 
   // ---------------------------------------------------------------- チャット
   let chatOldest = null;
-  const chatRow = (c) => el("div", { class: "msg" + (c.kind === "system" ? " system" : "") },
+  const picked = new Set();
+  const refreshSel = () => {
+    $("sel-count").textContent = picked.size + "件 選択中";
+    $("chat-del").disabled = picked.size === 0;
+    const boxes = [...document.querySelectorAll("#chat-list input[type=checkbox]")];
+    $("chat-all").checked = boxes.length > 0 && boxes.every((b) => b.checked);
+  };
+  const chatRow = (c) => {
+    const row = el("div", { class: "msg" + (c.kind === "system" ? " system" : ""), "data-id": String(c.id) });
+    const box = el("input", { type: "checkbox", "aria-label": "この発言を選ぶ" });
+    box.checked = picked.has(c.id);
+    row.classList.toggle("picked", box.checked);
+    const toggle = (on) => { box.checked = on; row.classList.toggle("picked", on); if (on) picked.add(c.id); else picked.delete(c.id); refreshSel(); };
+    box.addEventListener("click", (e) => { e.stopPropagation(); toggle(box.checked); });
+    // 行のどこをタップしても選べる（スマホで押しやすいように）。名前のIDを押したときの絞り込みは、そのまま
+    row.addEventListener("click", (e) => { if (e.target.closest(".id")) return; toggle(!box.checked); });
+    row.append(box, ...chatCells(c));
+    return row;
+  };
+  const chatCells = (c) => [
     el("span", { class: "t", text: new Date(c.t + 9 * 3600 * 1000).toISOString().slice(0, 19).replace("T", " ") }),
     el("span", { class: "nm", text: c.name, title: c.name }),
     el("span", { class: "id", text: sid6(c.vid), title: c.vid + "（クリックでこの人の発言だけ表示）", onclick: () => { if (c.vid) { $("qvid").value = c.vid; loadChat(true); } } }),
-    el("span", { class: "tx", text: c.text }));
+    el("span", { class: "tx", text: c.text })];
   async function loadChat(reset) {
     const q = $("q").value.trim(), vid = $("qvid").value.trim();
     const params = new URLSearchParams({ limit: "200" });
@@ -217,12 +236,33 @@
     if (!reset && chatOldest != null) params.set("before", String(chatOldest));
     const list = await api("chat?" + params);
     const box = $("chat-list");
-    if (reset) { box.replaceChildren(); chatOldest = null; }
+    if (reset) { box.replaceChildren(); chatOldest = null; picked.clear(); }
     for (const c of list) box.append(chatRow(c));
     if (list.length) chatOldest = list[list.length - 1].id;
     if (reset && !list.length) box.append(el("div", { class: "msg" }, el("span", { class: "tx note", text: "まだありません" })));
     $("chat-more").hidden = list.length < 200;
+    refreshSel();
   }
+  $("chat-all").addEventListener("change", () => {
+    const on = $("chat-all").checked;
+    for (const row of document.querySelectorAll("#chat-list .msg[data-id]")) {
+      const id = Number(row.dataset.id);
+      const box = row.querySelector("input[type=checkbox]");
+      if (!box) continue;
+      box.checked = on;
+      row.classList.toggle("picked", on);
+      if (on) picked.add(id); else picked.delete(id);
+    }
+    refreshSel();
+  });
+  $("chat-del").addEventListener("click", async () => {
+    const ids = [...picked];
+    if (!ids.length) return;
+    if (!confirm("選んだ " + ids.length + " 件の発言を削除します。記録からも、いま入室中の人の画面からも消えます。元に戻せません。よろしいですか？")) return;
+    const r = await post("chat/delete", { ids });
+    toast(r.ok ? r.deleted + " 件 削除しました" : "削除できませんでした", !r.ok);
+    if (r.ok) { picked.clear(); loadChat(true); }
+  });
 
   // ---------------------------------------------------------------- 入退室の記録
   async function loadSessions() {
@@ -264,6 +304,21 @@
     refresh();
   });
 
+  // ---------------------------------------------------------------- チャットの停止・再開（ワンタッチ）
+  let chatLocked = false;
+  const showLock = (locked) => {
+    chatLocked = locked;
+    const b = $("lock-btn");
+    b.classList.toggle("on", locked);
+    b.textContent = locked ? "🔒 チャット: 停止中（押すと再開）" : "💬 チャット: 開放中（押すと停止）";
+  };
+  $("lock-btn").addEventListener("click", async () => {
+    const next = !chatLocked;
+    const r = await post("chat/lock", { locked: next });
+    if (r.ok) { showLock(r.chatLocked); toast(r.chatLocked ? "チャットを停止しました（いま入室中の全員）" : "チャットを再開しました"); }
+    else toast("切り替えられませんでした", true);
+  });
+
   // ---------------------------------------------------------------- 画面の切り替えと更新
   let tab = "overview";
   $("tabs").addEventListener("click", (e) => {
@@ -282,6 +337,7 @@
     try {
       const s = await api("summary");
       renderSummary(s);
+      showLock(!!s.chatLocked);
       if (tab === "overview") lineChart($("c-online"), s.online24h, s.now - 24 * 3600 * 1000, s.now);
       if (tab === "online") await loadOnline();
       if (tab === "sessions") await loadSessions();

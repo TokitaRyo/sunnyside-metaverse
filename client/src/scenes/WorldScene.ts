@@ -492,6 +492,8 @@ export class WorldScene extends Phaser.Scene {
         onPlayerChange: (p, id) => this.onPlayerChange(p, id),
         onPlayerRemove: (_p, id) => this.onPlayerRemove(id),
         onChat: (m) => this.onChat(m),
+        onChatState: (m) => this.hud?.setChatLocked(m.locked),
+        onChatDelete: (m) => this.hud?.removeChatMessages(m.ids),
         onEmote: (m) => this.onEmote(m),
         onCorrect: (m) => this.onCorrect(m),
         onDrop: () => this.game.events.emit(EV_CONN, "reconnecting"),
@@ -708,8 +710,8 @@ export class WorldScene extends Phaser.Scene {
 
   private onChat(m: ChatBroadcast): void {
     const self = m.sessionId === this.myId;
-    this.hud.addChatLine(m.name, m.text, self);
-    this.hud.showBubble(m.sessionId, m.text);
+    this.hud.addChatLine(m.name, m.text, self, m.id);
+    this.hud.showBubble(m.sessionId, m.text, m.id);
   }
 
   private onCorrect(m: CorrectMessage): void {
@@ -736,7 +738,6 @@ export class WorldScene extends Phaser.Scene {
             if (this.emote?.id === id) this.endEmote();
           },
     });
-    this.hud.setEmoteOn("sit", id === "sit");
     const bubble = emoteBubble(id);
     if (bubble) this.hud.showBubble(this.myId, bubble);
     sfx.emote();
@@ -745,7 +746,6 @@ export class WorldScene extends Phaser.Scene {
 
   private endEmote(): void {
     this.emote = null;
-    this.hud.setEmoteOn("sit", false);
   }
 
   // ---------------------------------------------------------------- 毎フレーム

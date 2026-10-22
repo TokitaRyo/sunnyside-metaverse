@@ -50,7 +50,6 @@ export default function layout(k) {
   put("handmade_soap_jelly", -76, 54, { by: ON_BENCH });
   put("handmade_soap_bowl", -56, 54, { by: ON_BENCH });
   person("human_shorthair_doing", -43, 50, {
-    name: "あおい",
     lines: [
       "ようこそ！ ここは ぷるぷる せっけんづくりの コーナーだよ。",
       "かたに とうめいな ざいりょうを いれて かためると、ゼリーみたいに ぷるぷるの せっけんに なるの。",
@@ -63,7 +62,6 @@ export default function layout(k) {
   put("handmade_latte_pot", -23, 54, { by: ON_BENCH });
   put("handmade_latte_mugs", 21, 54, { by: ON_BENCH });
   person("human_longhair_doing", -3, 50, {
-    name: "みなみ",
     lines: [
       "いらっしゃいませ！ ここは「くらげファクトリー」。ラテキャンドルづくりの コーナーは ここだよ。",
       "ミルクいろと コーヒーいろの ろうを、マグカップに そそいで つくる キャンドルなの。",
@@ -77,7 +75,6 @@ export default function layout(k) {
   put("handmade_slime_bowl", 59, 54, { by: ON_BENCH });
   put("handmade_slime_shelf", 79, 54, { by: ON_BENCH });
   person("human_spikeyhair_doing", 43, 50, {
-    name: "ゆうた",
     lines: [
       "ここは スライムキーホルダーの コーナーだよ！ ボウルの スライムを ぼうで ぐるぐる まぜるんだ。",
       "いろの もとの ボトルを ぽとんと たらすと、パステルカラーに そまっていくよ。",
@@ -92,7 +89,6 @@ export default function layout(k) {
   put("handmade_oil_display", 38, 100, { by: ON_FRONT });
   put("handmade_oil_mats", 66, 100, { by: ON_FRONT });
   person("human_bowlhair_doing", 88, 122, {
-    name: "ひなた",
     lines: [
       "ここは オイルキーホルダーの コーナーだよ。とうめいな アクリルの なかに、えきたいを いれて つくるの。",
       "なかには ラメや ほしや ビーズを いれられるよ。ふると ゆっくり きらきら うごくんだ。",

@@ -84,6 +84,8 @@ class Stats {
   private peakAt = 0;
   private lastSample = 0;
   private enabled = true;
+  /** チャット停止中（管理ページで切り替え。再起動しても続く） */
+  chatLocked = false;
 
   constructor() {
     try {
@@ -93,6 +95,7 @@ class Stats {
       this.enabled = false;
     }
     this.load();
+    this.loadSettings();
     this.prune();
     setInterval(() => this.prune(), 6 * 60 * 60 * 1000).unref();
     // 終了時に、入室中の人のぶんも記録する
@@ -144,6 +147,25 @@ class Stats {
       }
     }
     console.log(`[stats] 読み込み: セッション ${this.sessions.length} 件、チャット ${this.chat.length} 件（保存先 ${this.dir}）`);
+  }
+
+  private loadSettings(): void {
+    try {
+      const p = this.file("settings.json");
+      if (this.enabled && existsSync(p)) this.chatLocked = !!(JSON.parse(readFileSync(p, "utf8")) as { chatLocked?: boolean }).chatLocked;
+    } catch {
+      /* 読めなければ、停止していない状態から始める */
+    }
+  }
+
+  setChatLocked(locked: boolean): void {
+    this.chatLocked = locked;
+    if (!this.enabled) return;
+    try {
+      writeFileSync(this.file("settings.json"), JSON.stringify({ chatLocked: locked }));
+    } catch (e) {
+      console.warn("[stats] settings.json を書けません:", e);
+    }
   }
 
   /** 保存期間を過ぎたものを消し、ファイルを書き直す */
@@ -203,13 +225,25 @@ class Stats {
     for (const sid of [...this.active.keys()]) this.leave(sid);
   }
 
-  addChat(sid: string, name: string, text: string, kind: "chat" | "system" = "chat"): void {
+  /** チャット1件を記録して、その番号を返す */
+  addChat(sid: string, name: string, text: string, kind: "chat" | "system" = "chat"): number {
     const a = this.active.get(sid);
     if (a && kind === "chat") a.chats++;
     const rec: ChatRecord = { id: this.chatSeq++, t: Date.now(), sid, vid: a?.vid ?? "", name, text, kind };
     this.chat.push(rec);
     if (this.chat.length > MAX_CHAT) this.chat.shift();
     this.append("chat.jsonl", rec);
+    return rec.id;
+  }
+
+  /** 選んだ発言（番号）を記録から消す。消した件数を返す */
+  deleteChat(ids: number[]): number {
+    const set = new Set(ids);
+    const n0 = this.chat.length;
+    this.chat = this.chat.filter((c) => !set.has(c.id));
+    const n = n0 - this.chat.length;
+    if (n) this.rewrite();
+    return n;
   }
 
   emote(sid: string): void {
@@ -378,6 +412,7 @@ class Stats {
       startedAt: this.startedAt,
       online: act.length,
       peak: { n: this.peak, at: this.peakAt },
+      chatLocked: this.chatLocked,
       storage: { dir: this.dir, persistent: this.persistent, enabled: this.enabled, retentionDays: DATA_RETENTION_DAYS },
       totals: {
         sessions: all.length,

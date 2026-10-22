@@ -76,3 +76,14 @@ input:focus { outline: none; border-color: var(--acc); }
   .msg { grid-template-columns: 1fr; gap: 0; }
   .msg .t, .msg .id { display: inline; }
 }
+
+/* チャット停止ボタン（ヘッダー）と、発言の選択・削除 */
+button.lock { font-weight: 800; border-color: #3f7a55; background: #1f3b2a; color: #d9ffe6; }
+button.lock.on { border-color: #ff6b7e; background: #6b1a2c; color: #fff; animation: lock-pulse 1.4s ease-in-out infinite alternate; }
+@keyframes lock-pulse { to { box-shadow: 0 0 0 3px rgba(255, 107, 126, 0.35); } }
+.sel-bar { justify-content: space-between; margin: 4px 0 6px; }
+.selall { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); cursor: pointer; }
+.msg { grid-template-columns: 22px 130px 130px 64px 1fr; align-items: start; cursor: pointer; }
+.msg.picked { background: #2b2250; }
+.msg input[type="checkbox"] { margin: 3px 0 0; accent-color: var(--acc2); cursor: pointer; }
+@media (max-width: 640px) { .msg { grid-template-columns: 22px 1fr; } .msg .t, .msg .nm, .msg .id { grid-column: 2; } .msg .tx { grid-column: 2; } }
