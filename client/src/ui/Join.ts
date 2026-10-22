@@ -28,6 +28,8 @@ const ACC_LABEL: Record<string, string> = {
   okonomiyaki: "お好み焼き", taiyaki: "たい焼き", cafe: "コーヒー", chocobanana: "チョコバナナ", takoyaki: "たこ焼き", shateki: "まと", suisougaku: "トランペット",
   sadokado: "おちゃ", aburasoba: "油そば", wataame: "わたあめ", potato: "ポテト", casino: "チップ", obakeyashiki: "おばけ", programming: "パソコン", science: "フラスコ",
   library: "ほん", handmade: "くらげ", photoart: "カメラ", dtm: "ヘッドホン", amateurradio: "むせん", volleyball: "バレーボール",
+  obanyaki: "大判焼き", kushiyaki: "くしやき", doujinshi: "どうじんし", suuri: "メビウスの輪", nazotoki: "かぎ", entre: "ホイール",
+  hotdog: "ホットドッグ", frankfurt: "フランクフルト", kirakira: "キラキラドリンク", circuit: "きばん", printer3d: "3Dプリンタ", croffle: "くろっふる", tamasen: "たません",
 };
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;

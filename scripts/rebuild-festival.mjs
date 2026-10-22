@@ -1,10 +1,10 @@
 /**
- * 文化祭のマップを白紙から作り直す（空の背景＋大きな島1つ＋出店21＋広場＋スタンプ）。
- *   node scripts/rebuild-festival.mjs [--w 140] [--h 77] [--dry]
+ * 文化祭のマップを白紙から作り直す（空の背景＋大きな島1つ＋出店34＋広場＋スタンプ）。
+ *   node scripts/rebuild-festival.mjs [--w 140] [--h 100] [--dry]
  *
  *  1. gen-blank-canvas.mjs : 空っぽのキャンバス（タイルセット・スプライト定義はそのまま流用）
- *  2. gen-sky.mjs --single 98x32 --label 文化祭島 : 空・雲・大きな島（草の面 114x34 マス）
- *  3. build-stalls.mjs : 島を 8x3 の区画に分けて、出店とスタンプを置く。広場をスポーン地点にする
+ *  2. gen-sky.mjs --single 98x32 --label 文化祭島 : 空・雲・大きな島（草の面 100x56 マス）
+ *  3. build-stalls.mjs : 島を 7x5 の区画に分けて、出店とスタンプを置く。広場をスポーン地点にする
  * 今の map.json は、reference/map-backups/ に退避してから作り直す（--dry なら何もしない）。
  * 前提: reference/map-backups/map.20260927-133146.pre-school-map.json がある（gen-blank-canvas.mjs が使う）。
  */
@@ -13,7 +13,7 @@ import { spawnSync } from "node:child_process";
 
 const args = process.argv.slice(2);
 const opt = (k, d) => (args.includes(`--${k}`) ? args[args.indexOf(`--${k}`) + 1] : d);
-const W = opt("w", 140), H = opt("h", 77);
+const W = opt("w", 140), H = opt("h", 100);
 const MAP = "client/src/config/map.json";
 const run = (script, ...a) => {
   console.log(`\n$ node ${script} ${a.join(" ")}`);
@@ -35,6 +35,6 @@ if (existsSync(MAP)) {
   console.log(`今のマップを退避: ${backup}`);
 }
 run("scripts/gen-blank-canvas.mjs", "--w", String(W), "--h", String(H));
-run("scripts/gen-sky.mjs", MAP, "--single", "112x32", "--label", "文化祭島");
+run("scripts/gen-sky.mjs", MAP, "--single", "98x54", "--label", "文化祭島");
 run("scripts/build-stalls.mjs");
 run("--import=tsx", "scripts/check-map.mts");

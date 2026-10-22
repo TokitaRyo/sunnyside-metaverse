@@ -3,7 +3,7 @@
  *   node scripts/build-stalls.mjs [--only=okonomiyaki,cafe] [--replace] [--dry] [--island="文化祭島"] [map.json]
  *
  * 各出店は scripts/stalls/<id>.mjs（配置）と scripts/stalls/<id>.ps1（専用ドット絵）の組。
- * 島の草地を 8列 x 3行 の区画(各 192x128px)に分け、下の SLOTS で出店ごとの区画を決める。
+ * 島の草地を 7列 x 5行 の区画(各 192x128px)に分け、下の SLOTS で出店ごとの区画を決める。
  * 配置関数は区画の中心を基準に物を置く。道具は scripts/lib/stall-kit.mjs。
  *
  * - 区画に配置物が既にあると、その出店は何もせず飛ばす（--replace で区画の中を消して作り直す）。
@@ -28,14 +28,16 @@ const only = opt("--only")?.split(",");
 /** 区画の寸法(px)。草の面は 左右・上に MARGIN、区画どうしは通路(GAP)をあける。1区画 = 192x128、看板が上にはみ出す分も通路にある */
 const PLOT_W = 192, PLOT_H = 128, GAP_X = 32, PITCH_Y = 176, MARGIN_X = 32, MARGIN_TOP = 32;
 
-/** 出店ごとの区画 [列, 行]（列 0..7 は左から、行 0..2 は上から）。広場は列3・行1（島のほぼまん中）。列7の北と南は空けてある（新しい出店の予備） */
+/** 出店ごとの区画 [列, 行]（列 0..6 は左から、行 0..4 は上から。7列×5行 = 35区画）。広場は列3・行2（島のまんなか） */
 const SLOTS = {
-  // 北の列: 部活・委員会の展示
+  // 北の2列: 部活・同好会の展示
   obakeyashiki: [0, 0], casino: [1, 0], suisougaku: [2, 0], dtm: [3, 0], programming: [4, 0], science: [5, 0], library: [6, 0],
-  // まん中の列
-  handmade: [0, 1], sadokado: [1, 1], photoart: [2, 1], plaza: [3, 1], cafe: [4, 1], shateki: [5, 1], amateurradio: [6, 1], volleyball: [7, 1],
-  // 南の列: 食べ物
-  takoyaki: [0, 2], okonomiyaki: [1, 2], aburasoba: [2, 2], taiyaki: [3, 2], wataame: [4, 2], potato: [5, 2], chocobanana: [6, 2],
+  handmade: [0, 1], sadokado: [1, 1], photoart: [2, 1], suuri: [3, 1], nazotoki: [4, 1], amateurradio: [5, 1], doujinshi: [6, 1],
+  // まんなかの列: ゲーム・ものづくり（広場をはさむ）
+  volleyball: [0, 2], shateki: [1, 2], entre: [2, 2], plaza: [3, 2], circuit: [4, 2], printer3d: [5, 2], cafe: [6, 2],
+  // 南の2列: 食べ物・飲み物
+  takoyaki: [0, 3], okonomiyaki: [1, 3], aburasoba: [2, 3], taiyaki: [3, 3], obanyaki: [4, 3], wataame: [5, 3], potato: [6, 3],
+  chocobanana: [0, 4], kushiyaki: [1, 4], hotdog: [2, 4], frankfurt: [3, 4], croffle: [4, 4], tamasen: [5, 4], kirakira: [6, 4],
 };
 
 const ids = readdirSync("scripts/stalls").filter((f) => f.endsWith(".mjs")).map((f) => f.replace(/\.mjs$/, "")).sort();

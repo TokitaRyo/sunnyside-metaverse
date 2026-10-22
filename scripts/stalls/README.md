@@ -17,7 +17,7 @@
   - 座標: `dx` = 草地の中心Xからのずれ(-96..96)、`foot` = 草地の上端Yから足元までの距離(0..128)、`by` = 前後の判定（大きいほど手前）
 - 確かめる（map.json に書かない）: `node scripts/preview-stall.mjs <id> --scale=4 [--hit] [--grid]` → `reference/stall-previews/<id>.png`
 - 素材を調べる: `node scripts/stall-assets.mjs sprites "plate|mug"` / `items x0 y0 x1 y1` / `crop x y w h 6`
-- 島に組み立てる: `node scripts/build-stalls.mjs --only=<id> [--replace] [--dry]`（map.json を書き換える。バックアップは reference/map-backups/）。島は「文化祭島」1つで、草地を 7列×3行 の区画(192×128px)に分けて並べる（区画は build-stalls.mjs の `SLOTS`）。各出店のスタンプ（星）も区画の右どなりの通路に自動で置く\r\n- 区画ではなく島の北に置く物（横断幕）は `export const north = { above: 44 }` を付ける（`banner.mjs` が例）。スタンプは置かれない。
+- 島に組み立てる: `node scripts/build-stalls.mjs --only=<id> [--replace] [--dry]`（map.json を書き換える。バックアップは reference/map-backups/）。島は「文化祭島」1つで、草地を 7列×5行 の区画(192×128px)に分けて並べる（区画は build-stalls.mjs の `SLOTS`）。各出店のスタンプ（星）も区画の右どなりの通路に自動で置く\r\n- 区画ではなく島の北に置く物（横断幕）は `export const north = { above: 44 }` を付ける（`banner.mjs` が例）。スタンプは置かれない。
 - マップを白紙から作り直す: `node scripts/rebuild-festival.mjs`（空・雲・大きな島・出店・広場・スタンプまで一括）
 
 ## これまでの出店から分かった落とし穴

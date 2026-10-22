@@ -28,6 +28,19 @@ export const ACCESSORY_IDS = [
   "dtm",
   "amateurradio",
   "volleyball",
+  "obanyaki",
+  "kushiyaki",
+  "doujinshi",
+  "suuri",
+  "nazotoki",
+  "entre",
+  "hotdog",
+  "frankfurt",
+  "kirakira",
+  "circuit",
+  "printer3d",
+  "croffle",
+  "tamasen",
 ] as const;
 export type AccessoryId = (typeof ACCESSORY_IDS)[number];
 
