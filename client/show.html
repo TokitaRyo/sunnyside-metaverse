@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>AMPLIFIRE LIVE</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <!-- 管理者用のショー画面。入室中の人のアバターを、一定の間隔で切り替えながら大きく映す（大型ディスプレイ用）。/admin/show から開く -->
+    <div class="bg" aria-hidden="true">
+      <div class="aurora a1"></div>
+      <div class="aurora a2"></div>
+      <div class="aurora a3"></div>
+      <div class="dots"></div>
+      <div class="bigmark">AMPLIFIRE</div>
+    </div>
+    <canvas id="fx" aria-hidden="true"></canvas>
+
+    <header class="top">
+      <div class="logo">AMPLIFIRE</div>
+      <div class="live"><i></i>LIVE<b id="count">0</b><small>人が参加中</small></div>
+    </header>
+
+    <main class="stage" id="stage">
+      <div class="spot">
+        <div class="rays"></div>
+        <div class="rays r2"></div>
+        <div class="ring r1"><i></i><i></i></div>
+        <div class="ring r2"><i></i><i></i><i></i></div>
+        <div class="ring r3"><i></i></div>
+        <div class="halo"></div>
+        <div class="orbit" id="orbit"></div>
+        <div class="hero" id="hero-box"><canvas id="hero"></canvas></div>
+        <div class="floor"></div>
+      </div>
+      <div class="plate" id="plate">
+        <div class="name" id="name"></div>
+        <div class="sub" id="sub"></div>
+      </div>
+    </main>
+
+    <div class="wait" id="wait" hidden>
+      <b>いま、だれも いないよ</b>
+      <span>だれかが 入室すると、ここに アバターが 映ります</span>
+    </div>
+
+    <footer class="strip" id="strip"></footer>
+    <div class="progress"><i id="bar"></i></div>
+
+    <div class="ctl" id="ctl">
+      <button id="c-prev" type="button" title="前の人（←）">◀</button>
+      <button id="c-pause" type="button" title="一時停止／再開（スペース）">⏸</button>
+      <button id="c-next" type="button" title="次の人（→）">▶</button>
+      <label>切り替え <select id="c-interval"><option value="3000">3秒</option><option value="5000">5秒</option><option value="6000">6秒</option><option value="8000">8秒</option><option value="12000">12秒</option><option value="20000">20秒</option></select></label>
+      <button id="c-shuffle" type="button" title="順番をばらばらにする（S）">🔀</button>
+      <button id="c-names" type="button" title="下の一覧を出す／隠す（T）">👥</button>
+      <button id="c-full" type="button" title="全画面（F）">⛶</button>
+    </div>
+    <script type="module" src="/src/show/main.ts"></script>
+  </body>
+</html>

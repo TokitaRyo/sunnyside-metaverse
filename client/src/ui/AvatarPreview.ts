@@ -1,5 +1,5 @@
 import { HAIRS, colorKey, type Look } from "@metaverse/shared";
-import { sprites } from "../config";
+import { sprites } from "../config/spritesOnly";
 import { recolorImageData } from "../game/avatarColors";
 import { STAMP_FRAME, loadStampSheet, stampFrame } from "../game/stampIcons";
 

@@ -46,6 +46,8 @@ export interface SessionRecord {
 
 interface ActiveSession extends Omit<SessionRecord, "leftAt" | "stay"> {
   area: string;
+  /** 見た目（Player.look と同じ文字列）。管理者用のショー画面が使う。記録（SessionRecord）には残さない */
+  look: string;
 }
 
 export interface ChatRecord {
@@ -190,7 +192,7 @@ class Stats {
   }
 
   // ---------------------------------------------------------------- 記録
-  join(sid: string, info: { vid: string; name: string; hair: string; device: "touch" | "desktop"; consent: string }): void {
+  join(sid: string, info: { vid: string; name: string; hair: string; look: string; device: "touch" | "desktop"; consent: string }): void {
     this.active.set(sid, {
       sid,
       vid: info.vid,
@@ -205,6 +207,7 @@ class Stats {
       stampTotal: 0,
       dwell: {},
       area: "",
+      look: info.look,
     });
     this.sample(true);
   }
@@ -213,8 +216,9 @@ class Stats {
     const a = this.active.get(sid);
     if (!a) return;
     this.active.delete(sid);
-    const { area: _area, ...rest } = a;
+    const { area: _area, look: _look, ...rest } = a;
     void _area;
+    void _look;
     const now = Date.now();
     const rec: SessionRecord = { ...rest, leftAt: now, stay: Math.round((now - a.joinedAt) / 1000) };
     this.sessions.push(rec);
@@ -308,6 +312,7 @@ class Stats {
       sid: a.sid,
       vid: a.vid,
       name: a.name,
+      look: a.look,
       device: a.device,
       stay: Math.round((now - a.joinedAt) / 1000),
       area: a.area,

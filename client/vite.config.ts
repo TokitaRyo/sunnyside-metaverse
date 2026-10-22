@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 
 /**
@@ -54,6 +55,13 @@ export default defineConfig({
     port: 5173,
   },
   build: {
+    // 入口は2つ: ゲーム本体(index.html)と、管理者用のショー画面(show.html。/admin/show からだけ配る)
+    rollupOptions: {
+      input: {
+        main: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "index.html"),
+        show: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "show.html"),
+      },
+    },
     chunkSizeWarningLimit: 2000, // Phaser 単体で ~1.2MB
   },
 });

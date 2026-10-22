@@ -24,7 +24,9 @@ const app = config({
   },
   initializeExpress: (expressApp) => {
     // 管理ページ（ADMIN_PASSWORD を知っている人だけ。未設定なら 404）。開発時・本番とも同じ
-    expressApp.use("/admin", adminRouter());
+    expressApp.use("/admin", adminRouter(clientDist));
+    // ショー画面の入口（show.html）は、管理ページの中（/admin/show）からだけ配る。外から直接は見せない
+    expressApp.get("/show.html", (_req, res) => void res.status(404).type("text/plain").send("Not Found"));
     console.log(adminEnabled ? "[server] 管理ページ: 有効 (/admin)" : "[server] 管理ページ: 無効（ADMIN_PASSWORD 未設定）");
     if (serveClient) {
       // 本番では Playground を出さない（開発用の道具。外から部屋に自由に入れてしまうため）。確認したいときだけ ENABLE_PLAYGROUND=1

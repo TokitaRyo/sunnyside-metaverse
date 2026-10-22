@@ -125,12 +125,19 @@ const num = (v: unknown, d: number, min: number, max: number): number => {
 const PAGE_DIR = new URL("./admin/", import.meta.url);
 const page = (name: string) => readFileSync(new URL(name, PAGE_DIR));
 
-export function adminRouter(): Router {
+/** clientDist: ビルド済みクライアントの場所。ショー画面（管理者用の大型表示。client/show.html）を、パスワードの内側で配るために使う */
+export function adminRouter(clientDist: string): Router {
   const r = express.Router();
   r.use(auth);
 
   r.get("/", (_req, res) => res.type("html").send(page("admin.html")));
   r.get("/admin.js", (_req, res) => res.type("js").send(page("admin.js")));
+  // ショー画面: 入室中の人のアバターを、順番に大きく映す（大型ディスプレイ用）。中身の JS は公開の /assets/ にあるが、人の情報（API）はこのパスワードの内側にしかない
+  r.get(["/show", "/show/"], (_req, res) => {
+    const file = join(clientDist, "show.html");
+    if (!existsSync(file)) return void res.status(404).type("text/plain").send("show.html がありません（npm run build -w client で作ります）");
+    res.type("html").send(readFileSync(file));
+  });
   r.get("/admin.css", (_req, res) => res.type("css").send(page("admin.css")));
 
   r.get("/api/summary", (_req, res) => {
