@@ -23,7 +23,8 @@ export const SEND_INTERVAL_MS = 1000 / SEND_RATE_HZ;
 /** サーバー patchRate (ms) = 20Hz */
 export const PATCH_RATE_MS = 50;
 
-export const MAX_CLIENTS = 50;
+/** 同時に入れる人数。150人まで試験済み（docs/decisions.md）。環境変数 MAX_CLIENTS で変えられる */
+export const MAX_CLIENTS = 150;
 export const ROOM_NAME = "main";
 
 export const NAME_MAX = 12;

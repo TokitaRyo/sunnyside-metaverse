@@ -14,6 +14,13 @@ primary_region = 'nrt'
   auto_start_machines = true
   min_machines_running = 1
 
+  # 1つの部屋に、同時に100人以上が WebSocket でつながる。接続数の目安（soft）と上限（hard）を、人数より十分大きくしておく
+  # （未指定だと soft_limit は 20 になり、多人数のとき、この機械を負荷が高いとみなして扱いが不安定になりうる）
+  [http_service.concurrency]
+    type = 'connections'
+    soft_limit = 500
+    hard_limit = 800
+
 [[vm]]
   size = 'shared-cpu-1x'
   memory = '512mb'

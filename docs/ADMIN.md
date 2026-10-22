@@ -76,3 +76,4 @@ Volume が付くまでは、管理ページの上に「保存先は一時的な�
 - 検索エンジンに載らない（noindex）、画面の埋め込みも禁止。
 - 利用停止は「訪問者ID」単位。ブラウザの履歴を消す・別のブラウザを使うと入れてしまう（簡易的なもの）。
 - **国別IP制限**: 既定では、**日本（JP）以外からのアクセスは、ページも入室も断る**（403）。接続元は、Fly.io が付ける Fly-Client-IP（外から偽装できない）で判断し、手元（localhost・社内LANなど）はいつも通す。IPと国の対応は geoip-country（MaxMind GeoLite2）のデータで、完全ではない（VPN・プロキシは見抜けない／まれに日本の回線が「国不明」になる。国不明は通す）。環境変数で変えられる: ALLOW_COUNTRIES=JP,US（許可する国。カンマ区切り）、GEO_BLOCK=0（無効にする）、GEO_BLOCK_UNKNOWN=1（国不明も断る）。**管理ページ・ショー画面も同じ制限を受ける**ので、海外から運営するときは、先に ALLOW_COUNTRIES へ足しておく（lyctl secrets set ALLOW_COUNTRIES=JP,<国コード>）。データは、パッケージを上げるたびに新しくなる。
+- **人数まわりの設定**（環境変数。lyctl secrets set / ly.toml）: MAX_CLIENTS（同時に入れる人数。既定150）、MAX_PER_IP（同じ回線から入れる数。既定50。学校のWi-Fiなど同じ回線の人が多いときは増やす）。ログに [health] players=… cpu=…% lagP99=… が15秒ごとに出る（lyctl logs）。cpu が 80〜100% に近い、または lagP99 が 100ms を超えるなら、VM を大きくする（lyctl scale vm performance-1x --memory 1024）。[slow] は、回線が詰まった接続を切り離したしるし。

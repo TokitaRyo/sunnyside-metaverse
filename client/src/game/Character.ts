@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { CHAR_ORIGIN_X, CHAR_ORIGIN_Y, type Look } from "@metaverse/shared";
 import { sprites } from "../config";
 import { charKey, humanLayers } from "./assets";
-import { ensureLookTextures } from "./avatarTextures";
+import { ensureLookAction, ensureLookTextures, releaseLook, retainLook } from "./avatarTextures";
 import { STAMP_TEX, stampFrame } from "./stampIcons";
 
 /** かざりの位置（足元を原点にした、キャラの中の座標）。体は約11x16px、あたまの上は y=-18、手は右に +9 */
@@ -25,6 +25,9 @@ export class Character extends Phaser.GameObjects.Container {
   /** あたまにかざりを付けている（名札を、そのぶん上に出す） */
   headAccessory = false;
   currentAction = "";
+  /** 色替えテクスチャを使っているとき、その見た目と色のキー（使い終わったら releaseLook で知らせる） */
+  private look?: Look;
+  private lookId?: string;
   /** 画面に出しているか（出さない間は描かず、アニメも止めて、軽くする） */
   private shown = true;
   /** リモート補間用の目標座標 */
@@ -41,6 +44,12 @@ export class Character extends Phaser.GameObjects.Container {
     const def = sprites.characters[kind];
     // 色を変えたアバターは、色替え済みの体・髪のテクスチャを使う（tools は素材のまま）
     const lookId = kind === "human" ? ensureLookTextures(scene, look ?? null) : null;
+    if (lookId && look) {
+      this.look = look;
+      this.lookId = lookId;
+      ensureLookAction(scene, look, initialAction);
+      retainLook(scene, lookId);
+    }
     const layers = def.layered ? humanLayers(hair ?? def.hairOptions![0]) : [null];
     this.layerNames = lookId ? layers.map((l) => (l === "base" || l === (hair ?? "")) ? `${l}~${lookId}` : l) : layers;
     for (const layer of this.layerNames) {
@@ -74,6 +83,8 @@ export class Character extends Phaser.GameObjects.Container {
 
   /** 全レイヤーを同じアクションで同時に再生する（フレームを揃えるため）。 */
   play(action: string, opts: { restart?: boolean; onComplete?: () => void } = {}): this {
+    // 色替えのアバターは、初めて使う動き（エモートなど）のテクスチャを、ここで作る
+    if (this.look && !this.hasAction(action)) ensureLookAction(this.scene, this.look, action);
     if (!this.hasAction(action)) action = "idle";
     const anim = this.scene.anims.get(charKey(this.kind, this.layerNames[0], action));
     const looping = anim.repeat === -1;
@@ -121,6 +132,14 @@ export class Character extends Phaser.GameObjects.Container {
 
   get flipX(): boolean {
     return this.sprites[0].flipX;
+  }
+
+  override destroy(fromScene?: boolean): void {
+    const id = this.lookId;
+    const scene = this.scene;
+    super.destroy(fromScene);
+    // 使い終わった色替えテクスチャは、とっておく数を超えたら捨てる（scene が閉じているときは触らない）
+    if (id && scene && !fromScene) releaseLook(scene, id);
   }
 
   /** 手前のキャラ／木が奥を隠すよう、Y座標で深度を決める（SPEC 4.4） */

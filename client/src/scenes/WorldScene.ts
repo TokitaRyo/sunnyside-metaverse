@@ -94,8 +94,23 @@ const TS = map.tileSize;
 const WORLD_W = map.width * TS;
 const WORLD_H = map.height * TS;
 
+/**
+ * 他の参加者1人。位置などの軽い情報は全員ぶん持つが、絵（Character）は、近くにいる数人ぶんだけ作る。
+ * 100人以上が同時にいても、描く数・テクスチャの数・メモリを増やさないため。
+ */
 export interface Remote {
-  char: Character;
+  /** 見せているときだけある */
+  char?: Character;
+  /** いまの位置（受信した目標へ、毎フレーム近づける） */
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  flipX: boolean;
+  hair: string;
+  look: Look | null;
+  /** サーバーが知らせた、いまのアクション（絵を作るときに、これで始める） */
+  action: string;
   /** 最新の状態上のアクション（1回再生エモートは "idle" として保持） */
   lastAction: string;
 }
@@ -643,28 +658,54 @@ export class WorldScene extends Phaser.Scene {
       this.hud?.addTag(id, p.name, "self");
       return;
     }
-    const char = new Character(this, p.x, p.y, "human", p.hair, "idle", decodeLook(p.look));
-    char.setFlip(p.flipX);
-    const r: Remote = { char, lastAction: "idle" };
+    // 絵（Character）は、ここでは作らない。近くにいる数人だけ、updatePeerVisibility が作る
+    const r: Remote = { x: p.x, y: p.y, tx: p.x, ty: p.y, flipX: p.flipX, hair: p.hair, look: decodeLook(p.look), action: p.action, lastAction: "idle" };
     this.remotes.set(id, r);
     this.applyRemoteAction(r, p.action);
+    this.peerCheckAt = 0; // 近い人かどうかを、すぐ見直す
     this.hud?.addTag(id, p.name, "peer");
   }
+
+  /** 見せる人の絵を作る（近づいてきたとき）。いまの位置・向き・動きで始める */
+  protected showRemote(id: string, r: Remote): void {
+    if (r.char) return;
+    const char = new Character(this, r.x, r.y, "human", r.hair, "idle", r.look);
+    char.setFlip(r.flipX);
+    r.char = char;
+    this.applyRemoteAction(r, r.action);
+    this.onRemoteShown(id, r);
+  }
+
+  /** 見せなくなった人の絵を片付ける（遠ざかったとき）。色替えテクスチャは、使う人がいなくなれば古い順に捨てられる */
+  protected hideRemote(id: string, r: Remote): void {
+    if (!r.char) return;
+    this.onRemoteHidden(id, r);
+    r.char.destroy();
+    r.char = undefined;
+  }
+
+  /** 絵ができた／片付けた直後（観客のシーンが、名札などを足すために使う） */
+  protected onRemoteShown(_id: string, _r: Remote): void {}
+  protected onRemoteHidden(_id: string, _r: Remote): void {}
 
   protected onPlayerChange(p: Player, id: string): void {
     if (id === this.myId) return; // 自分はサーバー座標で上書きしない（ガタつきの原因）
     const r = this.remotes.get(id);
     if (!r) return;
-    r.char.targetX = p.x;
-    r.char.targetY = p.y;
-    if (r.char.flipX !== p.flipX) r.char.setFlip(p.flipX);
+    r.tx = p.x;
+    r.ty = p.y;
+    if (r.flipX !== p.flipX) {
+      r.flipX = p.flipX;
+      r.char?.setFlip(p.flipX);
+    }
+    r.action = p.action;
     this.applyRemoteAction(r, p.action);
   }
 
   protected onPlayerRemove(id: string): void {
     const r = this.remotes.get(id);
     if (!r) return;
-    r.char.destroy();
+    this.hideRemote(id, r);
     this.remotes.delete(id);
     this.hud?.removeTag(id);
   }
@@ -678,11 +719,11 @@ export class WorldScene extends Phaser.Scene {
     if (action === "idle" || action === "walk" || action === "run") {
       r.lastAction = action;
       // 再生中のエモートは最後まで見せる。ただし歩き出したら即キャンセル
-      if (action === "idle" && r.char.isOneShotPlaying()) return;
-      r.char.play(action);
+      if (action === "idle" && r.char?.isOneShotPlaying()) return;
+      r.char?.play(action);
     } else if (emote?.loop) {
       r.lastAction = action;
-      r.char.play(emote.action);
+      r.char?.play(emote.action);
     } else {
       r.lastAction = "idle";
     }
@@ -694,15 +735,23 @@ export class WorldScene extends Phaser.Scene {
     if (!r || !def) return;
     const bubble = emoteBubble(m.id);
     if (bubble) this.hud.showBubble(m.sessionId, bubble);
+    if (def.loop) r.lastAction = m.id;
+    this.playRemoteEmote(r, m.id);
+  }
+
+  /** 他の人のエモートを再生する（絵がある＝近くにいる人だけ。遠い人は、動きだけ覚えておく） */
+  protected playRemoteEmote(r: Remote, id: EmoteId): void {
+    const def = EMOTES[id];
+    const char = r.char;
+    if (!char) return;
     if (def.loop) {
-      r.lastAction = m.id;
-      r.char.play(def.action, { restart: true });
+      char.play(def.action, { restart: true });
     } else {
-      r.char.play(def.action, {
+      char.play(def.action, {
         restart: true,
         onComplete: () => {
           const back = EMOTES[r.lastAction as EmoteId]?.action ?? r.lastAction;
-          r.char.play(back || "idle");
+          char.play(back || "idle");
         },
       });
     }
@@ -754,14 +803,18 @@ export class WorldScene extends Phaser.Scene {
 
     // 他プレイヤー: 受信座標を目標値にして毎フレーム近づける（フレームレート非依存）
     const t = 1 - Math.pow(REMOTE_SMOOTHING, dt);
-    for (const { char } of this.remotes.values()) {
-      if (Math.hypot(char.targetX - char.x, char.targetY - char.y) > REMOTE_SNAP_DIST) {
-        char.setPosition(char.targetX, char.targetY);
+    for (const r of this.remotes.values()) {
+      if (Math.hypot(r.tx - r.x, r.ty - r.y) > REMOTE_SNAP_DIST) {
+        r.x = r.tx;
+        r.y = r.ty;
       } else {
-        char.x += (char.targetX - char.x) * t;
-        char.y += (char.targetY - char.y) * t;
+        r.x += (r.tx - r.x) * t;
+        r.y += (r.ty - r.y) * t;
       }
-      char.syncDepth();
+      if (r.char) {
+        r.char.setPosition(r.x, r.y);
+        r.char.syncDepth();
+      }
     }
 
     for (const e of this.keyItemEntries) this.placeKeyItem(e, this.time.now);
@@ -795,25 +848,39 @@ export class WorldScene extends Phaser.Scene {
 
   /** 近い順に数人だけ見せる。250msごとに見直し、順位が少し入れ替わるくらいでは切り替えない */
   private updatePeerVisibility(now: number): void {
-    if (!this.me || now < this.peerCheckAt) return;
+    const focus = this.focusPoint();
+    if (!focus || now < this.peerCheckAt) return;
     this.peerCheckAt = now + PEER_CHECK_MS;
-    const max = document.body.classList.contains("touch") ? MAX_VISIBLE_PEERS_TOUCH : MAX_VISIBLE_PEERS;
-    const me = this.me;
+    const max = this.maxVisiblePeers();
     const order = [...this.remotes]
-      .map(([id, r]) => ({ id, r, d: Math.hypot(r.char.x - me.x, r.char.y - me.y) }))
+      .map(([id, r]) => ({ id, r, d: Math.hypot(r.x - focus.x, r.y - focus.y) }))
       .sort((a, b) => a.d - b.d);
     const next = new Set<string>();
     order.forEach((p, rank) => {
       if (rank < max || (this.visiblePeers.has(p.id) && rank < max + PEER_HYSTERESIS)) next.add(p.id);
     });
     this.visiblePeers = next;
-    for (const p of order) p.r.char.setShown(next.has(p.id));
+    // 近い人の絵は作り、遠ざかった人の絵は片付ける（絵があるのは、いつも数人だけ）
+    for (const p of order) {
+      if (next.has(p.id)) this.showRemote(p.id, p.r);
+      else this.hideRemote(p.id, p.r);
+    }
+  }
+
+  /** 「近い」の基準にする点。自分のキャラの位置（観客のシーンは、追っている人の位置にする） */
+  protected focusPoint(): { x: number; y: number } | null {
+    return this.me ? { x: this.me.x, y: this.me.y } : null;
+  }
+
+  /** 一度に絵を出す他の人の数 */
+  protected maxVisiblePeers(): number {
+    return document.body.classList.contains("touch") ? MAX_VISIBLE_PEERS_TOUCH : MAX_VISIBLE_PEERS;
   }
 
   /** ミニマップ・場所の名前・方位マーカー・参加人数・はじめてのヒント（プレイ中のみ） */
   private updateNavi(): void {
     if (!this.navi || !this.me || !this.hud) return;
-    const peers = [...this.remotes.values()].map((r) => ({ x: r.char.x, y: r.char.y }));
+    const peers = [...this.remotes.values()].map((r) => ({ x: r.x, y: r.y }));
     this.navi.update(this.time.now, { x: this.me.x, y: this.me.y }, peers, this.keyItemEntries.map((e) => e.d));
     const sec = Math.floor(this.time.now / 1000);
     if (sec !== this.onlineSec) {
@@ -972,8 +1039,8 @@ export class WorldScene extends Phaser.Scene {
     const LIFT = 11;
     if (this.me) place(this.myId, this.me.x, this.me.y - (this.me.headAccessory ? LIFT : 0));
     for (const [id, r] of this.remotes) {
-      // 見せていない参加者の名札・吹き出しも出さない
-      if (r.char.isShown) place(id, r.char.x, r.char.y - (r.char.headAccessory ? LIFT : 0));
+      // 見せていない（絵が無い）参加者の名札・吹き出しも出さない
+      if (r.char) place(id, r.char.x, r.char.y - (r.char.headAccessory ? LIFT : 0));
       else this.hud.hideTag(id);
     }
     this.mobs.forEach((c, i) => place(`mob:${i}`, c.x, c.y));

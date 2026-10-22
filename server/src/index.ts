@@ -7,6 +7,8 @@ import { ROOM_NAME } from "@metaverse/shared";
 import { MainRoom } from "./rooms/MainRoom";
 import { adminEnabled, adminRouter } from "./admin";
 import { geoBlockMiddleware } from "./geoblock";
+import { sampleHealth } from "./health";
+import { stats } from "./stats";
 
 // ビルド済みクライアント(client/dist)があれば同じサーバーから配信する。
 // ws:// と https:// の混在を避けられ、TLS終端が1か所で済む（README参照）。
@@ -52,6 +54,13 @@ const app = config({
     }
   },
 });
+
+// 負荷の見張り: 人がいるあいだ、15秒ごとに CPU・イベントループの遅れ・メモリをログに出す（人が増えたときの様子を、あとから見られるように）
+setInterval(() => {
+  const n = stats.onlineList().length;
+  const h = sampleHealth();
+  if (n > 0) console.log(`[health] players=${n} cpu=${h.cpu}% lagP99=${h.lagP99}ms lagMax=${h.lagMax}ms rss=${h.rssMB}MB heap=${h.heapMB}MB`);
+}, 15000).unref();
 
 listen(app).then(() => {
   console.log(serveClient ? "[server] serving client/dist at /" : "[server] dev mode: Playground at /");

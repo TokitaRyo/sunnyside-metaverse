@@ -29,9 +29,12 @@ interface Label {
 export class SpectatorScene extends WorldScene {
   private target = "";
   private labels = new Map<string, Label>();
+  private names = new Map<string, string>();
   private transition?: Phaser.Tweens.Tween;
   private moving = false;
   private stopped = false;
+  /** カメラが追う点。追っている人の位置を毎フレーム映す（絵が無い間も、位置だけで追える） */
+  private followPoint = new Phaser.Math.Vector2();
 
   constructor() {
     super("Spectate");
@@ -80,10 +83,9 @@ export class SpectatorScene extends WorldScene {
   private flyTo(r: Remote): void {
     this.transition?.stop();
     const cam = this.cameras.main;
-    const char = r.char;
     const from = { x: cam.midPoint.x, y: cam.midPoint.y, z: cam.zoom };
     const z1 = this.watchZoom();
-    const dist = Math.hypot(char.x - from.x, char.y - from.y);
+    const dist = Math.hypot(r.x - from.x, r.y - from.y);
     // 近ければ、そのまま滑らせる。遠ければ、いったん引いて（島が見える）から寄る
     const far = dist > 200;
     this.moving = true;
@@ -99,13 +101,16 @@ export class SpectatorScene extends WorldScene {
         const base = from.z * Math.pow(z1 / from.z, t);
         const dip = far ? 1 - 0.62 * Math.sin(Math.PI * t) : 1;
         cam.setZoom(base * dip);
-        cam.centerOn(from.x + (char.x - from.x) * t, from.y + (char.y - from.y) * t);
+        cam.centerOn(from.x + (r.x - from.x) * t, from.y + (r.y - from.y) * t);
       },
       onComplete: () => {
         this.moving = false;
         cam.setBounds(0, 0, WORLD_W, WORLD_H);
         cam.setZoom(z1);
-        if (this.remotes.get(this.target)?.char === char) cam.startFollow(char, true, 0.12, 0.12);
+        if (this.remotes.get(this.target) === r) {
+          this.followPoint.set(r.x, r.y);
+          cam.startFollow(this.followPoint, true, 0.12, 0.12);
+        }
       },
     });
   }
@@ -163,24 +168,42 @@ export class SpectatorScene extends WorldScene {
   // ---------------------------------------------------------------- 参加者（名札・ふきだし）
   protected override onPlayerAdd(p: Player, id: string): void {
     super.onPlayerAdd(p, id);
-    const name = this.add
-      .text(0, 0, p.name, { fontFamily: FONT, fontSize: "7px", fontStyle: "bold", color: "#ffffff", stroke: "#3a2f5c", strokeThickness: 2 })
-      .setOrigin(0.5, 1)
-      .setResolution(8)
-      .setDepth(DEPTH_TOP);
-    this.labels.set(id, { name, bubbleUntil: 0 });
+    this.names.set(id, p.name);
     // 追いたい人が、いま届いた（入室の直後・つなぎ直しの後）
     if (id === this.target) this.flyTo(this.remotes.get(id)!);
   }
 
   protected override onPlayerRemove(id: string): void {
     super.onPlayerRemove(id);
+    this.names.delete(id);
+  }
+
+  /** 絵が出た人（追っている人のまわりの数十人）にだけ、名札を付ける */
+  protected override onRemoteShown(id: string, _r: Remote): void {
+    const name = this.add
+      .text(0, 0, this.names.get(id) ?? "", { fontFamily: FONT, fontSize: "7px", fontStyle: "bold", color: "#ffffff", stroke: "#3a2f5c", strokeThickness: 2 })
+      .setOrigin(0.5, 1)
+      .setResolution(8)
+      .setDepth(DEPTH_TOP);
+    this.labels.set(id, { name, bubbleUntil: 0 });
+  }
+
+  protected override onRemoteHidden(id: string, _r: Remote): void {
     const l = this.labels.get(id);
-    if (l) {
-      l.name.destroy();
-      l.bubble?.destroy();
-      this.labels.delete(id);
-    }
+    if (!l) return;
+    l.name.destroy();
+    l.bubble?.destroy();
+    this.labels.delete(id);
+  }
+
+  /** 「近い」の基準は、追っている人（いなければ島のまんなか）。観客は、まわりの数十人まで絵を出す */
+  protected override focusPoint(): { x: number; y: number } | null {
+    const r = this.remotes.get(this.target);
+    return r ? { x: r.x, y: r.y } : { x: WORLD_W / 2, y: WORLD_H / 2 };
+  }
+
+  protected override maxVisiblePeers(): number {
+    return 30;
   }
 
   private bubbleText(id: string, text: string): void {
@@ -214,26 +237,18 @@ export class SpectatorScene extends WorldScene {
     if (!r || !def) return;
     const bubble = emoteBubble(m.id);
     if (bubble) this.bubbleText(m.sessionId, bubble);
-    if (def.loop) {
-      r.lastAction = m.id;
-      r.char.play(def.action, { restart: true });
-    } else {
-      r.char.play(def.action, {
-        restart: true,
-        onComplete: () => {
-          const back = EMOTES[r.lastAction as EmoteId]?.action ?? r.lastAction;
-          r.char.play(back || "idle");
-        },
-      });
-    }
+    if (def.loop) r.lastAction = m.id;
+    this.playRemoteEmote(r, m.id as EmoteId);
   }
 
   // ---------------------------------------------------------------- 毎フレーム
   override update(time: number, delta: number): void {
     super.update(time, delta);
+    const t = this.remotes.get(this.target);
+    if (t) this.followPoint.set(t.x, t.y);
     for (const [id, r] of this.remotes) {
       const l = this.labels.get(id);
-      if (!l) continue;
+      if (!l || !r.char) continue;
       const watched = id === this.target;
       const top = r.char.y - 22 - (r.char.headAccessory ? 11 : 0);
       l.name.setPosition(r.char.x, top);

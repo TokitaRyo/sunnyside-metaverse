@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { Client, type Room } from "@colyseus/sdk";
 import {
   EMOTE_IDS,
+  encodeLook,
   FOOT_H,
   FOOT_W,
   HAIRS,
@@ -49,7 +50,11 @@ const rooms: Room[] = [];
 
 async function spawnBot(i: number): Promise<void> {
   const client = new Client(URL_);
-  const room = (await client.join(ROOM_NAME, { name: `bot${i}`, hair: rand(HAIRS), consent: CONSENT_VERSION, vid: `load-test-bot-${i}-xxxxxxxx`, device: "desktop" }, MainRoomState)) as Room<any, MainRoomState>;
+  // 色もランダムにする（本物のプレイヤーは、髪・目・服の色を変えている。色替えテクスチャの負荷も含めて試すため）
+  const hex = () => "#" + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0");
+  const hair = rand(HAIRS);
+  const look = encodeLook({ hair, hairColor: hex(), eyeColor: hex(), top: hex(), bottom: hex() });
+  const room = (await client.join(ROOM_NAME, { name: `bot${i}`, hair, look, consent: CONSENT_VERSION, vid: `load-test-bot-${i}-xxxxxxxx`, device: "desktop" }, MainRoomState)) as Room<any, MainRoomState>;
   rooms.push(room);
   connected++;
   if (i === 0) {

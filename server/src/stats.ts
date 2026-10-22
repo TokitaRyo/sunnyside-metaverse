@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFile, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DATA_RETENTION_DAYS } from "@metaverse/shared";
 
@@ -103,6 +103,7 @@ class Stats {
     // 終了時に、入室中の人のぶんも記録する
     const flush = () => {
       this.finishAll();
+      this.flushAppends(true); // ためていた追記を、いま同期で書き切る（このあとプロセスが終わるため）
     };
     process.once("SIGTERM", flush);
     process.once("SIGINT", flush);
@@ -113,12 +114,42 @@ class Stats {
     return join(this.dir, name);
   }
 
+  /** 追記する行は、いったんためて、1秒ごとにまとめて書く（同期で1行ずつ書くと、人が多いとき、その間ずっと配信が止まるため） */
+  private pending = new Map<string, string[]>();
+  private flushTimer: NodeJS.Timeout | null = null;
+
   private append(name: string, obj: unknown): void {
     if (!this.enabled) return;
-    try {
-      appendFileSync(this.file(name), JSON.stringify(obj) + "\n");
-    } catch (e) {
-      console.warn(`[stats] ${name} に書けません:`, e);
+    const lines = this.pending.get(name) ?? [];
+    lines.push(JSON.stringify(obj));
+    this.pending.set(name, lines);
+    if (!this.flushTimer) {
+      this.flushTimer = setTimeout(() => this.flushAppends(), 1000);
+      this.flushTimer.unref();
+    }
+  }
+
+  /** ためた追記を、ファイルごとに1回で書く（非同期）。書き直し(rewrite)の前には、同期で先に書いて順序を保つ */
+  private flushAppends(sync = false): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    const batch = [...this.pending];
+    this.pending.clear();
+    for (const [name, lines] of batch) {
+      const text = lines.join("\n") + "\n";
+      if (sync) {
+        try {
+          writeFileSync(this.file(name), text, { flag: "a" });
+        } catch (e) {
+          console.warn(`[stats] ${name} に書けません:`, e);
+        }
+      } else {
+        appendFile(this.file(name), text, (e) => {
+          if (e) console.warn(`[stats] ${name} に書けません:`, e);
+        });
+      }
     }
   }
 
@@ -182,6 +213,7 @@ class Stats {
 
   private rewrite(): void {
     if (!this.enabled) return;
+    this.pending.clear(); // メモリの内容で丸ごと書き直すので、ためていた追記は不要
     try {
       writeFileSync(this.file("sessions.jsonl"), this.sessions.map((s) => JSON.stringify(s)).join("\n") + (this.sessions.length ? "\n" : ""));
       writeFileSync(this.file("chat.jsonl"), this.chat.map((s) => JSON.stringify(s)).join("\n") + (this.chat.length ? "\n" : ""));

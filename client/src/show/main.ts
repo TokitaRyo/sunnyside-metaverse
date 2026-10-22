@@ -67,6 +67,8 @@ const game = new Phaser.Game({
 });
 const spectator = new SpectatorScene();
 game.scene.add("Spectate", spectator, false);
+// 点検用（管理者の画面でだけ使う）
+(window as unknown as { __show: unknown }).__show = { game, spectator };
 let sceneReady = false;
 game.events.on(EV_PROGRESS, (p: number) => {
   $("load-bar").style.width = `${Math.max(2, Math.round(p * 100))}%`;
