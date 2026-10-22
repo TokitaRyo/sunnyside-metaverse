@@ -22,6 +22,8 @@ export interface JoinOptions {
   look?: string;
   /** touch=スマホ・タブレット, desktop=パソコン */
   device: "touch" | "desktop";
+  /** 管理者のショー画面が「観客」として入るための短命トークン（管理用 API が発行。あれば、プレイヤーとしては数えない） */
+  spectator?: string;
 }
 /** 集めたスタンプの数（出店めぐりの達成度の集計用） */
 export interface StampsSend {

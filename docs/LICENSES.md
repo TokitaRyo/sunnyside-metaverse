@@ -42,11 +42,11 @@
 |---|---|---|
 | phaser | 3.90.0 | MIT |
 | colyseus / @colyseus/sdk / @colyseus/schema / @colyseus/tools | 0.18.x | MIT |
-| express | 5.2.1 | MIT |
-| vite | 6.0.11 | MIT |
+| express | 5.3.0 | MIT |
+| vite | 6.4.5 | MIT |
 | typescript | 5.7.3 | Apache-2.0 |
 | tsx / concurrently / pngjs / @types/* | — | MIT |
-| @colyseus/playground | 0.18.4 | ライセンス欄が空（**未確認**）。開発専用で、本番では出さない（`ENABLE_PLAYGROUND=1` のときだけ） |
+| geoip-country | 5.0.x | データは MaxMind GeoLite2（MaxMind GeoLite2 License / EULA）。国別IP制限（海外からのアクセスを断る）にだけ使う。入室画面のクレジットに出典「This product includes GeoLite2 data created by MaxMind」を表示している。データはサーバーの中だけで使い、配布はしない | ライセンス欄が空（**未確認**）。開発専用で、本番では出さない（`ENABLE_PLAYGROUND=1` のときだけ） |
 
 ## 6. 個人情報・安全面
 

@@ -156,7 +156,8 @@ docs/             decisions.md（判断と計測）/ この文書
 - **管理ページ**（`/admin`、`server/src/admin.ts` と `server/src/admin/`）: `ADMIN_PASSWORD`（10文字以上）を知っている人だけ。概要の集計・オンライン一覧（退室・利用停止）・チャット履歴・入退室の記録・おしらせ・データ削除・CSV。未設定なら無効（404）。
 
 ### 9.3.3b 管理者用のショー画面
-- `/admin/show`（`client/show.html`、`client/src/show/`）。入室中の人（`/admin/api/online` の name・look・いる場所）を、間隔を置いて切り替えながら、アバター・名前・場所・入室時間を大きく映す。見た目は入室画面のアバターづくりと同じ（`AvatarPreview` を共有）。ビルドでは `show.html` が2つ目の入口になる。公開側の `/show.html` は 404 にして、`/admin/show` からだけ配る。
+- `/admin/show`（`client/show.html`、`client/src/show/`）。**主役は、入室中の人の「ゲーム画面」**: 管理者の画面が、ゲームの部屋に「観客」としてつなぎ（`SpectatorScene`。ゲーム本体の `WorldScene` を継承し、地図・描画を共有。プレイヤーとしては出ない）、選んだ1人のキャラをカメラで追う。右に、その人の名前・アバター・スタンプ数・滞在時間・おしゃべりの回数・いる場所（入室画面と同じデザイン。値は `/admin/api/online`）、下に参加者のキャラクターの一覧。切り替えは一定間隔（既定15秒）で、遠いときはいったん島を引いて見せてから寄る。
+- 観客の入室は、管理用 API が出す短命の署名つきトークン（`/admin/api/spectator-token`、5分）で認証する（`JoinOptions.spectator`）。観客は `state.players` に入らず、統計にも数えない。公開側の `/show.html` は 404 のまま、`/admin/show` からだけ配る（CSP はこの画面だけ、自分のサーバーへの WebSocket と blob 画像を許す）。
 
 ### 9.3.4 チャット欄の表示・非表示と、運営によるチャット停止・発言の削除
 - 左上の 💬 ボタンで、チャット欄（ログと入力欄。スマホは右下の 💬 も）を出す／隠す。パソコン・スマホ共通で、選んだ状態は端末に残す（`amplifire.chat.hidden`）。隠していても、頭の上の吹き出しは出る。

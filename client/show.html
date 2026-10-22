@@ -8,7 +8,7 @@
     <link rel="icon" href="data:," />
   </head>
   <body>
-    <!-- 管理者用のショー画面。入室中の人のアバターを、一定の間隔で切り替えながら大きく映す（大型ディスプレイ用）。/admin/show から開く -->
+    <!-- 管理者用のショー画面（大型ディスプレイ用）。入室中の人のゲーム画面をカメラで追いかけ、右に名前・スタンプ数・滞在時間などを出し、下に参加者のキャラを並べる。/admin/show から開く -->
     <div class="bg" aria-hidden="true">
       <div class="aurora a1"></div>
       <div class="aurora a2"></div>
@@ -16,44 +16,67 @@
       <div class="dots"></div>
       <div class="bigmark">AMPLIFIRE</div>
     </div>
-    <canvas id="fx" aria-hidden="true"></canvas>
 
-    <header class="top">
-      <div class="logo">AMPLIFIRE</div>
-      <div class="live"><i></i>LIVE<b id="count">0</b><small>人が参加中</small></div>
-    </header>
+    <div class="layout">
+      <header class="top">
+        <div class="logo">AMPLIFIRE</div>
+        <div class="live"><i></i>LIVE<b id="count">0</b><small>人が参加中</small></div>
+      </header>
 
-    <main class="stage" id="stage">
-      <div class="spot">
-        <div class="rays"></div>
-        <div class="rays r2"></div>
-        <div class="ring r1"><i></i><i></i></div>
-        <div class="ring r2"><i></i><i></i><i></i></div>
-        <div class="ring r3"><i></i></div>
-        <div class="halo"></div>
-        <div class="orbit" id="orbit"></div>
-        <div class="hero" id="hero-box"><canvas id="hero"></canvas></div>
-        <div class="floor"></div>
-      </div>
-      <div class="plate" id="plate">
-        <div class="name" id="name"></div>
-        <div class="sub" id="sub"></div>
-      </div>
-    </main>
+      <!-- 主役: 追いかけているプレイヤーのゲーム画面 -->
+      <section class="world" id="world-wrap">
+        <div id="world"></div>
+        <div class="cam-tag" id="cam-tag"><i></i>ついせき中<b id="cam-name"></b></div>
+        <div class="veil" id="loading"><b>ゲーム画面を よみこみ中…</b><span class="loadbar"><i id="load-bar"></i></span></div>
+        <div class="veil" id="offline" hidden><b>つなぎなおしています…</b></div>
+        <div class="wait" id="wait" hidden>
+          <b>いま、だれも いないよ</b>
+          <span>だれかが 入室すると、その人の画面を おいかけます</span>
+        </div>
+      </section>
 
-    <div class="wait" id="wait" hidden>
-      <b>いま、だれも いないよ</b>
-      <span>だれかが 入室すると、ここに アバターが 映ります</span>
+      <!-- 右: 今の人の情報（入室画面のデザイン） -->
+      <aside class="panel" id="stage">
+        <div class="spot">
+          <div class="rays"></div>
+          <div class="rays r2"></div>
+          <div class="ring r1"><i></i><i></i></div>
+          <div class="ring r2"><i></i><i></i><i></i></div>
+          <div class="ring r3"><i></i></div>
+          <div class="halo"></div>
+          <div class="orbit" id="orbit"></div>
+          <div class="hero" id="hero-box"><canvas id="hero"></canvas></div>
+          <div class="floor"></div>
+        </div>
+        <div class="plate" id="plate">
+          <div class="name" id="name"></div>
+          <div class="sub" id="sub"></div>
+        </div>
+        <div class="stats" id="stats">
+          <div class="stat wide">
+            <span>⭐ スタンプ</span>
+            <b id="st-stamps">0<small id="st-total">/ 0</small></b>
+            <i class="meter"><u id="st-meter"></u></i>
+          </div>
+          <div class="stat"><span>⏱ 滞在時間</span><b id="st-stay">0秒</b></div>
+          <div class="stat"><span>💬 おしゃべり</span><b id="st-chats">0<small>回</small></b></div>
+          <div class="stat wide"><span>📍 いまいる場所</span><b id="st-area" class="txt">-</b></div>
+        </div>
+        <div class="order" id="order"></div>
+      </aside>
+
+      <!-- 下: 参加している人のキャラクター -->
+      <footer class="strip" id="strip"></footer>
     </div>
 
-    <footer class="strip" id="strip"></footer>
+    <canvas id="fx" aria-hidden="true"></canvas>
     <div class="progress"><i id="bar"></i></div>
 
     <div class="ctl" id="ctl">
       <button id="c-prev" type="button" title="前の人（←）">◀</button>
       <button id="c-pause" type="button" title="一時停止／再開（スペース）">⏸</button>
       <button id="c-next" type="button" title="次の人（→）">▶</button>
-      <label>切り替え <select id="c-interval"><option value="3000">3秒</option><option value="5000">5秒</option><option value="6000">6秒</option><option value="8000">8秒</option><option value="12000">12秒</option><option value="20000">20秒</option></select></label>
+      <label>切り替え <select id="c-interval"><option value="8000">8秒</option><option value="12000">12秒</option><option value="15000">15秒</option><option value="20000">20秒</option><option value="30000">30秒</option><option value="60000">60秒</option></select></label>
       <button id="c-shuffle" type="button" title="順番をばらばらにする（S）">🔀</button>
       <button id="c-names" type="button" title="下の一覧を出す／隠す（T）">👥</button>
       <button id="c-full" type="button" title="全画面（F）">⛶</button>

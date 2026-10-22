@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
@@ -55,6 +55,25 @@ export const adminEnabled = password.length >= MIN_PASSWORD;
 if (process.env.ADMIN_PASSWORD && !adminEnabled) console.warn(`[admin] ADMIN_PASSWORD が ${MIN_PASSWORD} 文字未満なので、管理ページは無効です`);
 const digest = (s: string) => createHash("sha256").update(s).digest();
 const passDigest = digest(password);
+
+// ---------------------------------------------------------------- 観客トークン（ショー画面が、ゲームの部屋を「見るだけ」で開くための入場券）
+// 管理ページの認証（Basic）は、部屋への接続（別のURL）には付かないため、認証済みの管理 API から短命のトークンをもらって使う。
+// 中身は「期限.署名」で、署名は管理パスワード由来の鍵の HMAC。パスワードを知らない人は作れず、期限が切れれば使えない。
+const SPECTATOR_TTL_MS = 5 * 60 * 1000;
+const spectatorKey = createHash("sha256").update(`spectator:${password}`).digest();
+const sign = (exp: string) => createHmac("sha256", spectatorKey).update(exp).digest("base64url");
+export function issueSpectatorToken(): string {
+  const exp = String(Date.now() + SPECTATOR_TTL_MS);
+  return `${exp}.${sign(exp)}`;
+}
+export function verifySpectatorToken(token: unknown): boolean {
+  if (!adminEnabled || typeof token !== "string" || token.length > 120) return false;
+  const [exp, sig] = token.split(".");
+  if (!exp || !sig || !/^\d{10,16}$/.test(exp) || Number(exp) < Date.now()) return false;
+  const want = Buffer.from(sign(exp));
+  const got = Buffer.from(sig);
+  return want.length === got.length && timingSafeEqual(want, got);
+}
 
 const fails = new Map<string, { n: number; first: number }>();
 const clientKey = (req: Request): string => String(req.headers["fly-client-ip"] ?? req.socket.remoteAddress ?? "?");
@@ -133,9 +152,15 @@ export function adminRouter(clientDist: string): Router {
   r.get("/", (_req, res) => res.type("html").send(page("admin.html")));
   r.get("/admin.js", (_req, res) => res.type("js").send(page("admin.js")));
   // ショー画面: 入室中の人のアバターを、順番に大きく映す（大型ディスプレイ用）。中身の JS は公開の /assets/ にあるが、人の情報（API）はこのパスワードの内側にしかない
-  r.get(["/show", "/show/"], (_req, res) => {
+  r.get(["/show", "/show/"], (req, res) => {
     const file = join(clientDist, "show.html");
     if (!existsSync(file)) return void res.status(404).type("text/plain").send("show.html がありません（npm run build -w client で作ります）");
+    // ショー画面はゲームの部屋にも（観客として）つなぐので、この画面だけ、自分のサーバーへの WebSocket と、素材の画像(blob)を許す
+    const host = String(req.headers.host ?? "").replace(/[^A-Za-z0-9.:\-\[\]]/g, "");
+    res.setHeader(
+      "Content-Security-Policy",
+      `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' ws://${host} wss://${host}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+    );
     res.type("html").send(readFileSync(file));
   });
   r.get("/admin.css", (_req, res) => res.type("css").send(page("admin.css")));
@@ -144,6 +169,7 @@ export function adminRouter(clientDist: string): Router {
     res.json({ ...stats.summary(hooks?.areas() ?? []), banned: bans.size });
   });
   r.get("/api/online", (_req, res) => res.json(stats.onlineList()));
+  r.get("/api/spectator-token", (_req, res) => res.json({ token: issueSpectatorToken() }));
   r.get("/api/sessions", (req, res) => res.json(stats.recentSessions(num(req.query.limit, 100, 1, 500))));
   r.get("/api/chat", (req, res) => {
     res.json(

@@ -7,6 +7,6 @@
     ".": "./index.ts"
   },
   "dependencies": {
-    "@colyseus/schema": "5.0.33"
+    "@colyseus/schema": "5.0.42"
   }
 }

@@ -1,11 +1,16 @@
 import "./show.css";
+import Phaser from "phaser";
 import { HAIRS, decodeLook, encodeLook, type Look } from "@metaverse/shared";
 import { AvatarPreview } from "../ui/AvatarPreview";
-import { STAMP_FRAME, loadStampSheet, stampFrame, stampIconUrl } from "../game/stampIcons";
+import { loadStampSheet, stampFrame, stampIconUrl } from "../game/stampIcons";
+import { EV_LOAD_ERROR, EV_PROGRESS, EV_READY, PreloadScene } from "../scenes/PreloadScene";
+import { EV_SPECTATE, SpectatorScene } from "./SpectatorScene";
 
 /**
- * 管理者用のショー画面。入室中の人のアバターと名前を、一定の間隔で切り替えながら画面いっぱいに映す。
- * 見せ方は入室画面の「決定したあとの大きな表示」と同じ（白いパステル・ふちの輪・手をふる）で、飾りを増やしてある。
+ * 管理者用のショー画面（大型ディスプレイ用）。
+ *  - 主役（左）: 入室中の人の「ゲーム画面」。観客として部屋につなぎ、その人のキャラをカメラで追いかける（SpectatorScene）。
+ *  - 右: いま追っている人の、名前・スタンプ数・滞在時間・おしゃべりの回数・いる場所。入室画面と同じ白いパステルのデザイン。
+ *  - 下: 参加している人のキャラクター（入室すると上から弾んで出てくる）。クリックでその人に切り替え。
  * 人の情報は /admin/api/online から（管理ページと同じパスワードの内側）。
  */
 interface Person {
@@ -14,10 +19,17 @@ interface Person {
   look: string;
   stay: number;
   area: string;
+  stamps: number;
+  stampTotal: number;
+  chats: number;
+  /** この情報を受け取った時刻（滞在時間を、次の更新まで1秒ずつ進めて見せるため） */
+  at: number;
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const KEY = { interval: "amplifire.show.interval", shuffle: "amplifire.show.shuffle", strip: "amplifire.show.strip" };
+const KEY = { interval: "amplifire.show.interval2", shuffle: "amplifire.show.shuffle", strip: "amplifire.show.strip" };
+const INTERVALS = [8000, 12000, 15000, 20000, 30000, 60000];
+const DEFAULT_INTERVAL = 15000;
 const get = (k: string, d: string): string => {
   try {
     return localStorage.getItem(k) ?? d;
@@ -39,13 +51,54 @@ const api = <T,>(path: string): Promise<T> =>
     return r.json() as Promise<T>;
   });
 
+// ---------------------------------------------------------------- ゲーム画面（観客）
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: "world",
+  // ドット絵が滲まないように最近傍補間
+  pixelArt: true,
+  antialias: false,
+  roundPixels: true,
+  backgroundColor: "#1b2a1a",
+  scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
+  audio: { noAudio: true },
+  disableContextMenu: true,
+  scene: [PreloadScene],
+});
+const spectator = new SpectatorScene();
+game.scene.add("Spectate", spectator, false);
+let sceneReady = false;
+game.events.on(EV_PROGRESS, (p: number) => {
+  $("load-bar").style.width = `${Math.max(2, Math.round(p * 100))}%`;
+});
+game.events.on(EV_LOAD_ERROR, (failed: string[]) => {
+  $("loading").querySelector("b")!.textContent = `素材の読み込みに失敗しました（${failed.length}件）`;
+});
+game.events.on(EV_READY, () => {
+  sceneReady = true;
+  $("loading").hidden = true;
+  game.scene.start("Spectate");
+  followCurrent();
+});
+game.events.on(EV_SPECTATE, (ok: boolean) => {
+  $("offline").hidden = ok;
+  if (ok) followCurrent();
+});
+
+/** いま映している人を、ゲーム画面で追う（人がいなければ、島ぜんたいを映す） */
+function followCurrent(): void {
+  if (!sceneReady) return;
+  spectator.follow(people.some((p) => p.sid === currentSid) ? currentSid : null);
+}
+
 // ---------------------------------------------------------------- 状態
 let people: Person[] = [];
 let areaNames = new Map<string, string>();
 let queue: string[] = [];
 let currentSid = "";
 let paused = false;
-let intervalMs = Number(get(KEY.interval, "6000")) || 6000;
+const savedInterval = Number(get(KEY.interval, String(DEFAULT_INTERVAL)));
+let intervalMs = INTERVALS.includes(savedInterval) ? savedInterval : DEFAULT_INTERVAL;
 let shuffle = get(KEY.shuffle, "1") === "1";
 let showStrip = get(KEY.strip, "1") === "1";
 let timer = 0;
@@ -54,17 +107,27 @@ let demoIdx = 0;
 const hero = new AvatarPreview($<HTMLCanvasElement>("hero"));
 hero.start();
 const lookOf = (s: string): Look => decodeLook(s) ?? { hair: HAIRS[0] };
+const personOf = (sid: string): Person | undefined => people.find((p) => p.sid === sid);
 
-// ---------------------------------------------------------------- 画面の更新
+// ---------------------------------------------------------------- 表示の部品
 function areaLabel(p: Person): string {
   const a = p.area ? areaNames.get(p.area) : "";
-  return a ? `📍 ${a}` : "📍 そとの みち";
+  return a || "そとの みち";
 }
+
+/** 滞在時間: 42秒 / 12分34秒 / 1時間05分 */
+function fmtStay(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  if (s < 60) return `${s}秒`;
+  if (s < 3600) return `${Math.floor(s / 60)}分${String(s % 60).padStart(2, "0")}秒`;
+  return `${Math.floor(s / 3600)}時間${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}分`;
+}
+const stayOf = (p: Person): number => p.stay + (Date.now() - p.at) / 1000;
 
 function fitName(el: HTMLElement, text: string): void {
   el.textContent = text;
   const n = Array.from(text).length;
-  el.style.fontSize = `${n > 9 ? 5.2 : n > 6 ? 6.6 : 8}vmin`;
+  el.style.fontSize = `${n > 9 ? 3.4 : n > 6 ? 4.4 : 5.4}vh`;
 }
 
 /** かざり（あたま・て）を、アバターのまわりに回る小さな絵にする */
@@ -88,7 +151,21 @@ async function buildOrbit(look: Look): Promise<void> {
   });
 }
 
-function display(p: { name: string; look: string; sub: string }, burstAt = true): void {
+/** 右の情報（滞在時間など、時間で変わるものは毎秒ここで更新する） */
+function renderStats(p: Person | null): void {
+  if (!p) return;
+  const total = p.stampTotal || 0;
+  $("st-stamps").firstChild!.textContent = String(p.stamps);
+  $("st-total").textContent = total ? `/ ${total}` : "";
+  $("st-meter").style.width = total ? `${Math.round((p.stamps / total) * 100)}%` : "0%";
+  $("st-stay").textContent = fmtStay(stayOf(p));
+  $("st-chats").firstChild!.textContent = String(p.chats);
+  $("st-area").textContent = areaLabel(p);
+  $("sub").textContent = `📍 ${areaLabel(p)}`;
+  $("cam-name").textContent = p.name;
+}
+
+function display(p: { name: string; look: string }, person: Person | null, burstAt = true): void {
   const stage = $("stage");
   stage.classList.remove("enter");
   void stage.offsetWidth; // アニメを最初からやり直す
@@ -97,10 +174,16 @@ function display(p: { name: string; look: string; sub: string }, burstAt = true)
   hero.setLook(look);
   window.setTimeout(() => hero.wave(), 450);
   fitName($("name"), p.name);
-  $("sub").textContent = p.sub;
+  if (person) renderStats(person);
+  else $("sub").textContent = "ようこそ！";
+  const idx = person ? people.findIndex((x) => x.sid === person.sid) : -1;
+  $("order").textContent = person ? `${idx + 1} / ${people.length} 人目` : "";
   void buildOrbit(look);
   restartBar();
-  if (burstAt) burst(W / 2, H * 0.46, 70);
+  if (burstAt) {
+    const r = $("hero-box").getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top + r.height / 2, 70);
+  }
   markStrip();
 }
 
@@ -124,15 +207,23 @@ function refill(): void {
   queue = sids;
 }
 
-/** 次の人を映す（いなくなった人は飛ばす）。だれもいなければ、見本のアバターを回す */
+/** この人を映す（ゲーム画面で追い、右の情報を出す） */
+function show(p: Person): void {
+  currentSid = p.sid;
+  display(p, p);
+  if (sceneReady) spectator.follow(p.sid);
+}
+
+/** 次の人を映す（いなくなった人は飛ばす）。だれもいなければ、島ぜんたいと見本のアバターを出す */
 function next(step: 1 | -1 = 1): void {
   window.clearTimeout(timer);
-  const wait = $("wait");
-  wait.hidden = people.length > 0;
+  $("wait").hidden = people.length > 0;
   document.body.classList.toggle("empty", people.length === 0);
   if (!people.length) {
+    currentSid = "";
     const hair = HAIRS[demoIdx++ % HAIRS.length];
-    display({ name: "AMPLIFIRE", look: encodeLook({ hair }), sub: "ようこそ！" });
+    display({ name: "AMPLIFIRE", look: encodeLook({ hair }) }, null);
+    if (sceneReady) spectator.follow(null);
     schedule();
     return;
   }
@@ -145,13 +236,12 @@ function next(step: 1 | -1 = 1): void {
       if (!queue.length) refill();
       while (queue.length && !p) {
         const sid = queue.shift()!;
-        p = people.find((x) => x.sid === sid);
+        p = personOf(sid);
       }
     }
   }
   p ??= people[0];
-  currentSid = p.sid;
-  display({ name: p.name, look: p.look, sub: `${areaLabel(p)}${p.stay >= 60 ? `　・　入室 ${Math.floor(p.stay / 60)}分` : ""}` });
+  show(p);
   schedule();
 }
 
@@ -161,11 +251,12 @@ function schedule(): void {
   timer = window.setTimeout(() => next(1), intervalMs);
 }
 
-// ---------------------------------------------------------------- 下の一覧
+// ---------------------------------------------------------------- 下のキャラクター一覧
 let stripSig = "";
+const known = new Set<string>();
 function buildStrip(): void {
   const strip = $("strip");
-  const sig = people.map((p) => p.sid + p.look).join("|");
+  const sig = people.map((p) => `${p.sid}|${p.look}|${p.name}|${p.stamps}`).join(",");
   if (sig === stripSig) return;
   stripSig = sig;
   strip.replaceChildren();
@@ -173,15 +264,19 @@ function buildStrip(): void {
     const th = document.createElement("div");
     th.className = "thumb";
     th.dataset.sid = p.sid;
+    // すでにいた人は、弾んで出る動きを付けない（一覧を作り直すたびに全員が動かないように）
+    if (known.has(p.sid)) th.style.animation = "none";
+    known.add(p.sid);
     const cv = document.createElement("canvas");
     const av = new AvatarPreview(cv);
     av.setLook(lookOf(p.look));
     const nm = document.createElement("span");
     nm.textContent = p.name;
-    th.append(cv, nm);
+    const st = document.createElement("em");
+    st.textContent = p.stampTotal ? `⭐ ${p.stamps}` : "";
+    th.append(cv, nm, st);
     th.addEventListener("click", () => {
-      currentSid = p.sid;
-      display({ name: p.name, look: p.look, sub: `${areaLabel(p)}${p.stay >= 60 ? `　・　入室 ${Math.floor(p.stay / 60)}分` : ""}` });
+      show(p);
       schedule();
     });
     strip.append(th);
@@ -200,13 +295,18 @@ function markStrip(): void {
 // ---------------------------------------------------------------- データの取得
 async function poll(): Promise<void> {
   try {
-    const list = await api<Person[]>("online");
+    const list = await api<Omit<Person, "at">[]>("online");
+    const at = Date.now();
     const prevEmpty = people.length === 0;
-    people = list.sort((a, b) => b.stay - a.stay);
+    people = list.map((x) => ({ ...x, at })).sort((a, b) => b.stay - a.stay);
+    for (const sid of [...known]) if (!people.some((p) => p.sid === sid)) known.delete(sid);
     $("count").textContent = String(people.length);
     buildStrip();
+    const cur = personOf(currentSid);
+    if (cur) renderStats(cur);
     if (prevEmpty && people.length) next(1); // だれかが入ったら、すぐ映す
-    if (!people.length && !prevEmpty) next(1);
+    else if (!people.length && !prevEmpty) next(1);
+    else if (people.length && !cur) next(1); // 追っていた人が退室したら、次の人へ
   } catch (e) {
     console.warn("[show]", e);
   }
@@ -234,6 +334,8 @@ const g = fx.getContext("2d")!;
 let W = innerWidth;
 let H = innerHeight;
 let DPR = 1;
+/** ゲーム画面の範囲（粒を、この上には描かない） */
+let hole = { x: 0, y: 0, w: 0, h: 0 };
 function resize(): void {
   const r = fx.getBoundingClientRect();
   W = Math.max(1, Math.round(r.width));
@@ -241,10 +343,13 @@ function resize(): void {
   DPR = Math.min(2, devicePixelRatio || 1);
   fx.width = Math.round(W * DPR);
   fx.height = Math.round(H * DPR);
+  const w = $("world-wrap").getBoundingClientRect();
+  hole = { x: w.left, y: w.top, w: w.width, h: w.height };
 }
 resize();
 addEventListener("resize", resize);
 new ResizeObserver(resize).observe(fx);
+new ResizeObserver(resize).observe($("world-wrap"));
 
 function burst(x: number, y: number, n: number): void {
   for (let i = 0; i < n; i++) {
@@ -258,8 +363,10 @@ function burst(x: number, y: number, n: number): void {
 }
 function ambient(): void {
   if (sparks.length > 160) return;
+  // 下から湧く。ゲーム画面の外（右の情報の側と、下の一覧の側）に出す
+  const x = Math.random() < 0.5 ? hole.x + hole.w + Math.random() * (W - hole.x - hole.w) : Math.random() * W;
   sparks.push({
-    x: Math.random() * W, y: H + 10, vx: (Math.random() - 0.5) * 30, vy: -(30 + Math.random() * 70), life: 0, max: 5 + Math.random() * 4,
+    x, y: H + 10, vx: (Math.random() - 0.5) * 30, vy: -(30 + Math.random() * 70), life: 0, max: 5 + Math.random() * 4,
     size: 2 + Math.random() * 5, color: COLORS[Math.floor(Math.random() * COLORS.length)], kind: 0, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 2,
   });
 }
@@ -281,6 +388,12 @@ function frame(now: number): void {
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.clearRect(0, 0, fx.width, fx.height);
   g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // ゲーム画面の範囲は切り抜いて、その上には粒を出さない（ゲームの絵が見づらくならないように）
+  g.save();
+  g.beginPath();
+  g.rect(0, 0, W, H);
+  g.rect(hole.x, hole.y, hole.w, hole.h);
+  g.clip("evenodd");
   if (Math.random() < 0.5) ambient();
   for (let i = sparks.length - 1; i >= 0; i--) {
     const s = sparks[i];
@@ -297,6 +410,7 @@ function frame(now: number): void {
     else { g.beginPath(); g.arc(s.x, s.y, s.size / 2, 0, Math.PI * 2); g.fill(); }
   }
   g.globalAlpha = 1;
+  g.restore();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -314,7 +428,7 @@ $("c-next").addEventListener("click", () => next(1));
 $("c-pause").addEventListener("click", () => { paused = !paused; restartBar(); schedule(); sync(); });
 $("c-shuffle").addEventListener("click", () => { shuffle = !shuffle; set(KEY.shuffle, shuffle ? "1" : "0"); queue = []; sync(); });
 $("c-names").addEventListener("click", () => { showStrip = !showStrip; set(KEY.strip, showStrip ? "1" : "0"); sync(); });
-$("c-interval").addEventListener("change", (e) => { intervalMs = Number((e.target as HTMLSelectElement).value) || 6000; set(KEY.interval, String(intervalMs)); restartBar(); schedule(); });
+$("c-interval").addEventListener("change", (e) => { intervalMs = Number((e.target as HTMLSelectElement).value) || DEFAULT_INTERVAL; set(KEY.interval, String(intervalMs)); restartBar(); schedule(); });
 const fs = (): void => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().catch(() => undefined); };
 $("c-full").addEventListener("click", fs);
 addEventListener("keydown", (e) => {
@@ -339,7 +453,10 @@ wake();
 sync();
 void loadAreas();
 void poll().then(() => next(1));
-window.setInterval(poll, 4000);
+window.setInterval(poll, 3000);
 window.setInterval(loadAreas, 60000);
-// 切り替えの間隔を待たずに、下の一覧の「入室 ◯分」などを新しくするため、人が変わったときは次の切り替えで反映される
-void STAMP_FRAME;
+// 滞在時間は、次の更新を待たず、1秒ごとに進めて見せる
+window.setInterval(() => {
+  const p = personOf(currentSid);
+  if (p) $("st-stay").textContent = fmtStay(stayOf(p));
+}, 1000);

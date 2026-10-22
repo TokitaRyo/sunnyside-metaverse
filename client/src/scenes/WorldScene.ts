@@ -94,7 +94,7 @@ const TS = map.tileSize;
 const WORLD_W = map.width * TS;
 const WORLD_H = map.height * TS;
 
-interface Remote {
+export interface Remote {
   char: Character;
   /** 最新の状態上のアクション（1回再生エモートは "idle" として保持） */
   lastAction: string;
@@ -133,7 +133,7 @@ export interface KeyItemEntry {
 
 export class WorldScene extends Phaser.Scene {
   private init0!: WorldInit;
-  private net = new Network();
+  protected net = new Network();
   private hud!: Hud;
   private talk?: Talk;
   private stampCard?: StampCard;
@@ -155,7 +155,7 @@ export class WorldScene extends Phaser.Scene {
   private npcTalking: ObjectEntry | null = null;
   private me?: Character;
   private myId = "";
-  private remotes = new Map<string, Remote>();
+  protected remotes = new Map<string, Remote>();
   private mobs: Character[] = [];
   protected obstacles: Rect[] = [];
   protected tileLayerRuntime: TileLayerRuntime[] = [];
@@ -629,7 +629,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   // ---------------------------------------------------------------- 状態同期
-  private onPlayerAdd(p: Player, id: string): void {
+  protected onPlayerAdd(p: Player, id: string): void {
     if (id === this.net.room.sessionId) {
       this.myId = id;
       this.me = new Character(this, p.x, p.y, "human", p.hair, "idle", decodeLook(p.look));
@@ -651,7 +651,7 @@ export class WorldScene extends Phaser.Scene {
     this.hud?.addTag(id, p.name, "peer");
   }
 
-  private onPlayerChange(p: Player, id: string): void {
+  protected onPlayerChange(p: Player, id: string): void {
     if (id === this.myId) return; // 自分はサーバー座標で上書きしない（ガタつきの原因）
     const r = this.remotes.get(id);
     if (!r) return;
@@ -661,7 +661,7 @@ export class WorldScene extends Phaser.Scene {
     this.applyRemoteAction(r, p.action);
   }
 
-  private onPlayerRemove(id: string): void {
+  protected onPlayerRemove(id: string): void {
     const r = this.remotes.get(id);
     if (!r) return;
     r.char.destroy();
@@ -673,7 +673,7 @@ export class WorldScene extends Phaser.Scene {
    * state.action を見た目に反映する。
    * 1回再生のエモートは "emote" メッセージ側で再生する（同じエモートの連続でも state は変化しないため）。
    */
-  private applyRemoteAction(r: Remote, action: string): void {
+  protected applyRemoteAction(r: Remote, action: string): void {
     const emote = EMOTES[action as EmoteId];
     if (action === "idle" || action === "walk" || action === "run") {
       r.lastAction = action;

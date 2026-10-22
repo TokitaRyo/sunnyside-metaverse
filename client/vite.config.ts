@@ -53,6 +53,8 @@ export default defineConfig({
   server: {
     host: true, // 同一LANのスマホからも開けるように
     port: 5173,
+    // 開発中も、ショー画面（show.html）が管理用 API（/admin/api/...）を同じ場所から呼べるように、サーバー(2567)へ渡す
+    proxy: { "/admin": "http://localhost:2567" },
   },
   build: {
     // 入口は2つ: ゲーム本体(index.html)と、管理者用のショー画面(show.html。/admin/show からだけ配る)

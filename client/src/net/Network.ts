@@ -61,6 +61,17 @@ export class Network {
       if (/locked|full|no rooms/i.test(msg)) throw new Error("満員です。しばらくしてからもう一度お試しください");
       throw e;
     }
+    this.attach(room, h);
+  }
+
+  /** 管理者のショー画面用: 観客として部屋につなぐ（プレイヤーとしては出ない）。token は /admin/api/spectator-token でもらう */
+  async joinSpectator(token: string, h: NetHandlers): Promise<void> {
+    const client = new Client(serverUrl());
+    const room = (await client.join(ROOM_NAME, { spectator: token }, MainRoomState)) as NetRoom;
+    this.attach(room, h);
+  }
+
+  private attach(room: NetRoom, h: NetHandlers): void {
     this.room = room;
 
     const cb = Callbacks.get(room);
