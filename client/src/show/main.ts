@@ -100,7 +100,7 @@ function display(p: { name: string; look: string; sub: string }, burstAt = true)
   $("sub").textContent = p.sub;
   void buildOrbit(look);
   restartBar();
-  if (burstAt) burst(innerWidth / 2, innerHeight * 0.46, 70);
+  if (burstAt) burst(W / 2, H * 0.46, 70);
   markStrip();
 }
 
@@ -229,14 +229,22 @@ const COLORS = ["#79d4ff", "#ffb0d6", "#c4b5ff", "#fff0a0", "#aeeed4", "#ffffff"
 const sparks: Spark[] = [];
 const fx = $<HTMLCanvasElement>("fx");
 const g = fx.getContext("2d")!;
+/** 描く範囲は、window の大きさではなく、canvas が実際に表示されている大きさ（CSS px）から決める。
+ *  ブラウザの拡大率・画面の縮尺が変わっても、消し残し（下や右に色の筋が残る）が出ないようにするため。 */
+let W = innerWidth;
+let H = innerHeight;
+let DPR = 1;
 function resize(): void {
-  const dpr = Math.min(2, devicePixelRatio || 1);
-  fx.width = Math.round(innerWidth * dpr);
-  fx.height = Math.round(innerHeight * dpr);
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const r = fx.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width));
+  H = Math.max(1, Math.round(r.height));
+  DPR = Math.min(2, devicePixelRatio || 1);
+  fx.width = Math.round(W * DPR);
+  fx.height = Math.round(H * DPR);
 }
 resize();
 addEventListener("resize", resize);
+new ResizeObserver(resize).observe(fx);
 
 function burst(x: number, y: number, n: number): void {
   for (let i = 0; i < n; i++) {
@@ -251,7 +259,7 @@ function burst(x: number, y: number, n: number): void {
 function ambient(): void {
   if (sparks.length > 160) return;
   sparks.push({
-    x: Math.random() * innerWidth, y: innerHeight + 10, vx: (Math.random() - 0.5) * 30, vy: -(30 + Math.random() * 70), life: 0, max: 5 + Math.random() * 4,
+    x: Math.random() * W, y: H + 10, vx: (Math.random() - 0.5) * 30, vy: -(30 + Math.random() * 70), life: 0, max: 5 + Math.random() * 4,
     size: 2 + Math.random() * 5, color: COLORS[Math.floor(Math.random() * COLORS.length)], kind: 0, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 2,
   });
 }
@@ -269,12 +277,15 @@ let last = performance.now();
 function frame(now: number): void {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  g.clearRect(0, 0, innerWidth, innerHeight);
+  // 毎フレーム、変換を戻して canvas 全体を消してから、CSS px の座標系で描く
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, fx.width, fx.height);
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (Math.random() < 0.5) ambient();
   for (let i = sparks.length - 1; i >= 0; i--) {
     const s = sparks[i];
     s.life += dt;
-    if (s.life >= s.max) { sparks.splice(i, 1); continue; }
+    if (s.life >= s.max || s.y > H + 80 || s.x < -80 || s.x > W + 80) { sparks.splice(i, 1); continue; }
     s.vy += (s.kind === 1 ? 420 : 40) * dt;
     s.x += s.vx * dt; s.y += s.vy * dt; s.rot += s.vr * dt;
     s.vx *= 0.992;
