@@ -29,8 +29,31 @@ export default function layout(k) {
   put(TABLE, -52, 100, { hit: [18, 8] });
   put(STOOL, -76, 104, { hit: [8, 6] });
   put(STOOL, -30, 106, { hit: [8, 6] });
-  put(POT_A, 64, 52);
+  put(POT_A, -84, 66);
   put(POT_B, -72, 40);
-  put(POT_A, 76, 110);
-  put(POT_B, 52, 118);
+  put(POT_A, -84, 122);
+  put(POT_B, 14, 122);
+
+  // 右前〜右奥: ずんだもんのコーナー（ずんだ餅のお皿・枝豆のかご・立て札。非商用のファンアート風。絵は plaza.ps1 の plaza_*.png）
+  for (const n of ["plaza_mochi", "plaza_basket", "plaza_table", "plaza_sign"]) k.custom(n);
+  k.custom("plaza_zunda", undefined, undefined, { frames: 6, fps: 6 }); // 軽くはずみ、枝豆の耳がぴょこぴょこ動く
+  put("plaza_sign", 62, 66, { hit: [52, 6] });
+  const z = put("plaza_zunda", 24, 92, {
+    hit: [14, 8],
+    npc: {
+      name: "ずんだもん",
+      lines: [
+        "ボクは ずんだもんなのだ！ ずんだ餅の よう精なのだ。きょうは みんなと 文化祭を たのしむのだ！",
+        "ずんだ餅は、えだ豆を すりつぶして つくる、東北の おもちなのだ。あまくて ほっこりするのだ。",
+        "このえだ豆の みみは、ボクの じまんなのだ！ …でも ときどき スルーされちゃうのだ。ざんねんなのだ…。",
+        "島の お店を ぜんぶ まわって、スタンプを あつめるのだ！",
+        "ボクも おうえん するのだ！ みんな、たのしんでいくのだ！",
+      ],
+    },
+  });
+  k.map.objects.push({ sprite: "spr_deco_charactershadow", x: z.x, y: z.by - 1, sort: "floor", by: z.by + 7 });
+  put("expression_chat", 24, 50, { by: 100 });
+  put("plaza_table", 64, 118, { hit: [54, 22] });
+  put("plaza_mochi", 51, 100, { by: 119 });
+  put("plaza_basket", 79, 100, { by: 120 });
 }

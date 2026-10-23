@@ -88,6 +88,7 @@ const SECTIONS: Section[] = [
     p: [
       "BGM: ChillMindscapes「Free Chiptune Music Pack 4」（Creative Commons 表示 4.0 国際 / CC BY 4.0。配信のため、WAV を MP3 に変換して使用しています）。https://chillmindscapes.itch.io/free-chiptune-music-pack-4-chillmindscapes",
       "ドット絵素材: Sunnyside World Asset Pack（danieldiggle）。出店のドット絵・ロゴ: オリジナル。描画: Phaser、通信: Colyseus。この製品は MaxMind の GeoLite2 データを含みます（https://www.maxmind.com）。",
+      "広場のキャラクター「ずんだもん」: 東北ずん子・ずんだもんプロジェクト（SSS合同会社）のキャラクターの、非営利の二次創作です（ドット絵は、この世界のためのオリジナル。公式の制作物ではありません）。ガイドライン: https://zunko.jp/guideline.html",
     ],
   },
 ];
