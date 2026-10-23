@@ -83,6 +83,13 @@ const SECTIONS: Section[] = [
       "同意をやめたいときは、ブラウザのタブを閉じて、8. の方法で削除を依頼してください。",
     ],
   },
+  {
+    h: "11. 素材・BGMのクレジット",
+    p: [
+      "BGM: ChillMindscapes「Free Chiptune Music Pack 4」（Creative Commons 表示 4.0 国際 / CC BY 4.0。配信のため、WAV を MP3 に変換して使用しています）。https://chillmindscapes.itch.io/free-chiptune-music-pack-4-chillmindscapes",
+      "ドット絵素材: Sunnyside World Asset Pack（danieldiggle）。出店のドット絵・ロゴ: オリジナル。描画: Phaser、通信: Colyseus。この製品は MaxMind の GeoLite2 データを含みます（https://www.maxmind.com）。",
+    ],
+  },
 ];
 
 /** 規約の本文を container に描く。visitorId は本人が削除を頼むときに見せる */

@@ -7,19 +7,19 @@
  */
 
 const TRACKS = [
-  "audio/bgm/rainy-day.mp3",
-  "audio/bgm/goodbye.mp3",
-  "audio/bgm/observatory-and-chill-2.mp3",
-  "audio/bgm/brain-empty.mp3",
-  "audio/bgm/lofi-beats-to-ride-dragons-with.mp3",
-  "audio/bgm/birds-song.mp3",
-  "audio/bgm/between-the-dunes.mp3",
-  "audio/bgm/summer2.mp3",
-  "audio/bgm/7pm.mp3",
+  "audio/bgm/hour-for-two.mp3",
+  "audio/bgm/she-will-try.mp3",
+  "audio/bgm/easy-dreams.mp3",
+  "audio/bgm/i-think-i-like-you.mp3",
+  "audio/bgm/a-day.mp3",
+  "audio/bgm/give-her-shadow.mp3",
+  "audio/bgm/gift.mp3",
+  "audio/bgm/goodbye-tales.mp3",
 ];
 
 const STORE_KEY = "sunnyside.bgm";
-const VOLUME = 0.35;
+/** 新しい曲（ChillMindscapes）は録音の音量が小さい（旧曲より約10dB低い）ので、旧曲のときより大きめにする */
+const VOLUME = 0.8;
 
 function shuffle<T>(arr: readonly T[]): T[] {
   const a = [...arr];

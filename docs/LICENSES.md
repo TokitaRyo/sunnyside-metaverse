@@ -30,9 +30,12 @@
 
 ## 4. 音（BGM）
 
-- `client/public/assets/audio/bgm/` の mp3 が 9 曲（7pm / between-the-dunes / birds-song / brain-empty / goodbye / lofi-beats-to-ride-dragons-with / observatory-and-chill-2 / rainy-day / summer2）。
-- **出どころ・ライセンスを、ファイルからも検索でも確認できなかった**（ID3 情報なし）。
-- → **未確認の最大のリスク**。素材パックの付属ではなく、別途入手した曲なら、その配布元の規約（商用・公開の可否、クレジット）を確認すること。確認できなければ、非公開リポジトリの `client/public/assets/audio/bgm/` を削除すれば、BGM なしで動く（コードの変更は不要）。
+- **曲**: ChillMindscapes「Free Chiptune Music Pack 4」（アルバム *Eventually Blue*）の Orchestrated 版 8 曲（#58 Hour For Two／#59 She Will Try／#60 Easy Dreams／#64 I Think I Like You／#65 A Day／#66 Give Her Shadow／#67 Gift／#68 Goodbye Tales）。配布元: https://chillmindscapes.itch.io/free-chiptune-music-pack-4-chillmindscapes
+- **ライセンス**: **Creative Commons Attribution 4.0 International（CC BY 4.0）**。配布ページに「The Music is Free」「free and royalty-free in both non-commercial and commercial project」とあり、商用・非商用どちらの企画でも使ってよい。**条件は「クレジット（出典の表示）」**（CC BY 4.0 の表示義務: 作者名・ライセンス名・ライセンスへのリンク・改変したことの明示）。配布ページには、表示の文言の指定は無く、「YouTube の ChillMindscapes を登録してほしい」というお願いがある（義務ではない）。
+- **表示**: 入室画面の下のクレジットに「BGM: ChillMindscapes『Free Chiptune Music Pack 4』（CC BY 4.0）」と、作者のページへのリンク、MP3 に変換したことを表示している（`client/index.html`）。
+- **改変**: 配布の WAV（48kHz・16bit・ステレオ）を、Web 配信のために MP3（128kbps・48kHz）に変換しただけ。曲の中身は変えていない（CC BY 4.0 の「改変」にあたるため、その旨を表示している）。変換には lamejs（LGPL-3.0。ビルド時の道具としてだけ使い、配布物には入れていない）を使った。
+- **置き場所**: 公開リポジトリには入れず、画像素材と同じ非公開リポジトリ（`client/public/assets/audio/bgm/`）に置く（CC BY は再配布も許すが、念のため、これまでの方針を保った）。
+- 以前使っていた 9 曲（出どころ不明）は、すべて削除した。**これで、BGM の「出どころ不明」の問題は解消**。
 
 ## 5. ソフトウェア（依存パッケージ）
 
@@ -46,7 +49,8 @@
 | vite | 6.4.5 | MIT |
 | typescript | 5.7.3 | Apache-2.0 |
 | tsx / concurrently / pngjs / @types/* | — | MIT |
-| geoip-country | 5.0.x | データは MaxMind GeoLite2（MaxMind GeoLite2 License / EULA）。国別IP制限（海外からのアクセスを断る）にだけ使う。入室画面のクレジットに出典「This product includes GeoLite2 data created by MaxMind」を表示している。データはサーバーの中だけで使い、配布はしない | ライセンス欄が空（**未確認**）。開発専用で、本番では出さない（`ENABLE_PLAYGROUND=1` のときだけ） |
+| geoip-country | 5.0.x | MaxMind GeoLite2 License（EULA）。データは MaxMind GeoLite2。国別IP制限（海外からのアクセスを断る）にだけ使う。入室画面・規約のクレジットに出典「This product includes GeoLite2 data created by MaxMind」を表示。データはサーバーの中だけで使い、配布しない |
+| @colyseus/playground | 0.18.6 | ライセンス欄が空（**未確認**）。開発専用で、本番では読み込まない（`ENABLE_PLAYGROUND=1` のときだけ） |
 
 ## 6. 個人情報・安全面
 
@@ -67,7 +71,6 @@
 
 ## 7. 確認してほしいこと（優先順）
 
-1. BGM 9 曲の出どころと利用条件（§4）。
-2. ロゴの権利と「AMPLIFIRE」名称（§2）。
-3. 横断幕の絵（人物イラスト）の作者と、使ってよい範囲（§2）。
-4. 素材パック V2.1 配布ページの最新規約（§1）。
+1. ロゴの権利と「AMPLIFIRE」名称（§2）。
+2. 横断幕の絵（人物イラスト）の作者と、使ってよい範囲（§2）。
+3. 素材パック V2.1 配布ページの最新規約（§1）。
