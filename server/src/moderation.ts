@@ -33,6 +33,8 @@ const BREAKER_MIN_PEOPLE = num("MOD_BREAKER_MIN_PEOPLE", 3);
 const BREAKER_MS = num("MOD_BREAKER_SEC", 5 * 60) * 1000;
 /** 同じ回線からの入室は、1分にこの回数まで */
 const JOIN_PER_MIN = num("MOD_JOIN_PER_MIN", 10);
+/** 入室の予約は、同じ回線から、1分にこの回数まで（予約は席を15秒ふさぐため） */
+const RESERVE_PER_MIN = num("MOD_RESERVE_PER_MIN", 20);
 /** 運営が退室させた人が、入り直せるまでの時間(ms) */
 const KICK_COOLDOWN_MS = 2 * 60 * 1000;
 /** エモートの間隔(ms) */
@@ -427,6 +429,21 @@ export class Moderation {
         return "この回線からの入室が はやすぎます。すこし まってから、もういちど ためしてね";
       }
     }
+    return null;
+  }
+
+  /** 入室の予約（席を15秒ふさぐ）の頻度。同じ回線から、1分にこの回数まで。外から大量に予約されて、本物の人が入れなくなるのを防ぐ */
+  private reserves = new Map<string, number[]>();
+  checkReserve(ip: string, now = Date.now()): string | null {
+    if (!ip || ipExempt(ip)) return null;
+    const list = (this.reserves.get(ip) ?? []).filter((t) => now - t < 60000);
+    if (list.length >= RESERVE_PER_MIN) {
+      this.reserves.set(ip, list);
+      return "この回線からの入室の申し込みが はやすぎます。すこし まってから、もういちど ためしてね";
+    }
+    list.push(now);
+    this.reserves.set(ip, list);
+    if (this.reserves.size > 5000) for (const [k, v] of this.reserves) if (!v.some((t) => now - t < 60000)) this.reserves.delete(k);
     return null;
   }
 

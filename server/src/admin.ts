@@ -4,6 +4,7 @@ import { join } from "node:path";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { stats, type Area } from "./stats";
 import { moderation } from "./moderation";
+import { issueGateCookie } from "./gate";
 import { venueInfo, venueQrSvg, venueUrl } from "./venue";
 
 /**
@@ -121,6 +122,7 @@ function auth(req: Request, res: Response, next: NextFunction): void {
     return;
   }
   fails.delete(key);
+  issueGateCookie(req, res); // 管理者として認証できた人は、サイト全体の入り口（合言葉）も通れるようにする（ショー画面が、画像や接続を使うため）
   next();
 }
 

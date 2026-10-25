@@ -7,6 +7,8 @@ import { ROOM_NAME } from "@metaverse/shared";
 import { MainRoom } from "./rooms/MainRoom";
 import { adminEnabled, adminRouter } from "./admin";
 import { geoBlockMiddleware } from "./geoblock";
+import { gateRouter } from "./gate";
+import { installMatchmakeGuard } from "./matchmake-guard";
 import { sampleHealth } from "./health";
 import { stats } from "./stats";
 
@@ -17,6 +19,9 @@ const serveClient = existsSync(clientDist) && process.env.SERVE_CLIENT !== "0";
 
 // Playground（開発用の道具）は、使うときだけ読み込む。本番では読み込まない（依存の @colyseus/auth など、使わないコードを動かさないため）
 const playground = !serveClient || process.env.ENABLE_PLAYGROUND === "1" ? (await import("@colyseus/playground")).playground : null;
+
+// 入室の予約（/matchmake）の入口を守る（Colyseus が、Express より先に処理するため）
+installMatchmakeGuard();
 
 const app = config({
   rooms: {
@@ -30,6 +35,8 @@ const app = config({
   initializeExpress: (expressApp) => {
     // 海外からのアクセスは、何よりも先に断る（配信・管理ページ・入室の予約のすべてに効く）
     expressApp.use(geoBlockMiddleware);
+    // 公開前の「関係者だけ」の入り口（合言葉）。本番では、自動で有効（SITE_LOCK=0 で、みんなに開く）。管理ページ（/admin）は、独自の認証
+    expressApp.use(gateRouter());
     // 管理ページ（ADMIN_PASSWORD を知っている人だけ。未設定なら 404）。開発時・本番とも同じ
     expressApp.use("/admin", adminRouter(clientDist));
     // ショー画面の入口（show.html）は、管理ページの中（/admin/show）からだけ配る。外から直接は見せない

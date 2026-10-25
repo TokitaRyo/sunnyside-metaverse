@@ -178,7 +178,7 @@ function boot(): void {
   });
   game.events.on(EV_LOAD_ERROR, (failed: string[]) => join.showError(`素材の読み込みに失敗しました: ${failed.length}件（コンソール参照）`));
   game.events.on(EV_JOINED, () => join.dive());
-  game.events.on(EV_JOIN_FAILED, (msg: string) => join.showError(msg.includes("満員") || msg.includes("回線") || msg.includes("会場") || msg.includes("退室") || msg.includes("日本国内") || msg.includes("利用できません") || msg.includes("同意") ? msg : `サーバーに接続できません（${msg}）`));
+  game.events.on(EV_JOIN_FAILED, (msg: string) => join.showError(msg.includes("満員") || msg.includes("回線") || msg.includes("会場") || msg.includes("アクセス") || msg.includes("退室") || msg.includes("日本国内") || msg.includes("利用できません") || msg.includes("同意") ? msg : `サーバーに接続できません（${msg}）`));
   game.events.on(EV_CONN, (kind: "ok" | "reconnecting" | "lost", code?: number) => setConn(kind, code));
 
   join.onSubmit = (info) => {

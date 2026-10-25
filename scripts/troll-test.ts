@@ -8,6 +8,8 @@
  *    MOD_NEWCOMER_SEC=5 MOD_CHAT_GAP_SEC=1 MOD_BREAKER_THRESHOLD=6 MOD_BREAKER_SEC=8 を付けて起動 → … troll-test.ts breaker
  *  段階 join（入室のしすぎ・同じ回線の止め）:
  *    MOD_STRICT_LOCAL=1 MOD_JOIN_PER_MIN=5 を付けて起動 → … troll-test.ts join
+ *  段階 gate（本番の「関係者だけ」の入り口。合言葉）:
+ *    SITE_LOCK=1 を付けて起動（合言葉は ADMIN_PASSWORD）→ … troll-test.ts gate
  *  段階 venue（会場限定モード）:
  *    VENUE_CODE=venue-test-code を付けて起動 → … troll-test.ts venue
  *
@@ -48,9 +50,10 @@ interface Bot {
 let seq = 0;
 const vidOf = (tag: string) => `troll-test-${tag}-${Date.now().toString(36)}-${seq++}-xxxxxxxx`;
 
-async function join(name: string, opts: { vid?: string; venue?: string; spectator?: string } = {}): Promise<Bot> {
+async function join(name: string, opts: { vid?: string; venue?: string; spectator?: string; cookie?: string } = {}): Promise<Bot> {
   const vid = opts.vid ?? vidOf(name.slice(0, 4));
-  const room = (await new Client(URL_).join(ROOM_NAME, { name, hair: "mophair", consent: CONSENT_VERSION, vid, device: "desktop", venue: opts.venue }, MainRoomState)) as Room<any, MainRoomState>;
+  const client = opts.cookie ? new Client(URL_, { headers: { Cookie: opts.cookie } }) : new Client(URL_);
+  const room = (await client.join(ROOM_NAME, { name, hair: "mophair", consent: CONSENT_VERSION, vid, device: "desktop", venue: opts.venue }, MainRoomState)) as Room<any, MainRoomState>;
   const bot: Bot = {
     room,
     name,
@@ -282,6 +285,61 @@ async function joinPhase(): Promise<void> {
   await leave(ok);
 }
 
+// ------------------------------------------------------------------ 段階 gate
+async function gatePhase(): Promise<void> {
+  const pw = ADMIN_PW;
+  const html = { Accept: "text/html" };
+  const r1 = await fetch(`${HTTP}/`, { headers: html });
+  const body1 = await r1.text();
+  check("入り口: 合言葉なしでは、ページが開けない（ログイン画面）", r1.status === 401 && body1.includes("合言葉") && !body1.includes('id="game"'), `status=${r1.status}`);
+  const r2 = await fetch(`${HTTP}/atlas/manifest.json`);
+  check("入り口: 素材（画像の目録）も開けない", r2.status === 401, `status=${r2.status}`);
+  const r3 = await fetch(`${HTTP}/matchmake/joinOrCreate/main`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  const b3 = await r3.text();
+  check("入り口: 入室の予約（matchmake）も通らない（席をふさがれない）", r3.status === 403 && /関係者/.test(b3), `status=${r3.status} ${b3.slice(0, 80)}`);
+  const r4 = await fetch(`${HTTP}/admin/api/online`);
+  check("入り口: 管理ページは、独自の認証（Basic）が求められる", r4.status === 401 && !!r4.headers.get("www-authenticate"), `status=${r4.status}`);
+
+  let noCookie = "";
+  try {
+    await join("もぐりこみ");
+  } catch (e) {
+    noCookie = e instanceof Error ? e.message : String(e);
+  }
+  check("入り口: Cookie なしの WebSocket 入室は、断られる", /関係者|アクセス|401|Unauthorized/.test(noCookie), noCookie);
+
+  const bad = await fetch(`${HTTP}/__gate`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "pw=wrong-password-123", redirect: "manual" });
+  const badBody = await bad.text();
+  check("入り口: まちがった合言葉は、はじかれる", bad.status === 401 && badBody.includes("ちがいます") && !bad.headers.get("set-cookie"), `status=${bad.status}`);
+
+  const ok = await fetch(`${HTTP}/__gate`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: `pw=${encodeURIComponent(pw)}&next=%2F`, redirect: "manual" });
+  const setCookie = ok.headers.get("set-cookie") ?? "";
+  check("入り口: 正しい合言葉で、Cookie が付く（HttpOnly・SameSite）", ok.status === 303 && /amplifire_gate=/.test(setCookie) && /HttpOnly/i.test(setCookie) && /SameSite=Lax/i.test(setCookie), `status=${ok.status} ${setCookie.slice(0, 60)}`);
+  const cookie = setCookie.split(";")[0];
+
+  const r5 = await fetch(`${HTTP}/`, { headers: { ...html, Cookie: cookie } });
+  const body5 = await r5.text();
+  check("入り口: Cookie があれば、ページが開ける", r5.status === 200 && body5.includes('id="game"'), `status=${r5.status}`);
+  const r6 = await fetch(`${HTTP}/atlas/manifest.json`, { headers: { Cookie: cookie } });
+  check("入り口: Cookie があれば、素材も開ける", r6.status === 200, `status=${r6.status}`);
+  const forged = await fetch(`${HTTP}/`, { headers: { ...html, Cookie: "amplifire_gate=9999999999999.forged" } });
+  check("入り口: 偽の Cookie は通らない", forged.status === 401, `status=${forged.status}`);
+
+  const good = await join("はいれる人", { cookie });
+  check("入り口: Cookie があれば、WebSocket で入室できる", !!good.me());
+  await leave([good]);
+
+  const admin = await fetch(`${HTTP}/admin/api/online`, { headers: { Authorization: "Basic " + Buffer.from("x:" + pw).toString("base64") } });
+  check("入り口: 管理者として認証できた人にも、Cookie が付く", admin.status === 200 && /amplifire_gate=/.test(admin.headers.get("set-cookie") ?? ""), `status=${admin.status}`);
+
+  let last = 0;
+  for (let i = 0; i < 10; i++) {
+    const f = await fetch(`${HTTP}/__gate`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "pw=nope-nope-nope", redirect: "manual" });
+    last = f.status;
+  }
+  check("入り口: まちがいが続くと、一時的に止められる（429）", last === 429, `last=${last}`);
+}
+
 // ------------------------------------------------------------------ 段階 venue
 async function venuePhase(): Promise<void> {
   let reason = "";
@@ -308,8 +366,9 @@ try {
   if (phase === "main") await main();
   else if (phase === "breaker") await breakerPhase();
   else if (phase === "join") await joinPhase();
+  else if (phase === "gate") await gatePhase();
   else if (phase === "venue") await venuePhase();
-  else throw new Error("phase は main / breaker / join / venue のどれか");
+  else throw new Error("phase は main / breaker / join / gate / venue のどれか");
 } catch (e) {
   fail++;
   console.log("FAIL  例外:", e instanceof Error ? e.stack : e);

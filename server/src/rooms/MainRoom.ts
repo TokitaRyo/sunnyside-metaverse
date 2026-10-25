@@ -37,6 +37,7 @@ import { stats } from "../stats";
 import { isBlockedIp } from "../geoblock";
 import { cleanText, moderation as mod, vetName } from "../moderation";
 import { verifyVenueCode, venueEnabled } from "../venue";
+import { gateAllowsHeaders } from "../gate";
 
 const RECONNECT_SECONDS = 15;
 /** 同時に入れる人数の上限。環境変数 MAX_CLIENTS で変えられる（既定は shared/constants.ts） */
@@ -226,6 +227,8 @@ export class MainRoom extends Room<{ state: MainRoomState }> {
       if (!verifySpectatorToken(options.spectator)) throw new ServerError(4003, "利用できません");
       return true;
     }
+    // 公開前の「関係者だけ」の入り口を通った人（合言葉の Cookie がある人）だけ
+    if (!gateAllowsHeaders(context?.headers)) throw new ServerError(4003, "いまは 関係者だけが アクセスできます");
     if (options.consent !== CONSENT_VERSION) throw new ServerError(4001, "利用規約への同意が必要です");
     const vid = typeof options.vid === "string" ? options.vid.slice(0, 64) : "";
     if (vid && isBanned(vid)) throw new ServerError(4003, "利用できません");

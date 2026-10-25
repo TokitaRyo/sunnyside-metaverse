@@ -12,6 +12,7 @@ const PHASES = [
   { phase: "main", env: { MOD_NEWCOMER_SEC: "5", MOD_CHAT_GAP_SEC: "1", MOD_REPORTER_MIN_SEC: "3", MOD_BREAKER_THRESHOLD: "100" } },
   { phase: "breaker", env: { MOD_NEWCOMER_SEC: "5", MOD_CHAT_GAP_SEC: "1", MOD_BREAKER_THRESHOLD: "6", MOD_BREAKER_SEC: "8" } },
   { phase: "join", env: { MOD_STRICT_LOCAL: "1", MOD_JOIN_PER_MIN: "5" } },
+  { phase: "gate", env: { SITE_LOCK: "1" } },
   { phase: "venue", env: { VENUE_CODE: "venue-test-code" } },
 ];
 const sh = process.platform === "win32";
