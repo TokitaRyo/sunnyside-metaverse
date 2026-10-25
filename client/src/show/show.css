@@ -117,6 +117,11 @@ body.empty .cam-tag { display: none; }
 .stat b small { margin-left: 0.5vh; font-size: 2.2vh; font-weight: 800; color: var(--sub); }
 .meter { display: block; height: 1.1vh; margin-top: 0.6vh; overflow: hidden; border-radius: 99px; background: #e6eeff; }
 .meter u { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--grad); text-decoration: none; transition: width 0.8s cubic-bezier(0.2, 1, 0.3, 1); }
+.venue { flex: none; display: flex; align-items: center; gap: 1.2vh; padding: 0.8vh 1.4vh; background: rgba(255, 255, 255, 0.92); border: 0.3vh solid #dbe6ff; border-radius: 2vh; box-shadow: 0 0.8vh 2.4vh rgba(110, 140, 230, 0.2); }
+.venue[hidden] { display: none; }
+.venue-qr { width: 11vh; height: 11vh; }
+.venue-qr svg { width: 100%; height: 100%; display: block; }
+.venue span { font-size: 1.7vh; font-weight: 800; color: var(--sub); max-width: 12vh; line-height: 1.4; }
 .order { flex: none; font-size: 1.7vh; font-weight: 800; letter-spacing: 0.1em; color: var(--sub); }
 body.empty .stats, body.empty .order { display: none; }
 

@@ -1,4 +1,4 @@
-import { CHAT_BUBBLE_MS, CHAT_LOG_MAX, EMOTES, EMOTE_IDS, type EmoteId } from "@metaverse/shared";
+import { CHAT_BUBBLE_MS, CHAT_LOG_MAX, EMOTES, EMOTE_IDS, PHRASES, type EmoteId } from "@metaverse/shared";
 import type { InputState } from "../game/InputState";
 
 interface Tag {
@@ -33,17 +33,28 @@ export class Hud {
 
   constructor(
     private inputState: InputState,
-    private cb: { onSend(text: string): void; onEmote(id: EmoteId): void },
+    private cb: {
+      onSend(text: string): void;
+      onPhrase(id: number): void;
+      onEmote(id: EmoteId): void;
+      /** この人を、自分の画面から消す・戻す */
+      onBlock(id: string, on: boolean): void;
+      isBlocked(id: string): boolean;
+      /** この人を通報する */
+      onReport(id: string): void;
+    },
   ) {
     Hud.current = this;
     $("hud").hidden = false;
     this.buildEmoteBar();
+    this.buildPhraseBar();
     if (!Hud.staticBound) {
       Hud.staticBound = true;
       this.bindChat();
       this.bindPad();
       this.bindTouchToggles();
       this.bindChatVisibility();
+      this.bindPeerMenu();
     }
     if (matchMedia("(pointer: coarse)").matches || new URLSearchParams(location.search).has("pad")) {
       document.body.classList.add("touch");
@@ -68,6 +79,13 @@ export class Hud {
     nameEl.className = "name";
     nameEl.textContent = name;
     if (!name) nameEl.hidden = true;
+    if (kind === "peer") {
+      nameEl.title = "この人への操作（ブロック・通報）";
+      nameEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.openPeerMenu(id, name, nameEl);
+      });
+    }
     root.append(nameEl);
     this.labels.append(root);
     this.tags.set(id, { root, lastKey: "" });
@@ -162,6 +180,34 @@ export class Hud {
     }
   }
 
+  /** チャットの状態: 運営の停止・定型文だけ（荒らしが増えたとき自動で切り替わる）。切り替わったときは、チャット欄に1行出す */
+  setChatState(locked: boolean, phrases: boolean): void {
+    const was = document.body.classList.contains("chat-phrases");
+    document.body.classList.toggle("chat-phrases", phrases && !locked);
+    if (phrases !== was && !locked) {
+      this.notice(phrases ? "いまは 定型文だけ つかえます（下のボタンから えらんでね）" : "ふつうのチャットに もどりました", "phrases");
+      if (!phrases) $("phrase-bar").classList.remove("open");
+    }
+    this.setChatLocked(locked);
+  }
+
+  /** 自動の対応の知らせ（書き込みが送れなかった理由・通報の受付など）。チャット欄に1行と、画面の上に少しだけ出す */
+  notice(text: string, _code?: string): void {
+    if (!text) return;
+    const line = document.createElement("div");
+    line.className = "line notice";
+    line.textContent = text;
+    this.log.append(line);
+    while (this.log.childElementCount > CHAT_LOG_MAX) this.log.firstElementChild?.remove();
+    this.log.scrollTop = this.log.scrollHeight;
+    const toast = $("mod-toast");
+    toast.textContent = text;
+    toast.hidden = false;
+    window.clearTimeout(Hud.toastTimer);
+    Hud.toastTimer = window.setTimeout(() => (toast.hidden = true), 3200);
+  }
+  private static toastTimer = 0;
+
   /** 運営がチャットを停止している間は、入力できなくして、知らせる。切り替わったときだけ、チャット欄にも1行出す */
   setChatLocked(locked: boolean): void {
     const was = document.body.classList.contains("chat-locked");
@@ -242,6 +288,64 @@ export class Hud {
     input.addEventListener("focus", () => Hud.current?.inputState.clear());
   }
 
+  /** 定型文のボタン（自由な書き込みが止まっているときに使う）。毎回作り直す */
+  private buildPhraseBar(): void {
+    const bar = $("phrase-bar");
+    bar.replaceChildren();
+    PHRASES.forEach((text, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = text;
+      b.addEventListener("click", () => {
+        Hud.current?.cb.onPhrase(i);
+        bar.classList.remove("open");
+        b.blur();
+      });
+      bar.append(b);
+    });
+  }
+
+  private peerMenuFor = "";
+  /** 他の参加者の名前を押したときに出る、小さなメニュー（ブロック／通報／とじる）。リスナーは、ページで1回だけ張る（bindPeerMenu） */
+  private openPeerMenu(id: string, name: string, anchor: HTMLElement): void {
+    const menu = $("peer-menu");
+    this.peerMenuFor = id;
+    $("peer-menu-name").textContent = name || "この人";
+    $("peer-block").textContent = this.cb.isBlocked(id) ? "ブロックを やめる" : "見えなくする（ブロック）";
+    const r = anchor.getBoundingClientRect();
+    menu.hidden = false;
+    const w = menu.offsetWidth || 190;
+    const h = menu.offsetHeight || 150;
+    const left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+    const top = r.top - h - 8 > 8 ? r.top - h - 8 : Math.min(innerHeight - h - 8, r.bottom + 8);
+    menu.style.left = `${Math.round(left)}px`;
+    menu.style.top = `${Math.round(top)}px`;
+  }
+
+  private bindPeerMenu(): void {
+    const menu = $("peer-menu");
+    const close = () => (menu.hidden = true);
+    $("peer-close").addEventListener("click", close);
+    $("peer-block").addEventListener("click", () => {
+      const cur = Hud.current;
+      if (!cur || !cur.peerMenuFor) return;
+      const on = !cur.cb.isBlocked(cur.peerMenuFor);
+      cur.cb.onBlock(cur.peerMenuFor, on);
+      cur.notice(on ? "この人を 見えなくしました（あなたの画面だけ）" : "ブロックを やめました");
+      close();
+    });
+    $("peer-report").addEventListener("click", () => {
+      const cur = Hud.current;
+      if (!cur || !cur.peerMenuFor) return;
+      if (confirm("この人を 運営に ほうこくしますか？（べつべつの人から ほうこくが たくさん あると、自動で チャットが とまります）")) cur.cb.onReport(cur.peerMenuFor);
+      close();
+    });
+    // メニューの外を押したら閉じる
+    document.addEventListener("pointerdown", (e) => {
+      if (!menu.hidden && !(e.target as HTMLElement).closest("#peer-menu, .tag.peer .name")) close();
+    });
+  }
+
   /** エモートバーは毎回作り直す（先に空にするので重複しない）。 */
   private buildEmoteBar(): void {
     const bar = $("emote-bar");
@@ -284,6 +388,11 @@ export class Hud {
     $("chat-toggle").addEventListener("click", () => {
       if (document.body.classList.contains("chat-locked")) return; // 運営が停止中
       setEmote(false);
+      // 定型文だけのとき: 入力欄ではなく、定型文のボタンを開く（もういちど押すと閉じる）
+      if (document.body.classList.contains("chat-phrases")) {
+        $("phrase-bar").classList.toggle("open");
+        return;
+      }
       form.classList.add("open");
       document.body.classList.add("chat-open"); // 入力中は、パッドなど下のボタンを隠す
       input.focus(); // タップの操作の中で focus しないと、iOS ではキーボードが開かない

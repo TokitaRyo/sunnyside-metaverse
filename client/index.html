@@ -25,6 +25,16 @@
       <form id="chat-form" autocomplete="off">
         <input id="chat-input" type="text" maxlength="140" placeholder="Enter でチャット / Esc で戻る" enterkeyhint="send" />
       </form>
+      <!-- 定型文だけのとき（荒らしが増えたとき、自動で切り替わる）に、書き込みの代わりに使うボタン -->
+      <div id="phrase-bar" aria-label="定型文チャット"></div>
+      <!-- 他の参加者の名前を押すと出る、ブロック・通報のメニュー -->
+      <div id="peer-menu" hidden role="dialog" aria-label="この人への操作">
+        <div id="peer-menu-name"></div>
+        <button id="peer-block" type="button">見えなくする（ブロック）</button>
+        <button id="peer-report" type="button">通報する</button>
+        <button id="peer-close" type="button">とじる</button>
+      </div>
+      <div id="mod-toast" hidden role="status"></div>
       <!-- 左上のボタン列（ここに並べると、画面の幅が変わっても重ならない） -->
       <div id="hud-top">
         <button id="stamp-btn" type="button" title="スタンプカード" hidden></button>

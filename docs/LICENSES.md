@@ -56,6 +56,7 @@
 | typescript | 5.7.3 | Apache-2.0 |
 | tsx / concurrently / pngjs / @types/* | — | MIT |
 | geoip-country | 5.0.x | MaxMind GeoLite2 License（EULA）。データは MaxMind GeoLite2。国別IP制限（海外からのアクセスを断る）にだけ使う。入室画面・規約のクレジットに出典「This product includes GeoLite2 data created by MaxMind」を表示。データはサーバーの中だけで使い、配布しない |
+| qrcode-generator | 2.0.4 | MIT。会場限定モードの QR の描画（サーバー側）。「QR コード」は株式会社デンソーウェーブの登録商標 |
 | @colyseus/playground | 0.18.6 | ライセンス欄が空（**未確認**）。開発専用で、本番では読み込まない（`ENABLE_PLAYGROUND=1` のときだけ） |
 
 ## 6. 個人情報・安全面

@@ -25,7 +25,7 @@ import { STAMP_TEX, stampFrame } from "../game/stampIcons";
 import { StampCard } from "../ui/StampCard";
 import { Navi } from "../ui/Navi";
 import { sfx } from "../game/sfx";
-import { deviceKind, visitorId } from "../game/visitor";
+import { deviceKind, venueCode, visitorId } from "../game/visitor";
 import { TILES_KEY, elementKey, objectFrame, objectKey, tilesetKey } from "../game/assets";
 import { Character } from "../game/Character";
 import type { InputState } from "../game/InputState";
@@ -176,6 +176,8 @@ export class WorldScene extends Phaser.Scene {
   protected tileLayerRuntime: TileLayerRuntime[] = [];
   protected objectEntries: ObjectEntry[] = [];
   private emote: { id: EmoteId } | null = null;
+  /** 自分の画面だけで、見えなく・聞こえなくした参加者（ブロック。この接続のあいだ有効） */
+  protected blockedPeers = new Set<string>();
   private flipX = false;
   private sendAcc = 0;
   private sent = { x: NaN, y: NaN, flipX: false, action: "" };
@@ -502,12 +504,13 @@ export class WorldScene extends Phaser.Scene {
   protected async connect(): Promise<void> {
     const { name, hair, look, input } = this.init0;
     try {
-      await this.net.join(name, hair, { consent: CONSENT_VERSION, vid: visitorId(), device: deviceKind(), look: look ? encodeLook(look) : undefined }, {
+      await this.net.join(name, hair, { consent: CONSENT_VERSION, vid: visitorId(), device: deviceKind(), look: look ? encodeLook(look) : undefined, venue: venueCode() }, {
         onPlayerAdd: (p, id) => this.onPlayerAdd(p, id),
         onPlayerChange: (p, id) => this.onPlayerChange(p, id),
         onPlayerRemove: (_p, id) => this.onPlayerRemove(id),
         onChat: (m) => this.onChat(m),
-        onChatState: (m) => this.hud?.setChatLocked(m.locked),
+        onChatState: (m) => this.hud?.setChatState(m.locked, !!m.phrases),
+        onModNotice: (m) => this.hud?.notice(m.text, m.code),
         onChatDelete: (m) => this.hud?.removeChatMessages(m.ids),
         onEmote: (m) => this.onEmote(m),
         onCorrect: (m) => this.onCorrect(m),
@@ -532,7 +535,11 @@ export class WorldScene extends Phaser.Scene {
     this.myId = this.net.sessionId;
     this.hud = new Hud(input, {
       onSend: (text) => this.net.sendChat(text),
+      onPhrase: (id) => this.net.sendPhrase(id),
       onEmote: (id) => this.triggerEmote(id),
+      onBlock: (id, on) => this.setBlocked(id, on),
+      isBlocked: (id) => this.blockedPeers.has(id),
+      onReport: (id) => this.net.sendReport(id),
     });
     this.talk = new Talk({ onPrompt: () => this.onTalkKey(), onAdvance: () => this.onTalkKey() });
     this.stampCard = new StampCard();
@@ -729,7 +736,21 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /** ブロックの入り切り。ブロックした人は、絵・名札・ふきだし・チャット・エモートが、自分の画面から消える */
+  private setBlocked(id: string, on: boolean): void {
+    if (on) {
+      this.blockedPeers.add(id);
+      const r = this.remotes.get(id);
+      if (r) this.hideRemote(id, r);
+      this.hud?.hideTag(id);
+    } else {
+      this.blockedPeers.delete(id);
+      this.peerCheckAt = 0; // すぐに見直して、近ければ、また出す
+    }
+  }
+
   private onEmote(m: EmoteBroadcast): void {
+    if (this.blockedPeers.has(m.sessionId)) return;
     const r = this.remotes.get(m.sessionId);
     const def = EMOTES[m.id];
     if (!r || !def) return;
@@ -758,6 +779,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private onChat(m: ChatBroadcast): void {
+    if (this.blockedPeers.has(m.sessionId)) return;
     const self = m.sessionId === this.myId;
     this.hud.addChatLine(m.name, m.text, self, m.id);
     this.hud.showBubble(m.sessionId, m.text, m.id);
@@ -853,6 +875,7 @@ export class WorldScene extends Phaser.Scene {
     this.peerCheckAt = now + PEER_CHECK_MS;
     const max = this.maxVisiblePeers();
     const order = [...this.remotes]
+      .filter(([id]) => !this.blockedPeers.has(id))
       .map(([id, r]) => ({ id, r, d: Math.hypot(r.x - focus.x, r.y - focus.y) }))
       .sort((a, b) => a.d - b.d);
     const next = new Set<string>();

@@ -12,7 +12,10 @@ import {
   type EmoteId,
   type EmoteSend,
   type JoinOptions,
+  type ModNotice,
   type MoveMessage,
+  type PhraseSend,
+  type ReportSend,
   type StampsSend,
   type Player,
 } from "@metaverse/shared";
@@ -38,6 +41,8 @@ export interface NetHandlers {
   onChatState(msg: ChatState): void;
   /** 運営が消した発言 */
   onChatDelete(msg: ChatDelete): void;
+  /** 自動の対応（書き込みが送れなかった理由・通報の受付）。本人にだけ届く */
+  onModNotice?(msg: ModNotice): void;
   onEmote(msg: EmoteBroadcast): void;
   onCorrect(msg: CorrectMessage): void;
   /** 回線が途切れ、自動再接続を試みている */
@@ -50,7 +55,7 @@ export interface NetHandlers {
 export class Network {
   room!: NetRoom;
 
-  async join(name: string, hair: string, extra: Pick<JoinOptions, "consent" | "vid" | "device" | "look">, h: NetHandlers): Promise<void> {
+  async join(name: string, hair: string, extra: Pick<JoinOptions, "consent" | "vid" | "device" | "look" | "venue">, h: NetHandlers): Promise<void> {
     const client = new Client(serverUrl());
     // 部屋はサーバーが起動時に1つだけ作る。join のみ使い、満員なら断られる
     let room: NetRoom;
@@ -84,6 +89,7 @@ export class Network {
     room.onMessage(MSG.chat, (m: ChatBroadcast) => h.onChat(m));
     room.onMessage(MSG.chatState, (m: ChatState) => h.onChatState(m));
     room.onMessage(MSG.chatDelete, (m: ChatDelete) => h.onChatDelete(m));
+    room.onMessage(MSG.modNotice, (m: ModNotice) => h.onModNotice?.(m));
     room.onMessage(MSG.emote, (m: EmoteBroadcast) => h.onEmote(m));
     room.onMessage(MSG.correct, (m: CorrectMessage) => h.onCorrect(m));
 
@@ -102,6 +108,16 @@ export class Network {
   sendChat(text: string): void {
     const m: ChatSend = { text };
     this.room.send(MSG.chat, m);
+  }
+  /** 定型文チャット（PHRASES の番号） */
+  sendPhrase(id: number): void {
+    const m: PhraseSend = { id };
+    this.room.send(MSG.phrase, m);
+  }
+  /** この人を通報する（別々の人から一定数たまると、自動でチャットが止まる） */
+  sendReport(sessionId: string): void {
+    const m: ReportSend = { sessionId };
+    this.room.send(MSG.report, m);
   }
   sendEmote(id: EmoteId): void {
     const m: EmoteSend = { id };

@@ -1216,3 +1216,58 @@ body.chat-locked #chat-input { cursor: not-allowed; background: #e8e8ee; }
 #chat-log .line.notice { color: #ffd2a8; font-weight: 700; }
 /* 狭い画面（320〜345px）では、ボタン列に入りきるよう、人数の表示を省く */
 @media (max-width: 345px) { #hud-top #online-count { display: none; } }
+
+/* ---------- 荒らし対策: 他の人へのブロック・通報、定型文だけのモード、自動対応の知らせ ---------- */
+/* 他の参加者の名前は、押せる（ブロック・通報のメニューが開く）。ラベルの層は pointer-events: none なので、名前だけ有効にする */
+.tag.peer .name { pointer-events: auto; cursor: pointer; }
+.touch .tag.peer .name { padding: 6px 10px; }
+#peer-menu {
+  position: fixed;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 190px;
+  padding: 10px;
+  border: 2px solid rgba(20, 30, 15, 0.6);
+  border-radius: 12px;
+  background: rgba(253, 248, 234, 0.97);
+  color: var(--ink);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+#peer-menu-name { font-weight: 800; font-size: 14px; text-align: center; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#peer-menu button { font: inherit; font-size: 13px; padding: 9px 10px; border-radius: 9px; border: 2px solid rgba(20, 30, 15, 0.45); background: #fff; color: var(--ink); cursor: pointer; }
+#peer-menu button:active { background: #fff3c4; }
+#peer-report { border-color: rgba(190, 60, 60, 0.6); color: #8a2a2a; }
+
+/* 定型文だけのモード: 入力欄の代わりに、ボタンを出す */
+#phrase-bar { position: absolute; left: 12px; bottom: 14px; width: min(340px, calc(100vw - 24px)); display: none; flex-wrap: wrap; gap: 6px; }
+body.chat-phrases #phrase-bar { display: flex; }
+body.chat-phrases #chat-form { display: none !important; }
+body.chat-phrases #chat-log { bottom: 150px; max-height: 26vh; }
+#phrase-bar button { font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 10px; border: 2px solid rgba(20, 30, 15, 0.6); background: rgba(253, 248, 234, 0.94); color: var(--ink); cursor: pointer; }
+#phrase-bar button:active { background: #fff; }
+body.chat-hidden #phrase-bar { display: none !important; }
+/* スマホ: 右下の「チャット」ボタンで開く */
+.touch #phrase-bar { display: none; }
+.touch.chat-phrases #phrase-bar.open { display: flex; left: 10px; right: 10px; bottom: 10px; width: auto; z-index: 6; }
+.touch.chat-phrases #chat-log { bottom: 64px; }
+
+/* 自動対応の知らせ（書き込みが送れなかった理由など）。画面の上に、少しだけ出す */
+#mod-toast {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: rgba(40, 36, 72, 0.9);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+  pointer-events: none;
+}

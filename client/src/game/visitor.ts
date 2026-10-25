@@ -45,4 +45,22 @@ export function saveConsent(on: boolean): void {
   }
 }
 
+const VENUE_KEY = "amplifire.venue";
+/**
+ * 会場限定モードの入室コード。会場の QR コードの URL（?k=…）から読み、端末に覚えておく（再読み込みしても、入れるように）。
+ * コードがない・古いときは、入室のときにサーバーが断り、画面にそう出る。
+ */
+export function venueCode(): string | undefined {
+  try {
+    const k = new URLSearchParams(location.search).get("k");
+    if (k) {
+      localStorage.setItem(VENUE_KEY, k.slice(0, 80));
+      return k.slice(0, 80);
+    }
+    return localStorage.getItem(VENUE_KEY) ?? undefined;
+  } catch {
+    return new URLSearchParams(location.search).get("k")?.slice(0, 80) ?? undefined;
+  }
+}
+
 export const deviceKind = (): "touch" | "desktop" => (matchMedia("(pointer: coarse)").matches ? "touch" : "desktop");

@@ -19,7 +19,8 @@ const allowed = new Set(
 const blockUnknown = process.env.GEO_BLOCK_UNKNOWN === "1";
 
 /** localhost・プライベート・リンクローカルのアドレスか */
-function isLocalAddress(ip: string): boolean {
+export function isLocalAddress(rawIp: string): boolean {
+  const ip = rawIp.replace(/^::ffff:/i, "");
   if (ip === "::1" || ip === "127.0.0.1" || ip === "localhost") return true;
   if (/^(10\.|127\.|192\.168\.|169\.254\.)/.test(ip)) return true;
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return true;

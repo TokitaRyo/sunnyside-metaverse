@@ -15,6 +15,7 @@
     "@metaverse/shared": "*",
     "colyseus": "0.18.10",
     "express": "5.3.0",
-    "geoip-country": "5.0.202610210158"
+    "geoip-country": "5.0.202610210158",
+    "qrcode-generator": "2.0.4"
   }
 }

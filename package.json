@@ -13,7 +13,8 @@
     "build": "npm run build -w client && npm run build -w server",
     "start": "npm run start -w server",
     "loadtest": "tsx scripts/load-test.ts",
-    "cheat-test": "tsx scripts/cheat-test.ts"
+    "cheat-test": "tsx scripts/cheat-test.ts",
+    "troll-test": "node scripts/troll-test-run.mjs"
   },
   "overrides": {
     "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/v20.52.0.tar.gz",

@@ -26,6 +26,7 @@
       <button data-tab="online" type="button">オンライン</button>
       <button data-tab="chat" type="button">チャット履歴</button>
       <button data-tab="sessions" type="button">入退室の記録</button>
+      <button data-tab="auto" type="button">自動対応</button>
       <button data-tab="ops" type="button">運営の操作</button>
     </nav>
 
@@ -97,6 +98,36 @@
           <h2>入退室の記録（新しい順・最大200件）</h2>
           <p class="note"><a class="btn" href="/admin/api/export/sessions.csv">CSVで保存（全件）</a></p>
           <table id="t-sessions"></table>
+        </div>
+      </section>
+
+      <!-- 自動対応（荒らし対策） -->
+      <section id="tab-auto" class="tab" hidden>
+        <div class="card">
+          <h2>いまの状態</h2>
+          <div id="auto-state" class="kpis"></div>
+          <p class="note">荒らしの書き込み（連絡先・暴言の言い換え・連投など）は、人がいなくても、自動で止めます。違反が続いた人は、チャットを 10分 → 1時間 → その日の終わりまで 止めます。違反が急に増えたときは、全員のチャットを「定型文だけ」に自動で切り替え、時間がたつと、自動で戻ります。</p>
+          <div class="row">
+            <button id="phrases-btn" type="button">定型文だけにする（手動）</button>
+            <span id="phrases-note" class="note"></span>
+          </div>
+        </div>
+        <div class="card">
+          <h2>いま止めている人</h2>
+          <table id="t-muted"></table>
+        </div>
+        <div class="card">
+          <h2>最近の自動対応（新しい順）</h2>
+          <p class="note">書き込みの本文は、記録しません（連絡先が入っていることがあるため）。理由と回数だけ残ります。</p>
+          <table id="t-events"></table>
+        </div>
+        <div class="card" id="venue-card" hidden>
+          <h2>会場限定モード（入室用の QR）</h2>
+          <p class="note">会場にいる人だけが入れるモードです。印刷して貼るか、画面に出して、スマホで読みとってもらいます。</p>
+          <div class="row">
+            <a class="btn" href="/admin/venue" target="_blank" rel="noopener">印刷用ページを開く</a>
+            <span id="venue-url" class="note mono"></span>
+          </div>
         </div>
       </section>
 

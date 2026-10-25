@@ -304,6 +304,43 @@
     refresh();
   });
 
+  // ---------------------------------------------------------------- 自動対応（荒らし対策）
+  const KIND_LABEL = {
+    "auto-mute": "チャットを止めた", "ip-mute": "同じ回線も止めた", "block-contact": "連絡先・URLを止めた", "block-badword": "NGワードの言い換えを止めた",
+    "mask-badword": "NGワードを伏字にした", "block-repeat": "文字の繰り返しを止めた", "block-flood": "一斉の同じ文を止めた", "name-replaced": "名前を置き換えた",
+    "breaker-on": "安全装置が働いた（定型文だけ）", "breaker-off": "安全装置が解けた", "manual-phrases": "定型文だけ（手動）", "report": "通報", "join-rate": "入室のしすぎを断った", "unmute": "停止を解いた",
+  };
+  let phrasesOn = false;
+  async function loadAuto() {
+    const m = await api("moderation");
+    phrasesOn = !!m.phrases.manual;
+    const auto = m.phrases.autoRemainingMs > 0;
+    $("auto-state").replaceChildren(
+      el("div", { class: "kpi" + (m.phrases.active ? " warn" : "") }, el("b", { text: m.phrases.active ? "定型文だけ" : "ふつう" }), el("span", { text: "チャットの状態" })),
+      el("div", { class: "kpi" }, el("b", { text: String(m.muted.length) }), el("span", { text: "止めている人" })),
+      el("div", { class: "kpi" }, el("b", { text: String(m.counters["auto-mute"] || 0) }), el("span", { text: "自動で止めた回数" })),
+      el("div", { class: "kpi" }, el("b", { text: String((m.counters["block-contact"] || 0) + (m.counters["block-badword"] || 0) + (m.counters["block-flood"] || 0) + (m.counters["block-repeat"] || 0)) }), el("span", { text: "止めた書き込み" })),
+    );
+    $("phrases-btn").textContent = phrasesOn ? "定型文だけを解く（手動）" : "定型文だけにする（手動）";
+    $("phrases-btn").classList.toggle("on", phrasesOn);
+    $("phrases-note").textContent = auto ? "（自動の安全装置が働いています。あと " + dur(m.phrases.autoRemainingMs / 1000) + " で自動で戻ります）" : "";
+    table($("t-muted"), [{ t: "ニックネーム" }, { t: "回数", n: 1 }, { t: "あと", n: 1 }, { t: "訪問者ID" }, { t: "" }],
+      m.muted.map((u) => tr([td(u.name), td(u.level + "回目", 1), td(dur(u.untilMs / 1000), 1), el("td", { class: "mono", text: u.vid.slice(0, 12) }),
+        el("td", null, el("button", { class: "small", type: "button", text: "解除", onclick: async () => { const r = await post("moderation/unmute", { vid: u.vid }); toast(r.ok ? "解除しました" : "できませんでした", !r.ok); loadAuto(); } }))])));
+    table($("t-events"), [{ t: "時刻" }, { t: "内容" }, { t: "ニックネーム" }, { t: "訪問者ID" }, { t: "詳しく" }],
+      m.events.map((e) => tr([td(jstTime(e.t)), td(KIND_LABEL[e.kind] || e.kind), td(e.name), el("td", { class: "mono", text: e.vid }), td(e.detail)])));
+    $("venue-card").hidden = !(m.venue && m.venue.enabled);
+    if (m.venue && m.venue.enabled) {
+      const v = await api("venue");
+      $("venue-url").textContent = v.url || "";
+    }
+  }
+  $("phrases-btn").addEventListener("click", async () => {
+    const r = await post("moderation/phrases", { on: !phrasesOn });
+    toast(r.ok ? (!phrasesOn ? "定型文だけにしました（全員）" : "定型文だけを解きました") : "切り替えられませんでした", !r.ok);
+    loadAuto();
+  });
+
   // ---------------------------------------------------------------- チャットの停止・再開（ワンタッチ）
   let chatLocked = false;
   const showLock = (locked) => {
@@ -342,6 +379,7 @@
       if (tab === "online") await loadOnline();
       if (tab === "sessions") await loadSessions();
       if (tab === "ops") await loadBans();
+      if (tab === "auto") await loadAuto();
       if (tab === "chat" && (force || !$("chat-list").childElementCount)) await loadChat(true);
     } catch (e) {
       $("updated").textContent = "読み込めませんでした（" + e.message + "）";

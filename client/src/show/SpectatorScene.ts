@@ -33,6 +33,8 @@ export class SpectatorScene extends WorldScene {
   private transition?: Phaser.Tweens.Tween;
   private moving = false;
   private stopped = false;
+  /** 発言のふきだしを、ゲーム画面に出すか。既定は出さない（会場の大画面に、荒らしの発言が映らないように。名前はサーバーが検査済み） */
+  private showBubbles = false;
   /** カメラが追う点。追っている人の位置を毎フレーム映す（絵が無い間も、位置だけで追える） */
   private followPoint = new Phaser.Math.Vector2();
 
@@ -47,6 +49,17 @@ export class SpectatorScene extends WorldScene {
     const r = this.remotes.get(this.target);
     if (r) this.flyTo(r);
     else this.overview();
+  }
+
+  /** 発言のふきだしを出す・隠す（ショー画面のボタン） */
+  setBubbles(on: boolean): void {
+    this.showBubbles = on;
+    if (!on) {
+      for (const l of this.labels.values()) {
+        l.bubble?.destroy();
+        l.bubble = undefined;
+      }
+    }
   }
 
   /** いま追っている人がいるか（つながり直した直後など、まだ届いていない間は false） */
@@ -208,7 +221,7 @@ export class SpectatorScene extends WorldScene {
 
   private bubbleText(id: string, text: string): void {
     const l = this.labels.get(id);
-    if (!l) return;
+    if (!l || !this.showBubbles) return;
     l.bubble?.destroy();
     l.bubble = this.add
       .text(0, 0, text, {

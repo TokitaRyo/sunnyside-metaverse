@@ -3,6 +3,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { stats, type Area } from "./stats";
+import { moderation } from "./moderation";
+import { venueInfo, venueQrSvg, venueUrl } from "./venue";
 
 /**
  * 管理ページ（/admin）。運営者だけが見られるように、環境変数 ADMIN_PASSWORD（10文字以上）を知っている人だけに見せる。
@@ -26,6 +28,10 @@ export interface AdminHooks {
   setChatLocked(locked: boolean): void;
   /** 消した発言を、参加者の画面のチャット欄からも消す */
   retractChat(ids: number[]): void;
+  /** 定型文だけのモードを、手動で入れる・解く */
+  setPhrasesOnly(on: boolean): void;
+  /** 自動で止められた人のチャット停止を、解く */
+  unmute(vid: string): boolean;
 }
 let hooks: AdminHooks | null = null;
 export function registerAdminHooks(h: AdminHooks): void {
@@ -181,7 +187,31 @@ export function adminRouter(clientDist: string): Router {
       }),
     );
   });
-  r.get("/api/settings", (_req, res) => res.json({ chatLocked: stats.chatLocked }));
+  r.get("/api/settings", (_req, res) => res.json({ chatLocked: stats.chatLocked, phrasesOnly: moderation.phrasesActive() }));
+  // 自動の荒らし対策の状況（止めた人・定型文だけのモード・最近の自動対応）
+  r.get("/api/moderation", (_req, res) => res.json({ ...moderation.status(), venue: venueInfo() }));
+  // 会場限定モード: 入室用の URL と QR（SVG）。ショー画面や、印刷用のページが使う
+  const originOf = (req: Request): string => {
+    const proto = String(req.headers["x-forwarded-proto"] ?? req.protocol).split(",")[0].trim() === "https" ? "https" : "http";
+    const host = String(req.headers.host ?? "").replace(/[^A-Za-z0-9.:\-\[\]]/g, "");
+    return `${proto}://${host}`;
+  };
+  r.get("/api/venue", (req, res) => {
+    const info = venueInfo();
+    if (!info.enabled) return void res.json({ enabled: false });
+    const url = venueUrl(originOf(req));
+    res.json({ ...info, url, svg: venueQrSvg(url) });
+  });
+  // 印刷用ページ（会場に貼る QR。固定コードのとき）
+  r.get("/venue", (req, res) => {
+    const info = venueInfo();
+    if (!info.enabled) return void res.status(404).type("text/plain").send("会場限定モードは、無効です（環境変数 VENUE_CODE を設定すると有効になります）");
+    const url = venueUrl(originOf(req));
+    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
+    res.type("html").send(
+      `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AMPLIFIRE 入室用 QR</title><link rel="stylesheet" href="/admin/admin.css"></head><body class="venue-page"><main class="venue-card"><h1>AMPLIFIRE</h1><p class="venue-lead">スマホで、この QR コードを 読みとって 入室してね</p><div class="venue-qr">${venueQrSvg(url)}</div><p class="venue-url">${esc(url)}</p>${info.rotateMin ? `<p class="venue-note">このコードは ${info.rotateMin} 分ごとに 変わります（ショー画面に出る QR を使ってください）</p>` : ""}<p class="venue-note">会場にいる人だけが 入れるようになっています</p></main></body></html>`,
+    );
+  });
   r.get("/api/bans", (_req, res) => res.json([...bans.entries()].map(([vid, b]) => ({ vid, ...b }))));
 
   r.get("/api/export/chat.csv", (_req, res) => {
@@ -224,6 +254,19 @@ export function adminRouter(clientDist: string): Router {
     hooks.retractChat(ids);
     console.log(`[admin] delete chat x${deleted}`);
     res.json({ ok: true, deleted });
+  });
+  // 定型文だけのモード（手動）。荒らしが増えたときは、自動でも入る
+  r.post("/api/moderation/phrases", mutating, json, (req, res) => {
+    if (!hooks) return void res.status(503).json({ error: "not ready" });
+    hooks.setPhrasesOnly(req.body?.on === true);
+    console.log(`[admin] phrases-only ${req.body?.on === true ? "ON" : "off"}`);
+    res.json({ ok: true, ...moderation.status().phrases });
+  });
+  // 自動で止められた人の、チャット停止を解く
+  r.post("/api/moderation/unmute", mutating, json, (req, res) => {
+    const vid = typeof req.body?.vid === "string" ? req.body.vid : "";
+    if (!vid || !hooks) return void res.status(400).json({ error: "vid required" });
+    res.json({ ok: hooks.unmute(vid) });
   });
   r.post("/api/kick", mutating, json, (req, res) => {
     const sid = typeof req.body?.sid === "string" ? req.body.sid : "";

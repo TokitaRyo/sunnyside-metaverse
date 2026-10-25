@@ -63,6 +63,11 @@
           <div class="stat wide"><span>📍 いまいる場所</span><b id="st-area" class="txt">-</b></div>
         </div>
         <div class="order" id="order"></div>
+        <!-- 会場限定モードのとき: 入室用の QR（会場にいる人だけが入れる） -->
+        <div class="venue" id="venue" hidden>
+          <div class="venue-qr" id="venue-qr"></div>
+          <span>スマホで読みとって 入室</span>
+        </div>
       </aside>
 
       <!-- 下: 参加している人のキャラクター -->
@@ -79,6 +84,7 @@
       <label>切り替え <select id="c-interval"><option value="8000">8秒</option><option value="12000">12秒</option><option value="15000">15秒</option><option value="20000">20秒</option><option value="30000">30秒</option><option value="60000">60秒</option></select></label>
       <button id="c-shuffle" type="button" title="順番をばらばらにする（S）">🔀</button>
       <button id="c-names" type="button" title="下の一覧を出す／隠す（T）">👥</button>
+      <button id="c-bubbles" type="button" title="ゲーム画面の発言のふきだしを出す／隠す（B）。既定は隠す">💬</button>
       <button id="c-full" type="button" title="全画面（F）">⛶</button>
     </div>
     <script type="module" src="/src/show/main.ts"></script>

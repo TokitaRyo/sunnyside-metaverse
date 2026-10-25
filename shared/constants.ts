@@ -34,6 +34,20 @@ export const CHAT_RATE_PER_SEC = 2;
 export const CHAT_BUBBLE_MS = 4000;
 export const CHAT_LOG_MAX = 50;
 
+/** 定型文チャット（荒らしが増えて自由な書き込みを止めているときも使える。番号で送る。並び順を変えない・足すときは末尾に） */
+export const PHRASES: readonly string[] = [
+  "こんにちは！",
+  "ありがとう！",
+  "すごい！",
+  "たのしいね！",
+  "いっしょにあそぼう！",
+  "おなかすいた～",
+  "おめでとう！",
+  "ここ どこかな？",
+  "いいね！",
+  "またね！",
+];
+
 /** 速度チェックの許容係数（SPEC 4.1） */
 export const SPEED_TOLERANCE = 1.5;
 /** 溜められる移動量（バースト対策）の上限を何秒分にするか */

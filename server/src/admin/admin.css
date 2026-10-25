@@ -87,3 +87,17 @@ button.lock.on { border-color: #ff6b7e; background: #6b1a2c; color: #fff; animat
 .msg.picked { background: #2b2250; }
 .msg input[type="checkbox"] { margin: 3px 0 0; accent-color: var(--acc2); cursor: pointer; }
 @media (max-width: 640px) { .msg { grid-template-columns: 22px 1fr; } .msg .t, .msg .nm, .msg .id { grid-column: 2; } .msg .tx { grid-column: 2; } }
+
+/* 自動対応タブ・会場限定モードの印刷ページ */
+.kpi.warn { border-color: #ff9a3c; background: rgba(255, 154, 60, 0.12); }
+.kpi.warn b { color: #ff9a3c; }
+#phrases-btn.on { background: #ff9a3c; color: #1b1b1b; }
+.venue-page { background: #ffffff; color: #26314f; display: grid; place-items: center; min-height: 100vh; }
+.venue-card { text-align: center; padding: 24px; max-width: 560px; }
+.venue-card h1 { font-size: 40px; letter-spacing: 0.3em; margin: 0 0 8px; }
+.venue-lead { font-size: 22px; font-weight: 700; margin: 0 0 16px; }
+.venue-qr { width: min(80vw, 420px); margin: 0 auto 12px; }
+.venue-qr svg { width: 100%; height: auto; display: block; }
+.venue-url { font-size: 12px; word-break: break-all; color: #5b6b92; }
+.venue-note { font-size: 14px; color: #5b6b92; margin: 6px 0; }
+@media print { .venue-page { min-height: 0; } }

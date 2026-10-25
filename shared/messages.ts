@@ -24,6 +24,8 @@ export interface JoinOptions {
   device: "touch" | "desktop";
   /** 管理者のショー画面が「観客」として入るための短命トークン（管理用 API が発行。あれば、プレイヤーとしては数えない） */
   spectator?: string;
+  /** 会場限定モードのときの、入室コード（会場の QR コードの URL に入っている）。サーバーが確かめる */
+  venue?: string;
 }
 /** 集めたスタンプの数（出店めぐりの達成度の集計用） */
 export interface StampsSend {
@@ -32,6 +34,14 @@ export interface StampsSend {
 }
 export interface EmoteSend {
   id: EmoteId;
+}
+/** 定型文チャット（番号で送る。PHRASES の並び順）。自由な書き込みが止まっているときも使える */
+export interface PhraseSend {
+  id: number;
+}
+/** 他の参加者の通報（運営がいなくても、複数の人からの通報で自動的に対応する） */
+export interface ReportSend {
+  sessionId: string;
 }
 
 /** S→C */
@@ -50,6 +60,15 @@ export interface EmoteBroadcast {
 /** チャットの停止中かどうか（運営が管理ページで切り替える）。入室時と、切り替わったときに全員へ */
 export interface ChatState {
   locked: boolean;
+  /** true のあいだは、自由な書き込みを止めて、定型文だけにする（荒らしが増えたとき自動で切り替わる。運営が手動で切り替えることもできる） */
+  phrases?: boolean;
+}
+/** 自動の対応（書き込みが送れなかった・チャットを止めた など）を、本人にだけ知らせる */
+export interface ModNotice {
+  code: "newcomer" | "muted" | "contact" | "badword" | "dup" | "fast" | "phrases" | "report-ok" | "report-ng" | "emote";
+  text: string;
+  /** あと何ミリ秒で、また書き込めるか（わかるとき） */
+  retryMs?: number;
 }
 /** 運営が消した発言（番号）。参加者の画面のチャット欄からも消す */
 export interface ChatDelete {
@@ -69,4 +88,7 @@ export const MSG = {
   stamps: "stamps",
   chatState: "chatState",
   chatDelete: "chatDelete",
+  phrase: "phrase",
+  report: "report",
+  modNotice: "modNotice",
 } as const;

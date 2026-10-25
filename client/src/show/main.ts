@@ -27,7 +27,9 @@ interface Person {
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const KEY = { interval: "amplifire.show.interval2", shuffle: "amplifire.show.shuffle", strip: "amplifire.show.strip" };
+const KEY = { interval: "amplifire.show.interval2", shuffle: "amplifire.show.shuffle", strip: "amplifire.show.strip", bubbles: "amplifire.show.bubbles" };
+/** 入室してから、この秒数がたった人だけを、大画面に映す（入ってすぐの荒らしが映らないように） */
+const MIN_STAY_SEC = 30;
 const INTERVALS = [8000, 12000, 15000, 20000, 30000, 60000];
 const DEFAULT_INTERVAL = 15000;
 const get = (k: string, d: string): string => {
@@ -103,6 +105,8 @@ const savedInterval = Number(get(KEY.interval, String(DEFAULT_INTERVAL)));
 let intervalMs = INTERVALS.includes(savedInterval) ? savedInterval : DEFAULT_INTERVAL;
 let shuffle = get(KEY.shuffle, "1") === "1";
 let showStrip = get(KEY.strip, "1") === "1";
+/** 発言のふきだしを、ゲーム画面に出すか（既定は出さない） */
+let showBubbles = get(KEY.bubbles, "0") === "1";
 let timer = 0;
 let demoIdx = 0;
 
@@ -110,6 +114,8 @@ const hero = new AvatarPreview($<HTMLCanvasElement>("hero"));
 hero.start();
 const lookOf = (s: string): Look => decodeLook(s) ?? { hair: HAIRS[0] };
 const personOf = (sid: string): Person | undefined => people.find((p) => p.sid === sid);
+/** 大画面に映してよい人（入室から MIN_STAY_SEC 秒たった人）。いないときは、島ぜんたいと見本のアバターを出す */
+const elig = (): Person[] => people.filter((p) => stayOf(p) >= MIN_STAY_SEC);
 
 // ---------------------------------------------------------------- 表示の部品
 function areaLabel(p: Person): string {
@@ -199,7 +205,7 @@ function restartBar(): void {
 
 // ---------------------------------------------------------------- 順番
 function refill(): void {
-  const sids = people.map((p) => p.sid);
+  const sids = elig().map((p) => p.sid);
   if (shuffle) {
     for (let i = sids.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -219,9 +225,10 @@ function show(p: Person): void {
 /** 次の人を映す（いなくなった人は飛ばす）。だれもいなければ、島ぜんたいと見本のアバターを出す */
 function next(step: 1 | -1 = 1): void {
   window.clearTimeout(timer);
-  $("wait").hidden = people.length > 0;
-  document.body.classList.toggle("empty", people.length === 0);
-  if (!people.length) {
+  const pool = elig();
+  $("wait").hidden = pool.length > 0;
+  document.body.classList.toggle("empty", pool.length === 0);
+  if (!pool.length) {
     currentSid = "";
     const hair = HAIRS[demoIdx++ % HAIRS.length];
     display({ name: "AMPLIFIRE", look: encodeLook({ hair }) }, null);
@@ -231,18 +238,18 @@ function next(step: 1 | -1 = 1): void {
   }
   let p: Person | undefined;
   if (step === -1) {
-    const i = people.findIndex((x) => x.sid === currentSid);
-    p = people[(i - 1 + people.length) % people.length];
+    const i = pool.findIndex((x) => x.sid === currentSid);
+    p = pool[(i - 1 + pool.length) % pool.length];
   } else {
     for (let guard = 0; guard < 3 && !p; guard++) {
       if (!queue.length) refill();
       while (queue.length && !p) {
         const sid = queue.shift()!;
-        p = personOf(sid);
+        p = elig().find((x) => x.sid === sid);
       }
     }
   }
-  p ??= people[0];
+  p ??= pool[0];
   show(p);
   schedule();
 }
@@ -299,18 +306,30 @@ async function poll(): Promise<void> {
   try {
     const list = await api<Omit<Person, "at">[]>("online");
     const at = Date.now();
-    const prevEmpty = people.length === 0;
+    const prevEmpty = elig().length === 0;
     people = list.map((x) => ({ ...x, at })).sort((a, b) => b.stay - a.stay);
     for (const sid of [...known]) if (!people.some((p) => p.sid === sid)) known.delete(sid);
     $("count").textContent = String(people.length);
     buildStrip();
-    const cur = personOf(currentSid);
+    const cur = elig().find((x) => x.sid === currentSid);
     if (cur) renderStats(cur);
-    if (prevEmpty && people.length) next(1); // だれかが入ったら、すぐ映す
-    else if (!people.length && !prevEmpty) next(1);
-    else if (people.length && !cur) next(1); // 追っていた人が退室したら、次の人へ
+    const now = elig().length;
+    if (prevEmpty && now) next(1); // 映してよい人（入室から30秒たった人）が出たら、すぐ映す
+    else if (!now && !prevEmpty) next(1);
+    else if (now && !cur) next(1); // 追っていた人が退室したら、次の人へ
   } catch (e) {
     console.warn("[show]", e);
+  }
+}
+
+/** 会場限定モードのとき、入室用の QR を、右の情報の下に出す（コードが切り替わるときも、1分ごとに更新） */
+async function loadVenue(): Promise<void> {
+  try {
+    const v = await api<{ enabled: boolean; svg?: string }>("venue");
+    $("venue").hidden = !v.enabled || !v.svg;
+    if (v.enabled && v.svg) $("venue-qr").innerHTML = v.svg;
+  } catch {
+    /* QR が出せなくても動く */
   }
 }
 
@@ -422,6 +441,8 @@ const sync = (): void => {
   $("c-pause").textContent = paused ? "▶" : "⏸";
   $("c-shuffle").classList.toggle("on", shuffle);
   $("c-names").classList.toggle("on", showStrip);
+  $("c-bubbles").classList.toggle("on", showBubbles);
+  spectator.setBubbles(showBubbles);
   document.body.classList.toggle("no-strip", !showStrip);
   ($("c-interval") as HTMLSelectElement).value = String(intervalMs);
 };
@@ -430,6 +451,7 @@ $("c-next").addEventListener("click", () => next(1));
 $("c-pause").addEventListener("click", () => { paused = !paused; restartBar(); schedule(); sync(); });
 $("c-shuffle").addEventListener("click", () => { shuffle = !shuffle; set(KEY.shuffle, shuffle ? "1" : "0"); queue = []; sync(); });
 $("c-names").addEventListener("click", () => { showStrip = !showStrip; set(KEY.strip, showStrip ? "1" : "0"); sync(); });
+$("c-bubbles").addEventListener("click", () => { showBubbles = !showBubbles; set(KEY.bubbles, showBubbles ? "1" : "0"); sync(); });
 $("c-interval").addEventListener("change", (e) => { intervalMs = Number((e.target as HTMLSelectElement).value) || DEFAULT_INTERVAL; set(KEY.interval, String(intervalMs)); restartBar(); schedule(); });
 const fs = (): void => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().catch(() => undefined); };
 $("c-full").addEventListener("click", fs);
@@ -440,6 +462,7 @@ addEventListener("keydown", (e) => {
   else if (e.key === "f" || e.key === "F") fs();
   else if (e.key === "s" || e.key === "S") $("c-shuffle").click();
   else if (e.key === "t" || e.key === "T") $("c-names").click();
+  else if (e.key === "b" || e.key === "B") $("c-bubbles").click();
 });
 // 操作パネルは、マウスを動かしたときだけ出す（大型ディスプレイで邪魔にならないように）
 let idle = 0;
@@ -454,6 +477,8 @@ wake();
 
 sync();
 void loadAreas();
+void loadVenue();
+window.setInterval(loadVenue, 60000);
 void poll().then(() => next(1));
 window.setInterval(poll, 3000);
 window.setInterval(loadAreas, 60000);
