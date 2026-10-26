@@ -1271,3 +1271,8 @@ body.chat-hidden #phrase-bar { display: none !important; }
   text-align: center;
   pointer-events: none;
 }
+
+/* PWA: 「アプリとして入れる」ボタン（入室画面。Android・パソコンの Chrome / Edge） */
+.oz .install-btn { display: block; margin: 10px auto 0; padding: 9px 16px; font: inherit; font-size: 13px; font-weight: 800; color: var(--oz-ink); background: linear-gradient(120deg, #d9f3ff, #ece3ff); border: 1px solid #c9d8ff; border-radius: 12px; cursor: pointer; }
+.oz .install-btn:active { filter: brightness(0.96); }
+.oz .install-btn[hidden] { display: none; }

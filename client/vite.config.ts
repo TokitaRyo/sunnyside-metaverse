@@ -3,6 +3,26 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 
+/** ビルドごとの識別子。サービスワーカーの入れ物と、素材の URL に使う（デプロイのたびに変わる） */
+const BUILD_ID = (process.env.GITHUB_SHA ?? "").slice(0, 8) || Date.now().toString(36);
+
+/**
+ * PWA のサービスワーカー（src/sw/sw.js）に、ビルドの識別子を入れて、dist/sw.js として出す。
+ * public に置かないのは、中身（識別子）がビルドごとに変わり、バイトが変わらないと、ブラウザが「新しい版」と気づけないため。
+ */
+function serviceWorker(): Plugin {
+  return {
+    name: "amplifire-service-worker",
+    apply: "build",
+    writeBundle(options) {
+      const root = path.dirname(fileURLToPath(import.meta.url));
+      const outDir = options.dir ?? path.join(root, "dist");
+      const src = fs.readFileSync(path.join(root, "src/sw/sw.js"), "utf8").replace('"__BUILD_ID__"', JSON.stringify(BUILD_ID));
+      fs.writeFileSync(path.join(outDir, "sw.js"), src);
+    },
+  };
+}
+
 /**
  * マップエディタの「保存」を受ける開発専用のAPI（POST /__editor/save）。
  * client/src/config/map.json を書き換える。上書き前のファイルは reference/map-backups/ に退避する。
@@ -49,7 +69,8 @@ function mapSaver(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [mapSaver()],
+  plugins: [mapSaver(), serviceWorker()],
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   server: {
     host: true, // 同一LANのスマホからも開けるように
     port: 5173,

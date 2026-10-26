@@ -49,7 +49,8 @@ const app = config({
       expressApp.use(
         express.static(clientDist, {
           setHeaders: (res, filePath) => {
-            if (filePath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache");
+            // 更新がすぐ届くように、毎回確認するもの: ページ・サービスワーカー・PWA の目録
+            if (filePath.endsWith(".html") || filePath.endsWith("sw.js") || filePath.endsWith(".webmanifest")) res.setHeader("Cache-Control", "no-cache");
             else if (/-[A-Za-z0-9_-]{8}\.(js|css)$/.test(filePath)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
             else res.setHeader("Cache-Control", "public, max-age=600");
           },

@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { EMOTES, LOCOMOTION } from "@metaverse/shared";
 import { map, sprites } from "../config";
 import { queueStampIcons } from "./stampIcons";
+import { withBuild } from "../pwa";
 
 export const ASSET_BASE = `${import.meta.env.BASE_URL}assets/`;
 export const TILES_KEY = "tiles";
@@ -77,7 +78,7 @@ export function queueAssets(load: Phaser.Loader.LoaderPlugin): void {
     // カタログ項目(エディタ用の見本)は、実際に配置されているものだけ読む。エディタ(?edit=1)では全部読む
     const used = new Set((map.objects ?? []).map((o) => o.sprite));
     const editing = import.meta.env.DEV && new URLSearchParams(location.search).has("edit");
-    if (atlas) atlas.pages.forEach((pg, i) => load.image(atlasKey(i), pg.file));
+    if (atlas) atlas.pages.forEach((pg, i) => load.image(atlasKey(i), withBuild(pg.file)));
     for (const [name, sp] of Object.entries(map.sprites ?? {})) {
       if (sp.crop) continue; // タイルセットの切り出しは、読み込み後に PreloadScene で作る
       if (atlas?.sprites[name]) continue; // アトラスの中にある

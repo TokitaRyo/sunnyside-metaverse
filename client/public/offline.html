@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#04020d" />
+    <title>AMPLIFIRE - オフライン</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; text-align: center; color: #e6ebff; background: radial-gradient(ellipse at 50% 30%, #1a1550, #04020d 70%); font: 16px/1.8 "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", Meiryo, system-ui, sans-serif; }
+      main { max-width: 420px; }
+      h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: 0.3em; background: linear-gradient(120deg, #79d4ff, #c4b5ff, #ffb0d6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      p { margin: 6px 0 18px; color: #b9c3ee; }
+      button { height: 46px; padding: 0 28px; border: 0; border-radius: 12px; font: inherit; font-weight: 800; color: #1b1d3a; background: linear-gradient(120deg, #79d4ff, #c4b5ff); cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>AMPLIFIRE</h1>
+      <p>いま、インターネットに つながっていません。<br />つながったら、もういちど 開いてね。<br />（みんなと あそぶには、ネットが 必要です）</p>
+      <button type="button" onclick="location.reload()">もういちど ためす</button>
+    </main>
+    <script>
+      // つながったら、自動で読み込み直す
+      addEventListener("online", () => location.reload());
+    </script>
+  </body>
+</html>

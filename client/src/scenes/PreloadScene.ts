@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { ASSET_BASE, createAnimations, queueAssets, registerAtlasFrames, setAtlas, type AtlasManifest } from "../game/assets";
 import { buildCropSprites } from "../game/cropSprites";
+import { withBuild } from "../pwa";
 
 export const EV_PROGRESS = "assets-progress";
 export const EV_READY = "assets-ready";
@@ -30,7 +31,7 @@ export class PreloadScene extends Phaser.Scene {
     // 開発中(npm run dev)とマップエディタでは、アトラスは使わない（エディタが1枚ずつのテクスチャを前提にしているため）
     if (import.meta.env.PROD) {
       this.load.setPath(ASSET_BASE);
-      this.load.json(MANIFEST, "../atlas/manifest.json");
+      this.load.json(MANIFEST, withBuild("../atlas/manifest.json"));
       let queued = false;
       const go = (m: AtlasManifest | null) => {
         if (queued) return;

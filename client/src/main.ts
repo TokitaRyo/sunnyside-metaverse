@@ -1,6 +1,7 @@
 import "./style.css";
 import { installTouchGuard } from "./ui/touchGuard";
 import { canFullscreen, isIOS, isStandalone, isTouchDevice, toggleFullscreen } from "./ui/Fullscreen";
+import { setupPwa } from "./pwa";
 import Phaser from "phaser";
 import { bgm } from "./audio/Bgm";
 import { mapErrors } from "./config";
@@ -120,6 +121,7 @@ function setupFullscreen(): void {
 function boot(): void {
   installTouchGuard();
   setupFullscreen();
+  setupPwa(); // ホーム画面に入れる・2回目からの読み込みを速くする（サービスワーカー）
   // 起動時に map.json を検証。問題があれば無言で落とさず画面とコンソールに出す（SPEC 5.2）
   if (mapErrors.length) {
     showFatal(`map.json に ${mapErrors.length} 件の問題があります`, mapErrors);

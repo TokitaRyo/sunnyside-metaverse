@@ -18,6 +18,7 @@ const MIN_PASSWORD = 10;
 export const gateEnabled = password.length >= MIN_PASSWORD && mode !== "0" && (mode === "1" || process.env.NODE_ENV === "production");
 
 const COOKIE = "amplifire_gate";
+const PUBLIC_PATHS = new Set(["/manifest.webmanifest", "/offline.html", "/sw.js", "/favicon.ico"]);
 const MAX_AGE_S = 30 * 24 * 3600;
 const key = createHash("sha256").update(`gate:${password}`).digest();
 const sign = (exp: string) => createHmac("sha256", key).update(exp).digest("base64url");
@@ -129,6 +130,8 @@ export function gateRouter(): express.Router {
   // それ以外は、すべて、Cookie が必要（管理ページ /admin は、独自の認証なので、ここでは通す）
   r.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path === "/admin" || req.path.startsWith("/admin/")) return next();
+    // PWA の部品（ホーム画面に入れるための目録・アイコン・オフラインの画面・サービスワーカー）は、中身が公開されても困らないので、入り口の外に置く
+    if (PUBLIC_PATHS.has(req.path) || req.path.startsWith("/icons/")) return next();
     if (validGate(req.headers.cookie)) return next();
     if (req.method === "GET" && String(req.headers.accept ?? "").includes("text/html")) return showLogin(req, res, 401);
     res.status(401).set({ "Cache-Control": "no-store", "X-Robots-Tag": "noindex" }).type("text/plain").send("Unauthorized");

@@ -300,6 +300,14 @@ async function gatePhase(): Promise<void> {
   const r4 = await fetch(`${HTTP}/admin/api/online`);
   check("入り口: 管理ページは、独自の認証（Basic）が求められる", r4.status === 401 && !!r4.headers.get("www-authenticate"), `status=${r4.status}`);
 
+  // PWA の部品は、入り口の外（ホーム画面に入れる・オフラインの画面のため）
+  for (const p of ["/manifest.webmanifest", "/offline.html", "/icons/icon-192.png", "/sw.js"]) {
+    const r = await fetch(`${HTTP}${p}`);
+    check(`PWA: ${p} は、合言葉なしでも取れる`, r.status === 200, `status=${r.status}`);
+  }
+  const sw = await (await fetch(`${HTTP}/sw.js`)).text();
+  check("PWA: sw.js に、ビルドの識別子が入っている（__BUILD_ID__ のままではない）", !sw.includes('"__BUILD_ID__"'), "");
+
   let noCookie = "";
   try {
     await join("もぐりこみ");
