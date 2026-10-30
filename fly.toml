@@ -7,6 +7,12 @@ app = 'sunnyside-metaverse'
 primary_region = 'nrt'
 
 [build]
+
+# 文化祭の当日: 合言葉の入り口を開けて、だれでも入れるようにする（docs/ADMIN.md §8）。
+# 「関係者だけ」に戻すときは、この2行を消して（または SITE_LOCK = '1' にして）デプロイする。
+[env]
+  SITE_LOCK = '0'
+
 [http_service]
   internal_port = 2567
   force_https = true

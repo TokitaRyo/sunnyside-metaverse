@@ -143,6 +143,7 @@ Volume が付くまでは、管理ページの上に「保存先は一時的な�
 - **何が守られるか**: ページ・素材（画像・BGM）・入室の予約（`/matchmake`）・WebSocket のすべて（Cookie がなければ、すべて断る）。管理ページは、独自の認証（Basic）。ショー画面の観客の接続は、観客トークン。国別制限（日本のみ）も、そのまま働く。
 - **合言葉のまちがい**: 同じ回線から、10分に8回まちがえると、一時的に止める（429）。
 - **文化祭の当日に、みんなに開くとき**: `flyctl secrets set SITE_LOCK=0`（再起動される。いまいる人は、いったん切れる）。もとの「関係者だけ」に戻すときは、`flyctl secrets unset SITE_LOCK`。※ 当日の前に、**まず、自分の端末で、ログイン画面から入れることを確認しておく**こと（合言葉を忘れたときは、`flyctl secrets set ADMIN_PASSWORD=…` か `SITE_PASSWORD=…` で決め直せる）。
+- **当日の開放は `fly.toml` の `[env] SITE_LOCK = '0'`**（この環境では flyctl が未ログインで、デプロイは GitHub Actions 経由のため、Secret ではなく fly.toml に書いて push する）。もとに戻すときは、この行を消して push。
 - 手元の開発・試験では、既定で無効（`SITE_LOCK=1` のときだけ有効）。
 - 入室の予約（`/matchmake`）は、Colyseus が Express より先に処理するため、国別制限・この入り口の Express 側の守りを素通りしていた。予約は席を15秒ふさぐので、外から大量に予約されると、本物の人が入れなくなる。そのため、予約を受ける関数（`matchMaker.controller.invokeMethod`）を包んで、予約の前に、国・合言葉・同じ回線からの頻度（1分に20回。`MOD_RESERVE_PER_MIN`）を確かめる（`server/src/matchmake-guard.ts`）。
 - 確認: `npm run troll-test` の gate の段階（ログイン画面・素材・予約・WebSocket・偽の Cookie・まちがいの連続）。
