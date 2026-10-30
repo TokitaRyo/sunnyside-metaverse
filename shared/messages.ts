@@ -32,6 +32,10 @@ export interface StampsSend {
   count: number;
   total: number;
 }
+/** スタンプを取ったことの申告（どのスタンプか）。サーバーが、その場所の近くにいたかを確かめて、RTA の記録に使う */
+export interface StampClaim {
+  id: string;
+}
 export interface EmoteSend {
   id: EmoteId;
 }
@@ -74,6 +78,45 @@ export interface ModNotice {
 export interface ChatDelete {
   ids: number[];
 }
+/** ランキングの1行 */
+export interface RankRow {
+  rank: number;
+  name: string;
+  /** RTA: かかった時間(ms) */
+  ms?: number;
+  /** 出店めぐり: 訪れた出店の数と、滞在した合計(秒) */
+  visited?: number;
+  stay?: number;
+  /** 自分の行 */
+  me?: boolean;
+}
+/** ランキング（要求に答えて、その人にだけ送る。管理ページ・ショー画面にも同じ形で出す） */
+export interface Ranking {
+  /** スタンプRTA: 全部のスタンプを、はじめから集めきるまでの速さ（1人1回分の、いちばん速い記録） */
+  rta: RankRow[];
+  /** 今日の出店めぐり: 訪れた出店の数（同じなら、滞在が長い順） */
+  tour: RankRow[];
+  /** 出店の総数（出店めぐりの満点） */
+  tourTotal: number;
+  /** 自分の、RTA のいちばん速い記録と順位（記録がなければ無し）・今日の出店めぐりの数と順位 */
+  mine?: { rtaMs?: number; rtaRank?: number; visited: number; tourRank?: number };
+  /** RTA に参加した人の数・出店めぐりに載っている人の数 */
+  counts: { rta: number; tour: number };
+  at: number;
+}
+/** RTA が動き出した合図（本人にだけ。動き出した瞬間からの時間を数える） */
+export interface RtaStart {
+  total: number;
+}
+/** RTA を終えたときの結果（本人にだけ） */
+export interface RtaDone {
+  ms: number;
+  /** この記録で、何位か（自分のこれまでの記録より遅いときは、自己ベストでの順位） */
+  rank: number;
+  best: boolean;
+  bestMs: number;
+}
+
 /** 速度超過などで棄却した際、本人にだけ正しい座標を返す。 */
 export interface CorrectMessage {
   x: number;
@@ -91,4 +134,9 @@ export const MSG = {
   phrase: "phrase",
   report: "report",
   modNotice: "modNotice",
+  stampClaim: "stampClaim",
+  rankingReq: "rankingReq",
+  ranking: "ranking",
+  rtaStart: "rtaStart",
+  rtaDone: "rtaDone",
 } as const;

@@ -173,3 +173,16 @@ body.awake .ctl { transform: translate(-50%, 0); }
   .plate, .stats { width: min(60vw, 100%); }
 }
 @media (prefers-reduced-motion: reduce) { .aurora, .dots, .bigmark, .rays, .ring, .halo, .hero, .floor, .orb, .plate::after, .logo, .name { animation: none; } }
+
+
+/* ランキング（ゲーム画面の左下）。大画面で読めるように、画面の高さ(vh)に合わせた大きさ */
+.rank { position: absolute; left: 1.6vh; bottom: 1.6vh; z-index: 2; display: flex; gap: 1.4vh; padding: 1.2vh 1.6vh; color: #fff; background: rgba(40, 36, 72, 0.7); border-radius: 2vh; backdrop-filter: blur(3px); pointer-events: none; max-width: 94%; }
+.rank[hidden], body.empty .rank { display: none; }
+.rank .rk-col { min-width: 21vh; }
+.rank h3 { margin: 0 0 0.6vh; font-size: 2vh; color: var(--yellow); letter-spacing: 0.04em; }
+.rank ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3vh; }
+.rank li { display: grid; grid-template-columns: 3.2vh 1fr auto; align-items: center; gap: 0.8vh; font-size: 2vh; font-weight: 700; }
+.rank li b { text-align: center; }
+.rank li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 16vh; }
+.rank li em { font-style: normal; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--yellow); }
+.rank li.empty { display: block; font-size: 1.8vh; opacity: 0.8; }

@@ -1,6 +1,6 @@
 import { appendFile, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DATA_RETENTION_DAYS } from "@metaverse/shared";
+import { DATA_RETENTION_DAYS, STALL_VISIT_SEC } from "@metaverse/shared";
 
 /**
  * 運営のための記録と集計（同意した人だけが対象）。
@@ -376,6 +376,37 @@ class Stats {
   }
   allSessions(): SessionRecord[] {
     return this.sessions;
+  }
+
+  /**
+   * 今日（日本時間）の出店めぐり。人（訪問者ID）ごとに、STALL_VISIT_SEC 以上いた出店の数と、滞在の合計を出す。
+   * その日の複数回の入室を合わせる。いま入室中の人も含む。多い順（同じなら、滞在が長い順）。
+   */
+  tourBoard(stallIds: Set<string>, now = Date.now()): { vid: string; name: string; visited: number; stay: number }[] {
+    const jstDay = (t: number) => Math.floor((t + 9 * 3600 * 1000) / DAY_MS);
+    const today = jstDay(now);
+    const people = new Map<string, { name: string; at: number; stay: number; dwell: Record<string, number> }>();
+    const add = (s: { vid: string; name: string; joinedAt: number; dwell: Record<string, number> }, stay: number) => {
+      if (jstDay(s.joinedAt) !== today || !s.vid) return;
+      const p = people.get(s.vid) ?? { name: s.name, at: 0, stay: 0, dwell: {} };
+      if (s.joinedAt >= p.at) {
+        p.name = s.name;
+        p.at = s.joinedAt;
+      }
+      p.stay += stay;
+      for (const [id, sec] of Object.entries(s.dwell)) if (stallIds.has(id)) p.dwell[id] = (p.dwell[id] ?? 0) + sec;
+      people.set(s.vid, p);
+    };
+    for (let i = this.sessions.length - 1; i >= 0; i--) {
+      const s = this.sessions[i];
+      if (jstDay(s.leftAt) < today) break; // 古い順に並んでいる。今日より前のものは、もう無い
+      add(s, s.stay);
+    }
+    for (const a of this.active.values()) add(a, Math.round((now - a.joinedAt) / 1000));
+    return [...people.entries()]
+      .map(([vid, p]) => ({ vid, name: p.name, visited: Object.values(p.dwell).filter((sec) => sec >= STALL_VISIT_SEC).length, stay: p.stay }))
+      .filter((p) => p.visited > 0)
+      .sort((a, b) => b.visited - a.visited || b.stay - a.stay);
   }
 
   /** 集計。いま入室中の人も、滞在中として含める */

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <!-- スマホ: 拡大しない・ノッチまで使う・キーボードが開いたら画面（レイアウト）を縮める（Android）。「ホーム画面に追加」すると、アドレスバーなしの全画面で開く -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="robots" content="noindex, nofollow" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -38,6 +39,7 @@
       <!-- 左上のボタン列（ここに並べると、画面の幅が変わっても重ならない） -->
       <div id="hud-top">
         <button id="stamp-btn" type="button" title="スタンプカード" hidden></button>
+        <button id="rank-btn" type="button" title="ランキング" aria-label="ランキング" hidden>🏆</button>
         <button id="fs-btn" type="button" title="全画面にする" aria-label="全画面にする" hidden>⛶</button>
         <div id="online-count" title="いま遊んでいる人数"></div>
         <button id="chat-vis-btn" type="button" title="チャット欄を隠す" aria-label="チャット欄を隠す" aria-pressed="true">💬</button>
@@ -60,6 +62,15 @@
         <div id="stamp-done" hidden>🎉 コンプリート！ おめでとう！</div>
         <div id="stamp-grid"></div>
         <div class="sc-foot">各出店のそばにあるスタンプの前に行くと、押されます。<button id="stamp-reset" type="button">はじめから</button></div>
+      </div>
+      <div id="rank-timer" hidden role="timer" aria-label="スタンプRTAのタイム"></div>
+      <div id="rank-card" hidden role="dialog" aria-label="ランキング">
+        <div class="rk-head"><b>🏆 ランキング</b><button id="rank-close" type="button" aria-label="とじる">✕</button></div>
+        <div id="rank-tabs"><button type="button" data-tab="rta" class="on">⏱ スタンプRTA</button><button type="button" data-tab="tour">🗺 出店めぐり</button></div>
+        <div id="rank-result" hidden></div>
+        <ol id="rank-list"></ol>
+        <div id="rank-mine"></div>
+        <div id="rank-hint"></div>
       </div>
       <button id="talk-prompt" type="button" hidden></button>
       <div id="talk-box" hidden>

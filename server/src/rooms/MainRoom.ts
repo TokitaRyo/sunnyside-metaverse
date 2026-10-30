@@ -30,7 +30,11 @@ import {
   type JoinOptions,
   type MoveMessage,
   type StampsSend,
+  type StampClaim,
+  type RtaStart,
+  RANKING_TOP,
 } from "@metaverse/shared";
+import { ranking, stallIdsOf } from "../ranking";
 import { loadMap } from "../map";
 import { isBanned, registerAdminHooks, verifySpectatorToken } from "../admin";
 import { stats } from "../stats";
@@ -70,6 +74,15 @@ interface PeerMeta {
   joinedAt: number;
   /** 集めたスタンプの数（参加者の申告）。1つでもあれば、入室直後でも書き込める */
   stamps: number;
+  /** ランキングの要求を最後に受けた時刻（要求のしすぎを断る） */
+  lastRankAt: number;
+}
+
+/** ミリ秒を「1:23.4」の形に */
+function formatMs(ms: number): string {
+  const s = ms / 1000;
+  const m = Math.floor(s / 60);
+  return `${m}:${(s - m * 60).toFixed(1).padStart(4, "0")}`;
 }
 
 export class MainRoom extends Room<{ state: MainRoomState }> {
@@ -79,6 +92,7 @@ export class MainRoom extends Room<{ state: MainRoomState }> {
   autoDispose = false;
 
   private map = loadMap();
+  private stallIds = stallIdsOf(this.map.areas);
   private peers = new Map<string, PeerMeta>();
   /** 入室中の人の接続元IP（同じ回線からの数を数えるため。ログや記録には残さない） */
   private ipOf = new Map<string, string>();
@@ -205,6 +219,27 @@ export class MainRoom extends Room<{ state: MainRoomState }> {
       if (Number.isFinite(n) && n >= 0) peer.stamps = Math.min(n, 200);
     });
 
+    // スタンプを取ったことの申告。そのスタンプの近くにいたときだけ、RTA の記録に数える。全部そろったら、結果を返す
+    this.onMessage<StampClaim>(MSG.stampClaim, (client, msg) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      const res = ranking.claim(client.sessionId, msg?.id, player.x, player.y, this.map.keyItems);
+      if (res.kind !== "done") return;
+      client.send(MSG.rtaDone, res.done);
+      if (res.announce) this.announceSystem(`🎉 ${res.name} さんが スタンプRTA ${formatMs(res.done.ms)} で コンプリート！（${res.done.rank}位）`);
+      console.log(`[rta] "${res.name}" ${formatMs(res.done.ms)} rank=${res.done.rank}${res.done.best ? " (best)" : ""}`);
+    });
+
+    // ランキングの要求（開いているあいだ、画面が10秒ごとに聞いてくる。1人あたり2秒に1回まで）
+    this.onMessage(MSG.rankingReq, (client) => {
+      const peer = this.peers.get(client.sessionId);
+      if (!peer) return;
+      const now = Date.now();
+      if (now - peer.lastRankAt < 2000) return;
+      peer.lastRankAt = now;
+      client.send(MSG.ranking, ranking.snapshot(this.stallIds, peer.vid, RANKING_TOP, now));
+    });
+
     this.onMessage<EmoteSend>(MSG.emote, (client, msg) => {
       const player = this.state.players.get(client.sessionId);
       const id = msg?.id as EmoteId;
@@ -281,7 +316,9 @@ export class MainRoom extends Room<{ state: MainRoomState }> {
       ip: ip ?? "",
       joinedAt: Date.now(),
       stamps: 0,
+      lastRankAt: 0,
     });
+    ranking.join(client.sessionId, vid, player.name, player.x, player.y);
     client.send(MSG.chatState, this.chatState());
     stats.join(client.sessionId, {
       vid,
@@ -309,6 +346,7 @@ export class MainRoom extends Room<{ state: MainRoomState }> {
     }
     this.state.players.delete(client.sessionId);
     this.peers.delete(client.sessionId);
+    ranking.leave(client.sessionId);
     mod.forget(client.sessionId);
     stats.leave(client.sessionId);
     console.log(`[leave] ${client.sessionId} (${this.clients.length}/${CAPACITY})`);
@@ -380,8 +418,11 @@ export class MainRoom extends Room<{ state: MainRoomState }> {
     peer.budget -= dist;
 
     // 値が変わったものだけ代入（Schemaは変化したフィールドだけ配信される）
+    const moved = player.x !== x || player.y !== y;
     if (player.x !== x) player.x = x;
     if (player.y !== y) player.y = y;
+    // スタンプRTA: 動き出した瞬間から数える（本人に、動き出しを知らせる）
+    if (moved && ranking.moved(client.sessionId, x, y, now)) client.send(MSG.rtaStart, { total: this.map.keyItems.length } satisfies RtaStart);
     const flip = !!flipX;
     if (player.flipX !== flip) player.flipX = flip;
     if (player.action !== action) player.action = action;

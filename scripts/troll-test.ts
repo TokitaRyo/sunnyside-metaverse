@@ -12,9 +12,12 @@
  *    SITE_LOCK=1 を付けて起動（合言葉は ADMIN_PASSWORD）→ … troll-test.ts gate
  *  段階 venue（会場限定モード）:
  *    VENUE_CODE=venue-test-code を付けて起動 → … troll-test.ts venue
+ *  段階 rta（スタンプRTA・ランキング。ずるが通らないこと・本物の走りが記録されること。約1分半）:
+ *    試験用の設定なしで起動 → … troll-test.ts rta
  *
  * 全部 PASS なら、終了コード 0。
  */
+import { readFileSync } from "node:fs";
 import { Client, type Room } from "@colyseus/sdk";
 import { CONSENT_VERSION, MSG, PHRASES, ROOM_NAME, MainRoomState, type ChatBroadcast, type ChatState, type ModNotice } from "@metaverse/shared";
 
@@ -369,6 +372,136 @@ async function venuePhase(): Promise<void> {
   await leave([good]);
 }
 
+// ------------------------------------------------------------------ 段階 rta（スタンプRTA・ランキング）
+async function rtaPhase(): Promise<void> {
+  const map = JSON.parse(readFileSync(new URL("../client/src/config/map.json", import.meta.url), "utf8")) as {
+    keyItems?: { id: string; x: number; y: number }[];
+    areas?: { id: string; name: string; x: number; y: number; w: number; h: number }[];
+  };
+  const items = map.keyItems ?? [];
+  check("試験の前提: マップにスタンプがある", items.length > 0, `${items.length}個`);
+  if (!items.length) return;
+
+  const watcher = await join("みはりばん");
+  const cheat = await join("ずる");
+  const runner = await join("はしる人");
+  const rec = (b: Bot) => {
+    const log = { start: 0, done: null as null | { ms: number; rank: number; best: boolean; bestMs: number }, ranking: null as null | Record<string, any>, corrected: 0 };
+    b.room.onMessage(MSG.rtaStart, () => log.start++);
+    b.room.onMessage(MSG.rtaDone, (m) => (log.done = m));
+    b.room.onMessage(MSG.ranking, (m) => (log.ranking = m));
+    b.room.onMessage(MSG.correct, () => log.corrected++);
+    return log;
+  };
+  const cheatLog = rec(cheat);
+  const runLog = rec(runner);
+  const move = (b: Bot, x: number, y: number) => b.room.send(MSG.move, { x, y, flipX: false, action: "run" });
+
+  // 1) ずる: 動かずに全部のスタンプを申告しても、記録にならない（そもそも動き出していない）
+  for (const k of items) cheat.room.send(MSG.stampClaim, { id: k.id });
+  await sleep(600);
+  check("RTA: 動かずに申告しても、結果が出ない", cheatLog.done === null && cheatLog.start === 0);
+
+  // 2) ずる: 少し動いてから、遠くのスタンプを申告しても、認められない（位置が近くない）
+  const me0 = cheat.me()!;
+  move(cheat, me0.x + 10, me0.y);
+  await sleep(300);
+  for (const k of items) cheat.room.send(MSG.stampClaim, { id: k.id });
+  await sleep(600);
+  check("RTA: 動き出すと、RTA が始まる", cheatLog.start === 1);
+  check("RTA: 遠くのスタンプの申告は、認められない（結果が出ない）", cheatLog.done === null);
+
+  // 3) ずる: 一気に遠くへ瞬間移動 → 速度の上限で、棄却される（位置が変わらない）
+  const far = items[items.length - 1];
+  const before = { x: cheat.me()!.x, y: cheat.me()!.y };
+  move(cheat, far.x, far.y);
+  await sleep(500);
+  const after = { x: cheat.me()!.x, y: cheat.me()!.y };
+  check("RTA: 瞬間移動は、速度の上限で棄却される", Math.hypot(after.x - before.x, after.y - before.y) < 1 && cheatLog.corrected > 0, `corrected=${cheatLog.corrected}`);
+  cheat.room.send(MSG.stampClaim, { id: far.id });
+  await sleep(400);
+  check("RTA: 瞬間移動からの申告は、認められない", cheatLog.done === null);
+
+  // 4) 本物の走り: 近い順に、速度の上限の内側で歩いて、全部のスタンプを申告する
+  const startedAt = Date.now();
+  let cx = runner.me()!.x;
+  let cy = runner.me()!.y;
+  const left = [...items];
+  let travelled = 0;
+  const STEP = 14; // 100msごとに14px = 140px/s（走る速さ112の1.25倍。許容の1.5倍の内側）
+  while (left.length) {
+    left.sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
+    const k = left.shift()!;
+    while (Math.hypot(k.x - cx, k.y - cy) > 4) {
+      const d = Math.hypot(k.x - cx, k.y - cy);
+      const s = Math.min(STEP, d);
+      cx += ((k.x - cx) / d) * s;
+      cy += ((k.y - cy) / d) * s;
+      travelled += s;
+      move(runner, Math.round(cx * 10) / 10, Math.round(cy * 10) / 10);
+      await sleep(100);
+    }
+    runner.room.send(MSG.stampClaim, { id: k.id });
+    await sleep(30);
+  }
+  await sleep(700);
+  const took = Date.now() - startedAt;
+  check("RTA: 本物の走りで、全部集めると、結果が届く", runLog.done !== null, runLog.done ? `ms=${runLog.done.ms}` : "届かない");
+  if (runLog.done) {
+    check("RTA: 記録の時間が、実際にかかった時間に近い", Math.abs(runLog.done.ms - took) < 2500, `記録=${runLog.done.ms}ms 実測=${took}ms`);
+    check("RTA: 歩いた距離から見て、あり得ない速さではない", runLog.done.ms >= (travelled / (112 * 1.5)) * 1000 * 0.9, `距離=${Math.round(travelled)}px`);
+    check("RTA: 自己ベストで、1位", runLog.done.best && runLog.done.rank === 1);
+  }
+  check("RTA: 上位に入ると、全員のチャットに知らせが流れる", watcher.chats.some((c) => c.sessionId === "system" && /RTA/.test(c.text) && c.text.includes("はしる人")));
+  check("RTA: ずるをした人には、知らせが流れない", !watcher.chats.some((c) => c.text.includes("ずる")));
+
+  // 5) ランキングの取得（要求の返事）
+  watcher.room.send(MSG.rankingReq, {});
+  runner.room.send(MSG.rankingReq, {});
+  await sleep(500);
+  const wLog = (watcher as unknown as { __log?: unknown }).__log;
+  void wLog;
+  check("ランキング: 走った人の返事に、自分の行（me）がある", !!runLog.ranking && (runLog.ranking.rta as any[]).some((r) => r.me && r.name === "はしる人"));
+  check("ランキング: 自分の自己ベストと順位が付く", runLog.ranking?.mine?.rtaRank === 1 && typeof runLog.ranking?.mine?.rtaMs === "number");
+  check("ランキング: ずるをした人は載らない", !!runLog.ranking && !(runLog.ranking.rta as any[]).some((r) => r.name === "ずる"));
+  // 要求のしすぎは、受け付けない（2秒に1回まで）
+  runLog.ranking = null;
+  runner.room.send(MSG.rankingReq, {});
+  await sleep(300);
+  check("ランキング: 要求を続けて送ると、2秒は返事がない", runLog.ranking === null);
+
+  // 6) 同じ入室で、もう一度は記録されない（やり直すには、入り直す）
+  runLog.done = null;
+  for (const k of items) runner.room.send(MSG.stampClaim, { id: k.id });
+  await sleep(400);
+  check("RTA: 同じ入室では、2回目の結果は出ない", runLog.done === null);
+
+  // 7) 今日の出店めぐり: 出店の区画に、しばらくいると、数えられる（サーバーが見ている位置から）
+  const area = map.areas?.[0];
+  if (area) {
+    const tx = area.x + area.w / 2;
+    const ty = area.y + area.h / 2;
+    let px = runner.me()!.x;
+    let py = runner.me()!.y;
+    while (Math.hypot(tx - px, ty - py) > 4) {
+      const d = Math.hypot(tx - px, ty - py);
+      const s = Math.min(STEP, d);
+      px += ((tx - px) / d) * s;
+      py += ((ty - py) / d) * s;
+      move(runner, Math.round(px * 10) / 10, Math.round(py * 10) / 10);
+      await sleep(100);
+    }
+    await sleep(6000); // STALL_VISIT_SEC(4秒)より長くいる
+    await sleep(2100);
+    runner.room.send(MSG.rankingReq, {});
+    await sleep(500);
+    const tour = (runLog.ranking?.tour as any[] | undefined) ?? [];
+    check("出店めぐり: 区画にいると、数えられる", tour.some((r) => r.name === "はしる人" && r.visited >= 1), JSON.stringify(tour.slice(0, 3)));
+  }
+
+  await leave([watcher, cheat, runner]);
+}
+
 console.log(`[troll-test] ${phase} -> ${URL_}`);
 try {
   if (phase === "main") await main();
@@ -376,7 +509,8 @@ try {
   else if (phase === "join") await joinPhase();
   else if (phase === "gate") await gatePhase();
   else if (phase === "venue") await venuePhase();
-  else throw new Error("phase は main / breaker / join / gate / venue のどれか");
+  else if (phase === "rta") await rtaPhase();
+  else throw new Error("phase は main / breaker / join / gate / venue / rta のどれか");
 } catch (e) {
   fail++;
   console.log("FAIL  例外:", e instanceof Error ? e.stack : e);

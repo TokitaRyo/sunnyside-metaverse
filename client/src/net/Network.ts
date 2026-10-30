@@ -17,6 +17,10 @@ import {
   type PhraseSend,
   type ReportSend,
   type StampsSend,
+  type StampClaim,
+  type Ranking,
+  type RtaStart,
+  type RtaDone,
   type Player,
 } from "@metaverse/shared";
 
@@ -45,6 +49,10 @@ export interface NetHandlers {
   onModNotice?(msg: ModNotice): void;
   onEmote(msg: EmoteBroadcast): void;
   onCorrect(msg: CorrectMessage): void;
+  /** ランキング（要求への返事）・スタンプRTA の動き出しと結果。本人にだけ届く */
+  onRanking?(msg: Ranking): void;
+  onRtaStart?(msg: RtaStart): void;
+  onRtaDone?(msg: RtaDone): void;
   /** 回線が途切れ、自動再接続を試みている */
   onDrop(): void;
   onReconnect(): void;
@@ -92,6 +100,9 @@ export class Network {
     room.onMessage(MSG.modNotice, (m: ModNotice) => h.onModNotice?.(m));
     room.onMessage(MSG.emote, (m: EmoteBroadcast) => h.onEmote(m));
     room.onMessage(MSG.correct, (m: CorrectMessage) => h.onCorrect(m));
+    room.onMessage(MSG.ranking, (m: Ranking) => h.onRanking?.(m));
+    room.onMessage(MSG.rtaStart, (m: RtaStart) => h.onRtaStart?.(m));
+    room.onMessage(MSG.rtaDone, (m: RtaDone) => h.onRtaDone?.(m));
 
     room.onDrop(() => h.onDrop());
     room.onReconnect(() => h.onReconnect());
@@ -127,6 +138,15 @@ export class Network {
   sendStamps(count: number, total: number): void {
     const m: StampsSend = { count, total };
     this.room.send(MSG.stamps, m);
+  }
+  /** スタンプに触れたことを知らせる（サーバーが、近くにいたかを確かめて、RTA の記録にする） */
+  sendStampClaim(id: string): void {
+    const m: StampClaim = { id };
+    this.room.send(MSG.stampClaim, m);
+  }
+  /** ランキングを聞く */
+  requestRanking(): void {
+    this.room.send(MSG.rankingReq, {});
   }
   leave(): void {
     void this.room?.leave();

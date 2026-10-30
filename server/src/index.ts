@@ -33,6 +33,16 @@ const app = config({
     await matchMaker.createRoom(ROOM_NAME, {});
   },
   initializeExpress: (expressApp) => {
+    // すべての応答に付ける、守りのヘッダー: 種類の読み違いを防ぐ・他のサイトの枠に埋め込ませない・検索に載せない・参照元を渡さない・使わない機能（カメラ・位置など）を断る
+    expressApp.disable("x-powered-by");
+    expressApp.use((_req, res, next) => {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("X-Frame-Options", "DENY");
+      res.setHeader("Referrer-Policy", "no-referrer");
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()");
+      next();
+    });
     // 海外からのアクセスは、何よりも先に断る（配信・管理ページ・入室の予約のすべてに効く）
     expressApp.use(geoBlockMiddleware);
     // 公開前の「関係者だけ」の入り口（合言葉）。本番では、自動で有効（SITE_LOCK=0 で、みんなに開く）。管理ページ（/admin）は、独自の認証

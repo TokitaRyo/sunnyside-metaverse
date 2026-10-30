@@ -27,6 +27,11 @@
       <section class="world" id="world-wrap">
         <div id="world"></div>
         <div class="cam-tag" id="cam-tag"><i></i>ついせき中<b id="cam-name"></b></div>
+        <!-- ランキング（参加者の画面と同じ中身。管理用 API から取る） -->
+        <div class="rank" id="rank" hidden>
+          <div class="rk-col"><h3>⏱ スタンプRTA</h3><ol id="rk-rta"></ol></div>
+          <div class="rk-col"><h3>🗺 今日の出店めぐり</h3><ol id="rk-tour"></ol></div>
+        </div>
         <div class="veil" id="loading"><b>ゲーム画面を よみこみ中…</b><span class="loadbar"><i id="load-bar"></i></span></div>
         <div class="veil" id="offline" hidden><b>つなぎなおしています…</b></div>
         <div class="wait" id="wait" hidden>
@@ -85,6 +90,7 @@
       <button id="c-shuffle" type="button" title="順番をばらばらにする（S）">🔀</button>
       <button id="c-names" type="button" title="下の一覧を出す／隠す（T）">👥</button>
       <button id="c-bubbles" type="button" title="ゲーム画面の発言のふきだしを出す／隠す（B）。既定は隠す">💬</button>
+      <button id="c-rank" type="button" title="ランキングを出す／隠す（R）">🏆</button>
       <button id="c-full" type="button" title="全画面（F）">⛶</button>
     </div>
     <script type="module" src="/src/show/main.ts"></script>

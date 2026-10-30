@@ -294,6 +294,14 @@
     toast(r.ok ? "削除しました（入退室 " + r.sessions + " 件、チャット " + r.chats + " 件）" : "できませんでした", !r.ok);
     if (r.ok) { $("del-vid").value = ""; refresh(); }
   });
+  $("rank-reset").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if ($("rank-reset-confirm").value.trim() !== "RESET RANKING") return toast("「RESET RANKING」と入力してください", true);
+    if (!confirm("スタンプRTAの記録を、すべて消します。よろしいですか？")) return;
+    const r = await post("ranking/reset", { confirm: "RESET RANKING" });
+    toast(r.ok ? "消しました（" + r.removed + " 件）" : "できませんでした", !r.ok);
+    $("rank-reset-confirm").value = "";
+  });
   $("purge").addEventListener("submit", async (e) => {
     e.preventDefault();
     if ($("purge-confirm").value.trim() !== "DELETE ALL") return toast("「DELETE ALL」と入力してください", true);

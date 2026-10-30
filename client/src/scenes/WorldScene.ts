@@ -23,6 +23,7 @@ import { ensureStarTexture, STAR_TEX } from "../game/starIcon";
 import { stamps } from "../game/stamps";
 import { STAMP_TEX, stampFrame } from "../game/stampIcons";
 import { StampCard } from "../ui/StampCard";
+import { RankingPanel } from "../ui/RankingPanel";
 import { Navi } from "../ui/Navi";
 import { sfx } from "../game/sfx";
 import { deviceKind, venueCode, visitorId } from "../game/visitor";
@@ -152,6 +153,7 @@ export class WorldScene extends Phaser.Scene {
   private hud!: Hud;
   private talk?: Talk;
   private stampCard?: StampCard;
+  private rankPanel?: RankingPanel;
   private navi?: Navi;
   /** いま見せている他の参加者（近い順の上位。maxVisiblePeers 人ほど） */
   private visiblePeers = new Set<string>();
@@ -202,6 +204,7 @@ export class WorldScene extends Phaser.Scene {
     this.lost = false;
     this.talk = undefined;
     this.stampCard = undefined;
+    this.rankPanel = undefined;
     this.navi = undefined;
     this.visiblePeers = new Set();
     this.peerCheckAt = 0;
@@ -395,6 +398,7 @@ export class WorldScene extends Phaser.Scene {
     for (const e of [...this.keyItemEntries]) {
       if (Math.hypot(me.x - e.d.x, me.y - e.d.y) > KEY_ITEM_RANGE) continue;
       this.keyItemEntries.splice(this.keyItemEntries.indexOf(e), 1);
+      this.net.sendStampClaim(e.d.id); // サーバーが、近くにいたかを確かめて、RTA の記録にする
       if (stamps.add(e.d.id)) {
         this.stampCard?.collected(e.d.name, e.d.icon);
         this.net.sendStamps(stamps.count, stamps.total);
@@ -514,6 +518,9 @@ export class WorldScene extends Phaser.Scene {
         onChatDelete: (m) => this.hud?.removeChatMessages(m.ids),
         onEmote: (m) => this.onEmote(m),
         onCorrect: (m) => this.onCorrect(m),
+        onRanking: (m) => this.rankPanel?.update(m),
+        onRtaStart: () => this.rankPanel?.rtaStart(),
+        onRtaDone: (m) => this.rankPanel?.rtaDone(m),
         onDrop: () => this.game.events.emit(EV_CONN, "reconnecting"),
         onReconnect: () => this.game.events.emit(EV_CONN, "ok"),
         onLost: (code) => {
@@ -543,6 +550,7 @@ export class WorldScene extends Phaser.Scene {
     });
     this.talk = new Talk({ onPrompt: () => this.onTalkKey(), onAdvance: () => this.onTalkKey() });
     this.stampCard = new StampCard();
+    this.rankPanel = new RankingPanel(() => this.net.requestRanking());
     this.net.sendStamps(stamps.count, stamps.total);
     this.navi = new Navi();
     document.getElementById("photo-btn")!.onclick = () => this.takePhoto();
@@ -550,6 +558,7 @@ export class WorldScene extends Phaser.Scene {
     input.onEscape = () => {
       this.endTalk();
       this.stampCard?.close();
+      this.rankPanel?.close();
     };
     // タブを閉じたら即座にキャラを消す（consented leave。しないと再接続待ちの間ゴーストが残る）。
     // ページで1回だけ張る（マップエディタと行き来して何度も接続しても、閉じるときに1回leaveすれば十分）
@@ -569,6 +578,7 @@ export class WorldScene extends Phaser.Scene {
       }
       this.endTalk();
       this.stampCard?.hide();
+      this.rankPanel?.hide();
       this.navi?.hide();
       this.introCleanup?.();
       input.onAction = undefined;

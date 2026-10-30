@@ -146,6 +146,14 @@
           <p class="note">「オンライン」タブで「利用停止」にした人の一覧です。解除すると、また入室できます（訪問者IDが同じ端末のみが対象）。</p>
           <table id="t-bans"></table>
         </div>
+        <div class="card">
+          <h2>ランキング（スタンプRTA）</h2>
+          <p class="note">練習で出た記録を、本番の前に消すとき用です。参加者の画面の「🏆」と、ショー画面のランキングから消えます（入退室の記録・チャットは消えません）。「今日の出店めぐり」は、入退室の記録から数えるので、ここでは消えません。</p>
+          <form id="rank-reset" class="row">
+            <input id="rank-reset-confirm" type="text" placeholder="RESET RANKING と入力" maxlength="20" />
+            <button type="submit" class="red">RTAの記録を消す</button>
+          </form>
+        </div>
         <div class="card danger">
           <h2>データの削除</h2>
           <p class="note">本人から削除の申し出があったとき用です。「訪問者ID」は、本人が利用規約の画面で見られるIDです（チャット履歴・入退室の記録の表にも出ます）。</p>

@@ -1215,7 +1215,7 @@ body.chat-locked #chat-toggle { opacity: 0.4; }
 body.chat-locked #chat-input { cursor: not-allowed; background: #e8e8ee; }
 #chat-log .line.notice { color: #ffd2a8; font-weight: 700; }
 /* 狭い画面（320〜345px）では、ボタン列に入りきるよう、人数の表示を省く */
-@media (max-width: 345px) { #hud-top #online-count { display: none; } }
+@media (max-width: 410px) { #hud-top #online-count { display: none; } }
 
 /* ---------- 荒らし対策: 他の人へのブロック・通報、定型文だけのモード、自動対応の知らせ ---------- */
 /* 他の参加者の名前は、押せる（ブロック・通報のメニューが開く）。ラベルの層は pointer-events: none なので、名前だけ有効にする */
@@ -1276,3 +1276,43 @@ body.chat-hidden #phrase-bar { display: none !important; }
 .oz .install-btn { display: block; margin: 10px auto 0; padding: 9px 16px; font: inherit; font-size: 13px; font-weight: 800; color: var(--oz-ink); background: linear-gradient(120deg, #d9f3ff, #ece3ff); border: 1px solid #c9d8ff; border-radius: 12px; cursor: pointer; }
 .oz .install-btn:active { filter: brightness(0.96); }
 .oz .install-btn[hidden] { display: none; }
+
+
+/* ランキング: 左上の 🏆 ボタン・スタンプRTAのタイマー・ランキングのカード */
+#hud-top #rank-btn {
+  width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; color: #fff; background: rgba(30, 40, 25, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 17px;
+}
+#hud-top #rank-btn:hover { background: rgba(45, 60, 38, 0.92); }
+#rank-btn[hidden], #rank-timer[hidden], #rank-card[hidden], #rank-result[hidden] { display: none; }
+#rank-timer {
+  position: absolute; left: 10px; top: 92px; padding: 4px 12px; pointer-events: none;
+  font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; color: #fff;
+  background: rgba(30, 40, 25, 0.82); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 14px;
+}
+#rank-timer.done { color: var(--ink); background: var(--sun); border-color: var(--ink); }
+#rank-card {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(440px, calc(100vw - 20px)); max-height: calc(100vh - 40px);
+  display: flex; flex-direction: column; padding: 14px 16px 12px; color: var(--ink);
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 6px 0 var(--shadow);
+  z-index: 4; animation: pop 0.14s ease-out;
+}
+#rank-card .rk-head { display: flex; align-items: center; justify-content: space-between; font-size: 17px; margin-bottom: 8px; }
+#rank-card .rk-head button { font: inherit; width: 30px; height: 30px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; cursor: pointer; }
+#rank-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+#rank-tabs button { flex: 1; font: inherit; font-size: 13px; font-weight: 800; padding: 6px 4px; border: 2px solid rgba(35, 48, 31, 0.5); border-radius: 10px; background: #fff; cursor: pointer; color: var(--ink); }
+#rank-tabs button.on { background: var(--sun); border-color: var(--ink); }
+#rank-result { margin-bottom: 8px; padding: 8px; text-align: center; font-weight: 800; background: var(--sun); border-radius: 10px; font-size: 14px; }
+#rank-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: grid; gap: 4px; }
+#rank-list li { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; background: rgba(35, 48, 31, 0.06); font-size: 14px; }
+#rank-list li.me { background: #fff6cf; outline: 2px solid var(--leaf-dark); }
+#rank-list li.empty { display: block; text-align: center; font-size: 13px; padding: 14px 8px; }
+#rank-list li b { text-align: center; }
+#rank-list li .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+#rank-list li em { font-style: normal; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--leaf-dark); font-size: 13px; }
+#rank-mine { margin-top: 8px; font-size: 13px; font-weight: 800; text-align: center; }
+#rank-hint { margin-top: 6px; font-size: 11px; opacity: 0.8; line-height: 1.5; }
+.touch #hud-top #rank-btn { width: 34px; height: 34px; }
+.touch #rank-timer { top: 88px; font-size: 16px; }

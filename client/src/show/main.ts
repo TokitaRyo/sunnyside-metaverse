@@ -1,6 +1,6 @@
 import "./show.css";
 import Phaser from "phaser";
-import { HAIRS, decodeLook, encodeLook, type Look } from "@metaverse/shared";
+import { HAIRS, decodeLook, encodeLook, type Look, type RankRow, type Ranking } from "@metaverse/shared";
 import { AvatarPreview } from "../ui/AvatarPreview";
 import { loadStampSheet, stampFrame, stampIconUrl } from "../game/stampIcons";
 import { EV_LOAD_ERROR, EV_PROGRESS, EV_READY, PreloadScene } from "../scenes/PreloadScene";
@@ -27,7 +27,7 @@ interface Person {
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const KEY = { interval: "amplifire.show.interval2", shuffle: "amplifire.show.shuffle", strip: "amplifire.show.strip", bubbles: "amplifire.show.bubbles" };
+const KEY = { interval: "amplifire.show.interval2", shuffle: "amplifire.show.shuffle", strip: "amplifire.show.strip", bubbles: "amplifire.show.bubbles", rank: "amplifire.show.rank" };
 /** 入室してから、この秒数がたった人だけを、大画面に映す（入ってすぐの荒らしが映らないように） */
 const MIN_STAY_SEC = 30;
 const INTERVALS = [8000, 12000, 15000, 20000, 30000, 60000];
@@ -437,7 +437,43 @@ function frame(now: number): void {
 requestAnimationFrame(frame);
 
 // ---------------------------------------------------------------- 操作
+// ランキング（ゲーム画面の左下。参加者の画面と同じ中身）。既定は出す
+let showRank = get(KEY.rank, "1") === "1";
+const fmtRta = (ms: number): string => {
+  const s = ms / 1000;
+  const m = Math.floor(s / 60);
+  return `${m}:${(s - m * 60).toFixed(1).padStart(4, "0")}`;
+};
+function paintRank(id: string, rows: RankRow[], value: (r: RankRow) => string, empty: string): void {
+  $(id).replaceChildren(
+    ...(rows.length
+      ? rows.map((r) => {
+          const li = document.createElement("li");
+          const no = document.createElement("b");
+          no.textContent = r.rank <= 3 ? ["🥇", "🥈", "🥉"][r.rank - 1] : String(r.rank);
+          const nm = document.createElement("span");
+          nm.textContent = r.name;
+          const v = document.createElement("em");
+          v.textContent = value(r);
+          li.append(no, nm, v);
+          return li;
+        })
+      : [Object.assign(document.createElement("li"), { className: "empty", textContent: empty })]),
+  );
+}
+async function loadRanking(): Promise<void> {
+  try {
+    const r = await api<Ranking>("ranking?top=5");
+    paintRank("rk-rta", r.rta, (x) => fmtRta(x.ms ?? 0), "まだ だれも いないよ");
+    paintRank("rk-tour", r.tour, (x) => `${x.visited}/${r.tourTotal}`, "まだ 記録なし");
+  } catch {
+    /* 取れなくても、前の表示のまま */
+  }
+}
+
 const sync = (): void => {
+  $("c-rank").classList.toggle("on", showRank);
+  $("rank").hidden = !showRank;
   $("c-pause").textContent = paused ? "▶" : "⏸";
   $("c-shuffle").classList.toggle("on", shuffle);
   $("c-names").classList.toggle("on", showStrip);
@@ -452,6 +488,7 @@ $("c-pause").addEventListener("click", () => { paused = !paused; restartBar(); s
 $("c-shuffle").addEventListener("click", () => { shuffle = !shuffle; set(KEY.shuffle, shuffle ? "1" : "0"); queue = []; sync(); });
 $("c-names").addEventListener("click", () => { showStrip = !showStrip; set(KEY.strip, showStrip ? "1" : "0"); sync(); });
 $("c-bubbles").addEventListener("click", () => { showBubbles = !showBubbles; set(KEY.bubbles, showBubbles ? "1" : "0"); sync(); });
+$("c-rank").addEventListener("click", () => { showRank = !showRank; set(KEY.rank, showRank ? "1" : "0"); sync(); });
 $("c-interval").addEventListener("change", (e) => { intervalMs = Number((e.target as HTMLSelectElement).value) || DEFAULT_INTERVAL; set(KEY.interval, String(intervalMs)); restartBar(); schedule(); });
 const fs = (): void => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().catch(() => undefined); };
 $("c-full").addEventListener("click", fs);
@@ -463,6 +500,7 @@ addEventListener("keydown", (e) => {
   else if (e.key === "s" || e.key === "S") $("c-shuffle").click();
   else if (e.key === "t" || e.key === "T") $("c-names").click();
   else if (e.key === "b" || e.key === "B") $("c-bubbles").click();
+  else if (e.key === "r" || e.key === "R") $("c-rank").click();
 });
 // 操作パネルは、マウスを動かしたときだけ出す（大型ディスプレイで邪魔にならないように）
 let idle = 0;
@@ -479,6 +517,8 @@ sync();
 void loadAreas();
 void loadVenue();
 window.setInterval(loadVenue, 60000);
+void loadRanking();
+window.setInterval(loadRanking, 15000);
 void poll().then(() => next(1));
 window.setInterval(poll, 3000);
 window.setInterval(loadAreas, 60000);

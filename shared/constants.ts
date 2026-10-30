@@ -48,6 +48,16 @@ export const PHRASES: readonly string[] = [
   "またね！",
 ];
 
+/** スタンプ（キーアイテム）を取れる距離(px)。足元がこの内側に入ると、クライアントが取得する */
+export const KEY_ITEM_RANGE = 18;
+/** サーバーがスタンプの取得を認める距離(px)。位置の同期のずれ（走って約0.3秒ぶん）があるので、KEY_ITEM_RANGE より広く取る */
+export const KEY_ITEM_CLAIM_RANGE = 56;
+
+/** ランキングに出す人数 */
+export const RANKING_TOP = 10;
+/** 「出店めぐり」で、その出店を訪れたと数える最低の滞在(秒) */
+export const STALL_VISIT_SEC = 4;
+
 /** 速度チェックの許容係数（SPEC 4.1） */
 export const SPEED_TOLERANCE = 1.5;
 /** 溜められる移動量（バースト対策）の上限を何秒分にするか */

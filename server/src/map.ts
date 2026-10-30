@@ -9,6 +9,8 @@ interface MapFile {
   layers: { collision: number[][] };
   /** 出店の区画（scripts/build-stalls.mjs が作る） */
   areas?: { id: string; name: string; x: number; y: number; w: number; h: number }[];
+  /** スタンプラリーのスタンプ（中心のピクセル座標）。RTA の確認に使う */
+  keyItems?: { id: string; x: number; y: number }[];
 }
 
 /** クライアントと同じ map.json を読む（配置データは1か所だけ）。 */
@@ -18,8 +20,11 @@ export function loadMap() {
   const tile = raw.tileSize ?? TILE_SIZE;
   const collision = raw.layers.collision;
   const areas = raw.areas ?? [];
+  const keyItems = (raw.keyItems ?? []).map((k) => ({ id: k.id, x: k.x, y: k.y }));
   return {
     areas: areas.map((a) => ({ id: a.id, name: a.name })),
+    /** スタンプの一覧（id と中心の位置） */
+    keyItems,
     /** その位置がどの出店の区画か（クライアントの Navi と同じ余白。通路から前に来たあたりまで含む）。無ければ空文字 */
     areaAt(px: number, py: number): string {
       const a = areas.find((r) => px >= r.x - 10 && px < r.x + r.w + 10 && py >= r.y - 14 && py < r.y + r.h + 14);

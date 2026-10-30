@@ -4,6 +4,7 @@ import { join } from "node:path";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { stats, type Area } from "./stats";
 import { moderation } from "./moderation";
+import { ranking, stallIdsOf } from "./ranking";
 import { issueGateCookie } from "./gate";
 import { venueInfo, venueQrSvg, venueUrl } from "./venue";
 
@@ -177,6 +178,8 @@ export function adminRouter(clientDist: string): Router {
     res.json({ ...stats.summary(hooks?.areas() ?? []), banned: bans.size });
   });
   r.get("/api/online", (_req, res) => res.json(stats.onlineList()));
+  // ランキング（ショー画面が表示する。参加者に出すものと同じ中身）
+  r.get("/api/ranking", (req, res) => res.json(ranking.snapshot(stallIdsOf(hooks?.areas() ?? []), undefined, num(req.query.top, 5, 1, 20))));
   r.get("/api/spectator-token", (_req, res) => res.json({ token: issueSpectatorToken() }));
   r.get("/api/sessions", (req, res) => res.json(stats.recentSessions(num(req.query.limit, 100, 1, 500))));
   r.get("/api/chat", (req, res) => {
@@ -293,11 +296,20 @@ export function adminRouter(clientDist: string): Router {
     const vid = typeof req.body?.vid === "string" ? req.body.vid.trim() : "";
     if (vid.length < 8) return void res.status(400).json({ error: "vid required" });
     console.log(`[admin] delete visitor ${vid.slice(0, 6)}…`);
+    ranking.deleteVisitor(vid);
     res.json({ ok: true, ...stats.deleteVisitor(vid) });
+  });
+  // スタンプRTA の記録を、すべて消す（練習の記録を、本番の前に消すとき）
+  r.post("/api/ranking/reset", mutating, json, (req, res) => {
+    if (req.body?.confirm !== "RESET RANKING") return void res.status(400).json({ error: "confirm required" });
+    const n = ranking.resetRta();
+    console.log(`[admin] reset RTA ranking x${n}`);
+    res.json({ ok: true, removed: n });
   });
   r.post("/api/purge", mutating, json, (req, res) => {
     if (req.body?.confirm !== "DELETE ALL") return void res.status(400).json({ error: "confirm required" });
     console.log("[admin] purge all data");
+    ranking.resetRta();
     stats.purgeAll();
     res.json({ ok: true });
   });

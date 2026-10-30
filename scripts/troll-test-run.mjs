@@ -14,6 +14,7 @@ const PHASES = [
   { phase: "join", env: { MOD_STRICT_LOCAL: "1", MOD_JOIN_PER_MIN: "5" } },
   { phase: "gate", env: { SITE_LOCK: "1" } },
   { phase: "venue", env: { VENUE_CODE: "venue-test-code" } },
+  { phase: "rta", env: {} },
 ];
 const sh = process.platform === "win32";
 const npx = sh ? "npx.cmd" : "npx";
