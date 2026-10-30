@@ -288,6 +288,35 @@ async function joinPhase(): Promise<void> {
   await leave(ok);
 }
 
+// ------------------------------------------------------------------ 段階 trusted（学内LANのように、同じIPから多人数が来る回線）
+// join と同じ厳しい設定（MOD_STRICT_LOCAL=1 MOD_JOIN_PER_MIN=5 MAX_PER_IP=6）で、TRUSTED_IPS に手元を入れて起動する
+async function trustedPhase(): Promise<void> {
+  const bots: Bot[] = [];
+  let refused = "";
+  for (let i = 0; i < 12; i++) {
+    try {
+      bots.push(await join(`がっこう${i}`));
+    } catch (e) {
+      refused = e instanceof Error ? e.message : String(e);
+      break;
+    }
+  }
+  check("信頼する回線: 同じIPから、1分に12人入っても、断られない（上限 入室5回/分・6人 は、かからない）", bots.length === 12, `入れた=${bots.length} ${refused}`);
+  // 回線ごとの止めも、かからない: 1人が、連絡先を何度も送って、点数がたまっても、他の人のチャットは止まらない
+  const bad = bots[0];
+  const other = bots[1];
+  await sleep(5500); // 新しい人の待ち（MOD_NEWCOMER_SEC=1 でも、少し余裕を見る）
+  for (let i = 0; i < 6; i++) {
+    bad.say(`line交換しよう ${i}`);
+    await sleep(1200);
+  }
+  await sleep(500);
+  other.say("こんにちは、がっこうです");
+  await sleep(600);
+  check("信頼する回線: 1人が止められても、同じIPの別の人のチャットは止まらない", got(bots[2], other, "こんにちは、がっこうです"), noticeCodes(other).join(","));
+  await leave(bots);
+}
+
 // ------------------------------------------------------------------ 段階 gate
 async function gatePhase(): Promise<void> {
   const pw = ADMIN_PW;
@@ -510,7 +539,8 @@ try {
   else if (phase === "gate") await gatePhase();
   else if (phase === "venue") await venuePhase();
   else if (phase === "rta") await rtaPhase();
-  else throw new Error("phase は main / breaker / join / gate / venue / rta のどれか");
+  else if (phase === "trusted") await trustedPhase();
+  else throw new Error("phase は main / breaker / join / gate / venue / rta / trusted のどれか");
 } catch (e) {
   fail++;
   console.log("FAIL  例外:", e instanceof Error ? e.stack : e);

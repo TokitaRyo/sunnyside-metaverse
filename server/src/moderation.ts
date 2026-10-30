@@ -1,5 +1,6 @@
 import { CHAT_MAX, PHRASES, type ModNotice } from "@metaverse/shared";
 import { isLocalAddress } from "./geoblock";
+import { isTrustedIp } from "./trusted";
 
 /**
  * 自動の荒らし対策（運営がずっと見ていなくても、機能するように）。3つの層で守る:
@@ -48,7 +49,7 @@ const REPORTER_MIN_MS = num("MOD_REPORTER_MIN_SEC", 30) * 1000;
 
 /** 試験のときだけ、手元(localhost)の接続にも、回線ごとの制限を適用する */
 const STRICT_LOCAL = process.env.MOD_STRICT_LOCAL === "1";
-const ipExempt = (ip: string): boolean => !STRICT_LOCAL && (!ip || isLocalAddress(ip));
+const ipExempt = (ip: string): boolean => isTrustedIp(ip) || (!STRICT_LOCAL && (!ip || isLocalAddress(ip)));
 
 // ---------------------------------------------------------------- 文字の整え
 /* eslint-disable no-control-regex */

@@ -35,6 +35,7 @@ import {
   RANKING_TOP,
 } from "@metaverse/shared";
 import { ranking, stallIdsOf } from "../ranking";
+import { isTrustedIp } from "../trusted";
 import { loadMap } from "../map";
 import { isBanned, registerAdminHooks, verifySpectatorToken } from "../admin";
 import { stats } from "../stats";
@@ -271,7 +272,7 @@ export class MainRoom extends Room<{ state: MainRoomState }> {
     if (venueEnabled && !verifyVenueCode(options.venue)) throw new ServerError(4003, "会場の QR コードから 入ってください（コードが ちがうか、古くなっています）");
     // 同じ回線から入っている数に上限（部屋を1か所の接続で埋めつくされないため）
     const ip = String(context?.headers?.get("fly-client-ip") ?? context?.ip ?? "");
-    if (ip && (this.ipCount.get(ip) ?? 0) >= MAX_PER_IP) throw new ServerError(4003, "この回線からの接続が多すぎます。しばらくしてからお試しください");
+    if (ip && !isTrustedIp(ip) && (this.ipCount.get(ip) ?? 0) >= MAX_PER_IP) throw new ServerError(4003, "この回線からの接続が多すぎます。しばらくしてからお試しください");
     // 短い時間の入室のしすぎ・退室させられた直後の入り直しを断る
     const why = mod.checkJoin(ip, vid);
     if (why) throw new ServerError(4003, why);

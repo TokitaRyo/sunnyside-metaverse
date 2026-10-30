@@ -12,6 +12,13 @@ primary_region = 'nrt'
 # 「関係者だけ」に戻すときは、この2行を消して（または SITE_LOCK = '1' にして）デプロイする。
 [env]
   SITE_LOCK = '0'
+  # 学内LAN（仙台高専。プロキシ wproxy.net.sendai-nct.ac.jp:8080 経由）の人は、全員が同じ出口IPから来る。
+  # 「同じ回線」の制限（同時接続数・入室の頻度・同じ回線のチャット停止など）を、この範囲にはかけない（docs/ADMIN.md §10）
+  TRUSTED_IPS = '133.104.0.0/16'
+  # 万一、学校の出口IPが上の範囲の外でも、多人数が詰まらないように、当日は「同じ回線」の上限をゆるめる（既定は 50人・入室10回/分・予約20回/分）
+  MAX_PER_IP = '100'
+  MOD_JOIN_PER_MIN = '60'
+  MOD_RESERVE_PER_MIN = '120'
 
 [http_service]
   internal_port = 2567

@@ -2,16 +2,18 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gen-banner.ps1 [元絵のパス] [出力PNG] [幅px]
 # 元絵は reference/amp-banner-src.jpg に置く（公開リポジトリには入れない）。
 # 第2段階 scripts/gen-banner.mjs が、色数を減らして縁取りを付け、client/public/brand/banner/amp_banner.png を作る。
+# $OutH: 出力の高さ。横断幕の大きさ（map.json の定義）を変えないため、元絵の比率とは少しずれても、この高さに合わせる
 param(
   [string]$Src = 'reference/amp-banner-src.jpg',
   [string]$Out = 'reference/amp-banner-small.png',
-  [int]$W = 560
+  [int]$W = 560,
+  [int]$OutH = 101
 )
 Add-Type -AssemblyName System.Drawing
 $img = [System.Drawing.Image]::FromFile((Resolve-Path $Src))
-# 元絵の外側の白い余白と黒い枠線を除いた範囲（2000x500 の元絵の中の絵の部分）
-$cx = 198; $cy = 80; $cw = 1586; $ch = 287
-$H = [int][Math]::Round($W * $ch / $cw)
+# 元絵の黒い枠線の内側（2000x482 の元絵の中の絵の部分。2026-10-31 に差し替えた新しい絵）
+$cx = 28; $cy = 46; $cw = 1933; $ch = 361
+$H = $OutH
 $bmp = New-Object System.Drawing.Bitmap $W, $H
 $g = [System.Drawing.Graphics]::FromImage($bmp)
 $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic

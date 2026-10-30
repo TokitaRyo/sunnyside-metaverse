@@ -15,6 +15,8 @@ const PHASES = [
   { phase: "gate", env: { SITE_LOCK: "1" } },
   { phase: "venue", env: { VENUE_CODE: "venue-test-code" } },
   { phase: "rta", env: {} },
+  // 学内LANのように、同じIPから多人数が来る回線（TRUSTED_IPS）。localhost は ::1 か 127.0.0.1 で届くので、両方を入れる
+  { phase: "trusted", env: { MOD_STRICT_LOCAL: "1", MOD_JOIN_PER_MIN: "5", MAX_PER_IP: "6", MOD_NEWCOMER_SEC: "1", MOD_CHAT_GAP_SEC: "1", TRUSTED_IPS: "127.0.0.0/8,::1" } },
 ];
 const sh = process.platform === "win32";
 const npx = sh ? "npx.cmd" : "npx";

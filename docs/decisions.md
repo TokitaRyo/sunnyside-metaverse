@@ -457,3 +457,8 @@ SPEC.md の指示に従い、判断と根拠を1行ずつ残す。実測値は�
 
 - すべての応答に、`X-Content-Type-Options: nosniff`・`X-Frame-Options: DENY`・`Referrer-Policy: no-referrer`・`X-Robots-Tag: noindex, nofollow`・`Permissions-Policy`（カメラ・マイク・位置などを断る）を付けた。`X-Powered-By` は消した。`robots.txt`（全部拒否）と `<meta name="robots">` も追加（リンクを開放したあとに、検索に載らないように）。
 - 画面の幅が狭いときに、🏆 ボタンが入る場所を空けるため、人数表示を隠す幅を 345px → 410px にした。
+
+## 当日（2026-10-31）の追加
+
+- **横断幕の絵を、新しい絵に差し替え**: 元絵は `reference/amp-banner-src.jpg`（旧は `amp-banner-src-old.jpg`）。`scripts/gen-banner.ps1`（黒い枠の内側 x28 y46 1933×361 を切り出す）→ `scripts/gen-banner.mjs`（28色・縁取り）で、`client/public/brand/stall/banner_amp.png`（562×103。**大きさは変えない**。map.json の定義を触らないため、元絵の比率との、約3.5%の縦のずれは、そのまま合わせた）。
+- **学内LAN（プロキシ経由）**: 上の ADMIN.md §10。出口IPが共通になるため、「回線ごとの制限」を、信頼する範囲（TRUSTED_IPS）にはかけない。自動で「共有IP」を見分ける方法は、使わなかった（荒らしが、数人ぶんの接続を作るだけで、制限から逃げられるため。明示した範囲だけを信頼する）。
