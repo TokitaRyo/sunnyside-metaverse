@@ -64,7 +64,7 @@ body.empty .cam-tag { display: none; }
 #offline { background: rgba(28, 30, 60, 0.45); justify-content: flex-start; padding-top: 6vh; }
 /* だれもいないとき */
 .wait[hidden] { display: none; }
-.wait { position: absolute; left: 0; right: 0; bottom: 3vh; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 0.6vh; padding: 1.6vh 2vh; margin: 0 auto; width: max-content; max-width: 90%; text-align: center; border-radius: 2vh; background: rgba(255, 255, 255, 0.86); box-shadow: 0 1vh 4vh rgba(40, 60, 120, 0.3); pointer-events: none; }
+.wait { position: absolute; left: 0; right: 0; top: 12vh; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 0.6vh; padding: 1.6vh 2vh; margin: 0 auto; width: max-content; max-width: 90%; text-align: center; border-radius: 2vh; background: rgba(255, 255, 255, 0.86); box-shadow: 0 1vh 4vh rgba(40, 60, 120, 0.3); pointer-events: none; }
 .wait b { font-size: 3.2vh; letter-spacing: 0.08em; color: var(--ink); }
 .wait span { font-size: 2vh; font-weight: 700; color: var(--sub); }
 
@@ -186,3 +186,21 @@ body.awake .ctl { transform: translate(-50%, 0); }
 .rank li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 16vh; }
 .rank li em { font-style: normal; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--yellow); }
 .rank li.empty { display: block; font-size: 1.8vh; opacity: 0.8; }
+
+
+/* 参加のよびかけ（ゲーム画面の右下）: QR と、入れ替わるメッセージ。遠くからでも読めるように、大きく */
+.joinbox { position: absolute; right: 1.6vh; bottom: 1.6vh; z-index: 2; display: flex; align-items: center; gap: 1.8vh; padding: 1.4vh 2vh 1.4vh 1.4vh; max-width: 62vh; color: var(--ink); background: rgba(255, 255, 255, 0.96); border: 0.5vh solid transparent; border-radius: 2.4vh; background-image: linear-gradient(#fff, #fff), var(--grad); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 1vh 4vh rgba(40, 36, 72, 0.45); pointer-events: none; animation: jb-bob 3.2s ease-in-out infinite; }
+.joinbox[hidden], body.empty .joinbox.hide-empty { display: none; }
+.jb-qr { flex: none; width: 21vh; height: 21vh; padding: 0.6vh; background: #fff; border-radius: 1.2vh; }
+.jb-qr svg { width: 100%; height: 100%; display: block; }
+.jb-text { display: grid; gap: 0.7vh; min-width: 0; }
+.jb-head { white-space: nowrap; font-size: 2.8vh; font-weight: 900; line-height: 1.2; background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.jb-msg { min-height: 6.4vh; font-size: 2.2vh; font-weight: 800; line-height: 1.4; }
+.jb-msg.in { animation: jb-in 0.5s ease-out both; }
+.jb-live { font-size: 1.8vh; font-weight: 800; color: #ff5fa2; }
+@keyframes jb-in { from { opacity: 0; transform: translateY(1vh); } to { opacity: 1; transform: none; } }
+@keyframes jb-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.6vh); } }
+@media (max-aspect-ratio: 4/3) { .joinbox { display: none; } }
+@media (prefers-reduced-motion: reduce) { .joinbox { animation: none; } .jb-msg.in { animation: none; } }
+
+@media (max-aspect-ratio: 16/9) { .rank { flex-direction: column; gap: 0.8vh; } }

@@ -196,15 +196,17 @@ export function adminRouter(clientDist: string): Router {
   // 自動の荒らし対策の状況（止めた人・定型文だけのモード・最近の自動対応）
   r.get("/api/moderation", (_req, res) => res.json({ ...moderation.status(), venue: venueInfo() }));
   // 会場限定モード: 入室用の URL と QR（SVG）。ショー画面や、印刷用のページが使う
+  const publicUrl = /^https?:\/\/[A-Za-z0-9.\-:]+\/?$/.test(process.env.PUBLIC_URL ?? "") ? (process.env.PUBLIC_URL as string).replace(/\/$/, "") : "";
   const originOf = (req: Request): string => {
+    if (publicUrl) return publicUrl; // 参加用の QR は、いつも、みんなが開く本番の URL にする（管理者が localhost などで開いていても）
     const proto = String(req.headers["x-forwarded-proto"] ?? req.protocol).split(",")[0].trim() === "https" ? "https" : "http";
     const host = String(req.headers.host ?? "").replace(/[^A-Za-z0-9.:\-\[\]]/g, "");
     return `${proto}://${host}`;
   };
+  // 参加用の QR: 会場限定モードのときは、入室コードつきの URL。そうでないときは、ふつうのサイトの URL（ショー画面が、いつも「参加用」として出す）
   r.get("/api/venue", (req, res) => {
     const info = venueInfo();
-    if (!info.enabled) return void res.json({ enabled: false });
-    const url = venueUrl(originOf(req));
+    const url = info.enabled ? venueUrl(originOf(req)) : `${originOf(req)}/`;
     res.json({ ...info, url, svg: venueQrSvg(url) });
   });
   // 印刷用ページ（会場に貼る QR。固定コードのとき）

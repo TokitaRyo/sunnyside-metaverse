@@ -326,12 +326,36 @@ async function poll(): Promise<void> {
 async function loadVenue(): Promise<void> {
   try {
     const v = await api<{ enabled: boolean; svg?: string }>("venue");
-    $("venue").hidden = !v.enabled || !v.svg;
-    if (v.enabled && v.svg) $("venue-qr").innerHTML = v.svg;
+    // 参加用の QR（会場限定モードのときは、入室コードつき。そうでなければ、ふつうの URL）。サーバーが作った SVG を、そのまま出す
+    $("joinbox").hidden = !v.svg;
+    if (v.svg) $("jb-qr").innerHTML = v.svg;
   } catch {
     /* QR が出せなくても動く */
   }
 }
+
+// 参加のよびかけのメッセージ（数秒ごとに入れ替わる）。いまの人数を添える
+const JOIN_MESSAGES = [
+  "スマホで QR を よみとって、文化祭の島へ！",
+  "⭐ スタンプを ぜんぶ あつめて、🏆 ランキングに 挑戦しよう！",
+  "出店を めぐって、友だちと おしゃべり しよう💬",
+  "アバターは じぶんで つくれる！ 手ぶらで 入れるよ",
+];
+let joinIdx = 0;
+function paintJoin(): void {
+  const el = $("jb-msg");
+  el.classList.remove("in");
+  el.textContent = JOIN_MESSAGES[joinIdx % JOIN_MESSAGES.length];
+  void el.offsetWidth; // アニメーションをやり直す
+  el.classList.add("in");
+  const n = Number($("count").textContent) || 0;
+  $("jb-live").textContent = n > 0 ? `いま ${n}人が あそんでいるよ` : "いちばん乗りを めざそう！";
+}
+paintJoin();
+window.setInterval(() => {
+  joinIdx++;
+  paintJoin();
+}, 6000);
 
 async function loadAreas(): Promise<void> {
   try {

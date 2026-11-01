@@ -32,6 +32,15 @@
           <div class="rk-col"><h3>⏱ スタンプRTA</h3><ol id="rk-rta"></ol></div>
           <div class="rk-col"><h3>🗺 今日の出店めぐり</h3><ol id="rk-tour"></ol></div>
         </div>
+        <!-- 参加のよびかけ: QR（スマホで読みとって参加）と、ひとことのメッセージ（入れ替わる） -->
+        <div class="joinbox" id="joinbox" hidden>
+          <div class="jb-qr" id="jb-qr"></div>
+          <div class="jb-text">
+            <b class="jb-head">📱 いま すぐ 参加しよう！</b>
+            <span class="jb-msg" id="jb-msg"></span>
+            <small class="jb-live" id="jb-live"></small>
+          </div>
+        </div>
         <div class="veil" id="loading"><b>ゲーム画面を よみこみ中…</b><span class="loadbar"><i id="load-bar"></i></span></div>
         <div class="veil" id="offline" hidden><b>つなぎなおしています…</b></div>
         <div class="wait" id="wait" hidden>
